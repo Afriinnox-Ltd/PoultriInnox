@@ -169,7 +169,7 @@ export default function BatchesIndex({ batches, stats }: Props) {
       <div className="space-y-6">
         {/* Header */}
                 {/* Enhanced Header with Quick Actions */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center flex-wrap p-6 md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Batch Management</h1>
             <p className="text-muted-foreground">
@@ -419,7 +419,7 @@ export default function BatchesIndex({ batches, stats }: Props) {
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </Link>
-                          
+
                           </div>
                         </div>
                       </CardContent>

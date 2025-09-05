@@ -84,7 +84,7 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
       <div className="space-y-6">
         {/* Header */}
                 {/* Enhanced Header with Quick Actions */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col flex-wrap gap-3  md:flex-row md:items-center p-6 md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Incubator Management</h1>
             <p className="text-muted-foreground">

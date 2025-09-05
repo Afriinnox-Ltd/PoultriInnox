@@ -27,7 +27,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // BatchIncubator Module Routes
-    Route::prefix('batch-incubator')->name('batch-incubator.')->group(function () {
+    Route::prefix('batch-incubator')->name('batch-incubator.')
+        ->middleware(['module.dependencies:batch-incubator', 'admin.access'])
+        ->group(function () {
         // Overview/Dashboard
         Route::get('/', [BatchIncubatorController::class, 'index'])->name('index');
 
@@ -74,7 +76,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('reports/{report}', [ReportsController::class, 'show'])->name('reports.show');
         Route::get('reports/{report}/download', [ReportsController::class, 'download'])->name('reports.download');
     });
+
+    // Feed Management Module Routes
+    require __DIR__.'/feed-management.php';
 });
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
+require __DIR__.'/admin.php';

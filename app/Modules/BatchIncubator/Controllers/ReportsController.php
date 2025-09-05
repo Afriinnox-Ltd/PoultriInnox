@@ -3,14 +3,13 @@
 namespace App\Modules\BatchIncubator\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Report;
 use App\Modules\BatchIncubator\Models\Batch;
 use App\Modules\BatchIncubator\Models\Incubator;
-use App\Modules\BatchIncubator\Models\BatchSchedule;
 use App\Modules\BatchIncubator\Enums\BatchStatus;
-use App\Modules\BatchIncubator\Enums\IncubatorStatus;
-use App\Modules\BatchIncubator\Enums\ScheduleStatus;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -21,14 +20,16 @@ class ReportsController extends Controller
      */
     public function index()
     {
-        $reports = $this->getReportCategories();
+        $recentReports = Report::where('user_id', Auth::id())
+            ->latest()
+            ->take(10)
+            ->get();
+
         $quickStats = $this->getQuickStats();
-        $performanceMetrics = $this->getPerformanceMetrics();
-        
+
         return Inertia::render('modules/batch-incubator/reports/index', [
-            'reports' => $reports,
+            'reports' => $recentReports,
             'quickStats' => $quickStats,
-            'performanceMetrics' => $performanceMetrics,
         ]);
     }
 
@@ -40,7 +41,7 @@ class ReportsController extends Controller
         $reportTypes = $this->getReportTypes();
         $batches = Batch::select('id', 'name', 'batch_code', 'status')->get();
         $incubators = Incubator::select('id', 'name', 'model', 'status')->get();
-        
+
         return Inertia::render('modules/batch-incubator/reports/create', [
             'reportTypes' => $reportTypes,
             'batches' => $batches,
@@ -54,221 +55,299 @@ class ReportsController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'type' => 'required|string|in:production,efficiency,financial,batch-performance,incubator-analysis,schedule-compliance',
-            'period' => 'required|string|in:week,month,quarter,year,custom',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'type' => 'required|string|in:production,efficiency,financial',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
             'batch_ids' => 'nullable|array',
-            'batch_ids.*' => 'exists:batches,id',
+            'batch_ids.*' => 'integer|exists:batches,id',
             'incubator_ids' => 'nullable|array',
-            'incubator_ids.*' => 'exists:incubators,id',
-            'format' => 'required|string|in:pdf,excel,html',
+            'incubator_ids.*' => 'integer|exists:incubators,id',
+            'format' => 'required|string|in:pdf,excel,json',
         ]);
 
-        // Calculate date range
-        $dateRange = $this->calculateDateRange($request->period, $request->start_date, $request->end_date);
-        
-        // Generate the appropriate report
-        $reportData = match($request->type) {
-            'production' => $this->generateProductionReport($dateRange, $request->batch_ids, $request->incubator_ids),
-            'efficiency' => $this->generateEfficiencyReport($dateRange, $request->batch_ids, $request->incubator_ids),
-            'financial' => $this->generateFinancialReport($dateRange, $request->batch_ids),
-            'batch-performance' => $this->generateBatchPerformanceReport($dateRange, $request->batch_ids),
-            'incubator-analysis' => $this->generateIncubatorAnalysisReport($dateRange, $request->incubator_ids),
-            'schedule-compliance' => $this->generateScheduleComplianceReport($dateRange, $request->batch_ids),
-        };
+        try {
+            // Calculate date range
+            $dateRange = [
+                'start' => Carbon::parse($request->start_date)->startOfDay(),
+                'end' => Carbon::parse($request->end_date)->endOfDay(),
+            ];
 
-        // Store report metadata (optional for future reference)
-        $reportId = uniqid('report_', true);
-        
-        // Return the generated report with a unique ID for viewing
-        return redirect()->route('batch-incubator.reports.show', ['report' => $reportId])
-            ->with('reportData', $reportData)
-            ->with('reportConfig', [
+            // Generate the appropriate report
+            $reportData = match($request->type) {
+                'production' => $this->generateProductionReport($dateRange, $request->batch_ids),
+                'efficiency' => $this->generateEfficiencyReport($dateRange, $request->incubator_ids),
+                'financial' => $this->generateFinancialReport($dateRange, $request->batch_ids),
+            };
+
+            // Store the report in database
+            $report = Report::create([
+                'title' => $reportData['title'],
                 'type' => $request->type,
-                'period' => $request->period,
+                'parameters' => [
+                    'batch_ids' => $request->batch_ids ?? [],
+                    'incubator_ids' => $request->incubator_ids ?? [],
+                    'start_date' => $request->start_date,
+                    'end_date' => $request->end_date,
+                    'format' => $request->format,
+                ],
+                'data' => $reportData,
                 'format' => $request->format,
-                'generated_at' => now(),
-                'date_range' => $dateRange,
+                'period_start' => $dateRange['start'],
+                'period_end' => $dateRange['end'],
+                'user_id' => Auth::id(),
             ]);
+
+            return redirect()->route('batch-incubator.reports.show', $report->id);
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to generate report: ' . $e->getMessage()]);
+        }
     }
 
     /**
      * Show a generated report
      */
-    public function show(Request $request, $report)
+    public function show($reportId)
     {
-        $reportData = session('reportData');
-        $reportConfig = session('reportConfig');
-        
-        if (!$reportData || !$reportConfig) {
-            return redirect()->route('batch-incubator.reports.index')
-                ->with('error', 'Report not found or expired. Please generate a new report.');
-        }
-        
+        $report = Report::where('id', $reportId)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $parameters = $report->parameters;
+        $parameters['report_id'] = $report->id;
+
         return Inertia::render('modules/batch-incubator/reports/show', [
-            'reportData' => $reportData,
-            'reportConfig' => $reportConfig,
-            'reportId' => $report,
+            'report' => $report->data,
+            'type' => $report->type,
+            'parameters' => $parameters,
         ]);
     }
 
     /**
      * Download a report in the specified format
      */
-    public function download(Request $request, $report)
+    public function download($reportId)
     {
-        $reportData = session('reportData');
-        $reportConfig = session('reportConfig');
-        
-        if (!$reportData || !$reportConfig) {
-            return redirect()->route('batch-incubator.reports.index')
-                ->with('error', 'Report not found or expired. Please generate a new report.');
-        }
-        
-        $filename = 'batch_incubator_' . $reportConfig['type'] . '_report_' . now()->format('Y_m_d_H_i_s');
-        
-        switch ($reportConfig['format']) {
+        $report = Report::where('id', $reportId)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $filename = 'batch_incubator_' . $report->type . '_report_' . $report->created_at->format('Y_m_d_H_i_s');
+
+        switch ($report->format) {
             case 'pdf':
-                // For now, return JSON (can be enhanced with PDF generation later)
-                return response()->json($reportData)
-                    ->header('Content-Disposition', 'attachment; filename="' . $filename . '.json"');
+                return $this->downloadAsPdf($report, $filename);
             case 'excel':
-                // For now, return JSON (can be enhanced with Excel generation later)
-                return response()->json($reportData)
-                    ->header('Content-Disposition', 'attachment; filename="' . $filename . '.json"');
+                return $this->downloadAsExcel($report, $filename);
             default:
-                return response()->json($reportData)
-                    ->header('Content-Disposition', 'attachment; filename="' . $filename . '.json"');
+                return $this->downloadAsJson($report, $filename);
         }
-    }
-
-    /**
-     * Calculate date range based on period selection
+    }    /**
+     * Download report as JSON file
      */
-    private function calculateDateRange($period, $startDate = null, $endDate = null)
+    private function downloadAsJson($report, $filename)
     {
-        $now = Carbon::now();
-        
-        if ($period === 'custom' && $startDate && $endDate) {
-            return [
-                'start' => Carbon::parse($startDate)->startOfDay(),
-                'end' => Carbon::parse($endDate)->endOfDay(),
-            ];
-        }
-        
-        return match($period) {
-            'week' => [
-                'start' => $now->copy()->startOfWeek(),
-                'end' => $now->copy()->endOfWeek(),
-            ],
-            'month' => [
-                'start' => $now->copy()->startOfMonth(),
-                'end' => $now->copy()->endOfMonth(),
-            ],
-            'quarter' => [
-                'start' => $now->copy()->startOfQuarter(),
-                'end' => $now->copy()->endOfQuarter(),
-            ],
-            'year' => [
-                'start' => $now->copy()->startOfYear(),
-                'end' => $now->copy()->endOfYear(),
-            ],
-            default => [
-                'start' => $now->copy()->startOfMonth(),
-                'end' => $now->copy()->endOfMonth(),
-            ],
-        };
-    }
+        $jsonContent = json_encode($report->data, JSON_PRETTY_PRINT);
 
-    /**
-     * Generate a specific report
-     */
-    public function generate(Request $request)
-    {
-        $validated = $request->validate([
-            'type' => 'required|string|in:production,efficiency,financial,batch-performance,incubator-analysis,schedule-compliance',
-            'date_from' => 'required|date',
-            'date_to' => 'required|date|after_or_equal:date_from',
-            'batch_ids' => 'nullable|array',
-            'batch_ids.*' => 'exists:batches,id',
-            'incubator_ids' => 'nullable|array',
-            'incubator_ids.*' => 'exists:incubators,id',
-            'format' => 'nullable|string|in:pdf,excel,json'
-        ]);
-
-        $reportData = match ($validated['type']) {
-            'production' => $this->generateProductionReport($validated),
-            'efficiency' => $this->generateEfficiencyReport($validated),
-            'financial' => $this->generateFinancialReport($validated),
-            'batch-performance' => $this->generateBatchPerformanceReport($validated),
-            'incubator-analysis' => $this->generateIncubatorAnalysisReport($validated),
-            'schedule-compliance' => $this->generateScheduleComplianceReport($validated),
-            default => throw new \InvalidArgumentException('Invalid report type')
-        };
-
-        return Inertia::render('modules/batch-incubator/reports/show', [
-            'report' => $reportData,
-            'type' => $validated['type'],
-            'parameters' => $validated,
+        return response($jsonContent, 200, [
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '.json"',
+            'Content-Length' => strlen($jsonContent),
         ]);
     }
 
     /**
-     * Get report categories for the dashboard
+     * Download report as PDF (placeholder - can be enhanced with actual PDF generation)
      */
-    private function getReportCategories()
+    private function downloadAsPdf($report, $filename)
     {
-        return [
-            'production' => [
-                'title' => 'Production Reports',
-                'description' => 'Track production metrics and performance',
-                'icon' => 'TrendingUp',
-                'color' => 'blue',
-                'reports' => [
-                    ['name' => 'Daily Production', 'key' => 'daily-production'],
-                    ['name' => 'Hatch Rate Analysis', 'key' => 'hatch-rate'],
-                    ['name' => 'Mortality Tracking', 'key' => 'mortality'],
-                    ['name' => 'Growth Performance', 'key' => 'growth'],
-                ]
-            ],
-            'efficiency' => [
-                'title' => 'Efficiency Reports',
-                'description' => 'Analyze operational efficiency and optimization',
-                'icon' => 'BarChart3',
-                'color' => 'green',
-                'reports' => [
-                    ['name' => 'Incubator Utilization', 'key' => 'incubator-utilization'],
-                    ['name' => 'Energy Consumption', 'key' => 'energy-consumption'],
-                    ['name' => 'Resource Optimization', 'key' => 'resource-optimization'],
-                    ['name' => 'Schedule Efficiency', 'key' => 'schedule-efficiency'],
-                ]
-            ],
-            'financial' => [
-                'title' => 'Financial Reports',
-                'description' => 'Financial performance and profitability analysis',
-                'icon' => 'DollarSign',
-                'color' => 'purple',
-                'reports' => [
-                    ['name' => 'Cost per Batch', 'key' => 'cost-per-batch'],
-                    ['name' => 'Revenue Analysis', 'key' => 'revenue-analysis'],
-                    ['name' => 'Profitability Report', 'key' => 'profitability'],
-                    ['name' => 'ROI Analysis', 'key' => 'roi-analysis'],
-                ]
-            ],
-            'compliance' => [
-                'title' => 'Compliance Reports',
-                'description' => 'Track compliance and schedule adherence',
-                'icon' => 'CheckCircle',
-                'color' => 'indigo',
-                'reports' => [
-                    ['name' => 'Schedule Compliance', 'key' => 'schedule-compliance'],
-                    ['name' => 'Maintenance Records', 'key' => 'maintenance-records'],
-                    ['name' => 'Quality Assurance', 'key' => 'quality-assurance'],
-                    ['name' => 'Audit Trail', 'key' => 'audit-trail'],
-                ]
-            ]
-        ];
+        // For now, generate a simple text content
+        $content = $this->generateReportTextContent($report);
+
+        return response($content, 200, [
+            'Content-Type' => 'text/plain',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '.txt"',
+            'Content-Length' => strlen($content),
+        ]);
+    }
+
+    /**
+     * Download report as Excel (placeholder - can be enhanced with actual Excel generation)
+     */
+    private function downloadAsExcel($report, $filename)
+    {
+        // For now, generate CSV content
+        $content = $this->generateReportCsvContent($report);
+
+        return response($content, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '.csv"',
+            'Content-Length' => strlen($content),
+        ]);
+    }
+
+    /**
+     * Generate text content for report
+     */
+    private function generateReportTextContent($report)
+    {
+        $data = $report->data;
+        $content = [];
+
+        $content[] = strtoupper($data['title'] ?? 'Report');
+        $content[] = str_repeat('=', strlen($data['title'] ?? 'Report'));
+        $content[] = '';
+        $content[] = 'Period: ' . ($data['period'] ?? 'N/A');
+        $content[] = 'Generated: ' . $report->created_at->format('M j, Y H:i:s');
+        $content[] = '';
+
+        // Add summary section
+        if (isset($data['summary'])) {
+            $content[] = 'SUMMARY';
+            $content[] = str_repeat('-', 7);
+            foreach ($data['summary'] as $key => $value) {
+                // Skip raw values in text output
+                if (strpos($key, '_raw') !== false) {
+                    continue;
+                }
+                $content[] = ucwords(str_replace('_', ' ', $key)) . ': ' . $value;
+            }
+            $content[] = '';
+        }
+
+        // Add details section
+        if (isset($data['batch_details'])) {
+            $content[] = 'BATCH DETAILS';
+            $content[] = str_repeat('-', 13);
+            foreach ($data['batch_details'] as $batch) {
+                $content[] = 'Batch: ' . ($batch['name'] ?? 'N/A');
+                $content[] = '  Code: ' . ($batch['batch_code'] ?? 'N/A');
+                $content[] = '  Status: ' . ($batch['status'] ?? 'N/A');
+                $content[] = '  Hatch Rate: ' . ($batch['hatch_rate'] ?? 'N/A') . '%';
+                $content[] = '';
+            }
+        }
+
+        if (isset($data['batch_financials'])) {
+            $content[] = 'FINANCIAL DETAILS';
+            $content[] = str_repeat('-', 17);
+            foreach ($data['batch_financials'] as $batch) {
+                $content[] = 'Batch: ' . ($batch['name'] ?? 'N/A');
+                $content[] = '  Code: ' . ($batch['batch_code'] ?? 'N/A');
+                $content[] = '  Investment: ' . ($batch['investment'] ?? 'N/A');
+                $content[] = '  Revenue: ' . ($batch['revenue'] ?? 'N/A');
+                $content[] = '  Profit: ' . ($batch['profit'] ?? 'N/A');
+                $content[] = '  ROI: ' . ($batch['roi_percentage'] ?? 'N/A');
+                $content[] = '';
+            }
+        }
+
+        if (isset($data['incubator_details'])) {
+            $content[] = 'INCUBATOR DETAILS';
+            $content[] = str_repeat('-', 17);
+            foreach ($data['incubator_details'] as $incubator) {
+                $content[] = 'Incubator: ' . ($incubator['name'] ?? 'N/A');
+                $content[] = '  Model: ' . ($incubator['model'] ?? 'N/A');
+                $content[] = '  Status: ' . ($incubator['status'] ?? 'N/A');
+                $content[] = '  Capacity: ' . ($incubator['capacity'] ?? 'N/A');
+                $content[] = '  Current Load: ' . ($incubator['current_load'] ?? 'N/A');
+                $content[] = '';
+            }
+        }
+
+        return implode("\n", $content);
+    }
+
+    /**
+     * Generate CSV content for report
+     */
+    private function generateReportCsvContent($report)
+    {
+        $data = $report->data;
+        $csv = [];
+
+        // Add header
+        $csv[] = '"' . ($data['title'] ?? 'Report') . '"';
+        $csv[] = '"Period: ' . ($data['period'] ?? 'N/A') . '"';
+        $csv[] = '"Generated: ' . $report->created_at->format('M j, Y H:i:s') . '"';
+        $csv[] = '';
+
+        // Add summary as CSV
+        if (isset($data['summary'])) {
+            $csv[] = '"SUMMARY"';
+            $csv[] = '"Metric","Value"';
+            foreach ($data['summary'] as $key => $value) {
+                // Skip raw values in CSV output
+                if (strpos($key, '_raw') !== false) {
+                    continue;
+                }
+                $csv[] = '"' . ucwords(str_replace('_', ' ', $key)) . '","' . $value . '"';
+            }
+            $csv[] = '';
+        }
+
+        // Add batch details as CSV
+        if (isset($data['batch_details']) && count($data['batch_details']) > 0) {
+            $csv[] = '"BATCH DETAILS"';
+
+            // Get headers from first batch
+            $firstBatch = $data['batch_details'][0];
+            $headers = array_keys($firstBatch);
+            $csv[] = '"' . implode('","', array_map('ucwords', array_map(function($h) { return str_replace('_', ' ', $h); }, $headers))) . '"';
+
+            // Add data rows
+            foreach ($data['batch_details'] as $batch) {
+                $row = [];
+                foreach ($headers as $header) {
+                    $row[] = $batch[$header] ?? '';
+                }
+                $csv[] = '"' . implode('","', $row) . '"';
+            }
+            $csv[] = '';
+        }
+
+        // Add batch financials as CSV
+        if (isset($data['batch_financials']) && count($data['batch_financials']) > 0) {
+            $csv[] = '"BATCH FINANCIAL DETAILS"';
+
+            // Get headers from first batch financial record, excluding raw values
+            $firstBatch = $data['batch_financials'][0];
+            $headers = array_filter(array_keys($firstBatch), function($key) {
+                return strpos($key, '_raw') === false;
+            });
+            $csv[] = '"' . implode('","', array_map('ucwords', array_map(function($h) { return str_replace('_', ' ', $h); }, $headers))) . '"';
+
+            // Add data rows
+            foreach ($data['batch_financials'] as $batch) {
+                $row = [];
+                foreach ($headers as $header) {
+                    $row[] = $batch[$header] ?? '';
+                }
+                $csv[] = '"' . implode('","', $row) . '"';
+            }
+            $csv[] = '';
+        }
+
+        // Add incubator details as CSV
+        if (isset($data['incubator_details']) && count($data['incubator_details']) > 0) {
+            $csv[] = '"INCUBATOR DETAILS"';
+
+            // Get headers from first incubator
+            $firstIncubator = $data['incubator_details'][0];
+            $headers = array_keys($firstIncubator);
+            $csv[] = '"' . implode('","', array_map('ucwords', array_map(function($h) { return str_replace('_', ' ', $h); }, $headers))) . '"';
+
+            // Add data rows
+            foreach ($data['incubator_details'] as $incubator) {
+                $row = [];
+                foreach ($headers as $header) {
+                    $row[] = $incubator[$header] ?? '';
+                }
+                $csv[] = '"' . implode('","', $row) . '"';
+            }
+        }
+
+        return implode("\n", $csv);
     }
 
     /**
@@ -277,326 +356,155 @@ class ReportsController extends Controller
     private function getQuickStats()
     {
         return [
-            'total_batches' => Batch::count(),
+            'avg_hatch_rate' => round(Batch::whereNotNull('hatch_rate')->avg('hatch_rate') ?? 0, 1),
+            'incubator_utilization' => round(
+                (Incubator::sum('current_load') / max(Incubator::sum('capacity'), 1)) * 100, 1
+            ),
             'active_batches' => Batch::whereIn('status', [
                 BatchStatus::INCUBATING,
                 BatchStatus::GROWING,
                 BatchStatus::LAYING
             ])->count(),
-            'avg_hatch_rate' => round(Batch::whereNotNull('hatch_rate')->avg('hatch_rate'), 1),
-            'total_production' => Batch::where('status', BatchStatus::LAYING)
-                ->sum('avg_daily_production'),
-            'incubator_utilization' => round(
-                (Incubator::sum('current_load') / max(Incubator::sum('capacity'), 1)) * 100, 1
-            ),
-            'avg_mortality_rate' => round(Batch::whereNotNull('mortality_rate')->avg('mortality_rate'), 1),
-            'completed_batches_month' => Batch::where('status', BatchStatus::COMPLETED)
-                ->whereBetween('updated_at', [now()->startOfMonth(), now()->endOfMonth()])
-                ->count(),
-            'revenue_month' => 0, // Placeholder for future financial tracking
-        ];
-    }
-
-    /**
-     * Get performance metrics
-     */
-    private function getPerformanceMetrics()
-    {
-        $lastMonth = now()->subMonth();
-        
-        return [
-            'production_trend' => $this->getProductionTrend(),
-            'efficiency_metrics' => $this->getEfficiencyMetrics(),
-            'batch_performance' => $this->getBatchPerformanceMetrics(),
-            'incubator_performance' => $this->getIncubatorPerformanceMetrics(),
+            'avg_mortality_rate' => round(Batch::whereNotNull('mortality_rate')->avg('mortality_rate') ?? 0, 1),
         ];
     }
 
     /**
      * Generate production report
      */
-    private function generateProductionReport($params)
+    private function generateProductionReport($dateRange, $batchIds = null)
     {
-        $dateFrom = Carbon::parse($params['date_from']);
-        $dateTo = Carbon::parse($params['date_to']);
-        
-        $batches = Batch::whereBetween('created_at', [$dateFrom, $dateTo]);
-        
-        if (!empty($params['batch_ids'])) {
-            $batches->whereIn('id', $params['batch_ids']);
+        $batches = Batch::whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+
+        if (!empty($batchIds)) {
+            $batches->whereIn('id', $batchIds);
         }
-        
+
         $batchData = $batches->get();
-        
+
         return [
             'title' => 'Production Report',
-            'period' => $dateFrom->format('M j, Y') . ' - ' . $dateTo->format('M j, Y'),
+            'period' => $dateRange['start']->format('M j, Y') . ' - ' . $dateRange['end']->format('M j, Y'),
             'summary' => [
                 'total_batches' => $batchData->count(),
                 'total_eggs_set' => $batchData->sum('initial_count'),
                 'total_hatched' => $batchData->sum('current_count'),
-                'average_hatch_rate' => round($batchData->avg('hatch_rate'), 2),
+                'average_hatch_rate' => round($batchData->avg('hatch_rate') ?? 0, 2),
                 'total_production' => $batchData->sum('avg_daily_production'),
-                'average_mortality' => round($batchData->avg('mortality_rate'), 2),
+                'average_mortality' => round($batchData->avg('mortality_rate') ?? 0, 2),
             ],
             'batch_details' => $batchData->map(function ($batch) {
                 return [
-                    'id' => $batch->id,
                     'name' => $batch->name,
                     'batch_code' => $batch->batch_code,
                     'status' => $batch->status->label(),
                     'breed' => $batch->breed,
-                    'start_date' => $batch->start_date?->format('M j, Y'),
-                    'hatch_date' => $batch->hatch_date?->format('M j, Y'),
                     'initial_count' => $batch->initial_count,
                     'current_count' => $batch->current_count,
                     'hatch_rate' => $batch->hatch_rate,
                     'mortality_rate' => $batch->mortality_rate,
-                    'daily_production' => $batch->avg_daily_production,
                 ];
             }),
-            'charts' => $this->getProductionCharts($batchData),
         ];
     }
 
     /**
      * Generate efficiency report
      */
-    private function generateEfficiencyReport($params)
+    private function generateEfficiencyReport($dateRange, $incubatorIds = null)
     {
-        $dateFrom = Carbon::parse($params['date_from']);
-        $dateTo = Carbon::parse($params['date_to']);
-        
-        $incubators = Incubator::all();
-        if (!empty($params['incubator_ids'])) {
-            $incubators = $incubators->whereIn('id', $params['incubator_ids']);
+        $incubators = Incubator::query();
+        if (!empty($incubatorIds)) {
+            $incubators->whereIn('id', $incubatorIds);
         }
-        
+
+        $incubatorData = $incubators->get();
+
         return [
             'title' => 'Efficiency Report',
-            'period' => $dateFrom->format('M j, Y') . ' - ' . $dateTo->format('M j, Y'),
+            'period' => $dateRange['start']->format('M j, Y') . ' - ' . $dateRange['end']->format('M j, Y'),
             'summary' => [
-                'total_incubators' => $incubators->count(),
-                'average_utilization' => round($incubators->avg('utilization_rate'), 2),
-                'total_capacity' => $incubators->sum('capacity'),
-                'current_load' => $incubators->sum('current_load'),
-                'operational_efficiency' => $this->calculateOperationalEfficiency($incubators),
+                'total_incubators' => $incubatorData->count(),
+                'average_utilization' => round($incubatorData->avg('utilization_rate') ?? 0, 2),
+                'total_capacity' => $incubatorData->sum('capacity'),
+                'current_load' => $incubatorData->sum('current_load'),
             ],
-            'incubator_details' => $incubators->map(function ($incubator) {
+            'incubator_details' => $incubatorData->map(function ($incubator) {
                 return [
-                    'id' => $incubator->id,
                     'name' => $incubator->name,
                     'model' => $incubator->model,
                     'status' => $incubator->status->label(),
                     'capacity' => $incubator->capacity,
                     'current_load' => $incubator->current_load,
                     'utilization_rate' => $incubator->utilization_rate,
-                    'energy_efficiency' => $this->calculateEnergyEfficiency($incubator),
-                    'uptime_percentage' => $this->calculateUptimePercentage($incubator),
                 ];
             }),
-            'charts' => $this->getEfficiencyCharts($incubators),
         ];
+    }
+
+    /**
+     * Format currency value to RWF
+     */
+    private function formatRWF($amount)
+    {
+        return 'RWF ' . number_format($amount, 0, '.', ',');
     }
 
     /**
      * Generate financial report
      */
-    private function generateFinancialReport($params)
+    private function generateFinancialReport($dateRange, $batchIds = null)
     {
-        $dateFrom = Carbon::parse($params['date_from']);
-        $dateTo = Carbon::parse($params['date_to']);
-        
-        $batches = Batch::whereBetween('created_at', [$dateFrom, $dateTo]);
-        
-        if (!empty($params['batch_ids'])) {
-            $batches->whereIn('id', $params['batch_ids']);
+        $batches = Batch::whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+
+        if (!empty($batchIds)) {
+            $batches->whereIn('id', $batchIds);
         }
-        
+
         $batchData = $batches->get();
-        
+
+        // Calculate financial metrics (using sample data - replace with actual calculations)
+        $totalInvestment = 12500000; // 12.5M RWF
+        $totalRevenue = 18750000; // 18.75M RWF
+        $totalProfit = $totalRevenue - $totalInvestment;
+        $averageROI = $totalInvestment > 0 ? ($totalProfit / $totalInvestment) * 100 : 0;
+
         return [
             'title' => 'Financial Report',
-            'period' => $dateFrom->format('M j, Y') . ' - ' . $dateTo->format('M j, Y'),
+            'period' => $dateRange['start']->format('M j, Y') . ' - ' . $dateRange['end']->format('M j, Y'),
+            'currency' => 'RWF',
             'summary' => [
-                'total_investment' => $this->calculateTotalInvestment($batchData),
-                'total_revenue' => $this->calculateTotalRevenue($batchData),
-                'total_profit' => $this->calculateTotalProfit($batchData),
-                'average_roi' => $this->calculateAverageROI($batchData),
-                'cost_per_bird' => $this->calculateCostPerBird($batchData),
-                'revenue_per_bird' => $this->calculateRevenuePerBird($batchData),
+                'total_investment' => $this->formatRWF($totalInvestment),
+                'total_investment_raw' => $totalInvestment,
+                'total_revenue' => $this->formatRWF($totalRevenue),
+                'total_revenue_raw' => $totalRevenue,
+                'total_profit' => $this->formatRWF($totalProfit),
+                'total_profit_raw' => $totalProfit,
+                'average_roi' => round($averageROI, 2) . '%',
+                'average_roi_raw' => round($averageROI, 2),
             ],
             'batch_financials' => $batchData->map(function ($batch) {
-                return [
-                    'id' => $batch->id,
-                    'name' => $batch->name,
-                    'investment' => $this->calculateBatchInvestment($batch),
-                    'revenue' => $this->calculateBatchRevenue($batch),
-                    'profit' => $this->calculateBatchProfit($batch),
-                    'roi_percentage' => $this->calculateBatchROI($batch),
-                    'cost_per_bird' => $this->calculateBatchCostPerBird($batch),
-                ];
-            }),
-            'charts' => $this->getFinancialCharts($batchData),
-        ];
-    }
+                // Sample financial data per batch (replace with actual calculations)
+                $investment = 1250000; // 1.25M RWF per batch
+                $revenue = 1875000; // 1.875M RWF per batch
+                $profit = $revenue - $investment;
+                $roi = $investment > 0 ? ($profit / $investment) * 100 : 0;
 
-    /**
-     * Generate batch performance report
-     */
-    private function generateBatchPerformanceReport($params)
-    {
-        $dateFrom = Carbon::parse($params['date_from']);
-        $dateTo = Carbon::parse($params['date_to']);
-        
-        $batches = Batch::with(['incubator', 'manager'])
-            ->whereBetween('created_at', [$dateFrom, $dateTo]);
-        
-        if (!empty($params['batch_ids'])) {
-            $batches->whereIn('id', $params['batch_ids']);
-        }
-        
-        $batchData = $batches->get();
-        
-        return [
-            'title' => 'Batch Performance Report',
-            'period' => $dateFrom->format('M j, Y') . ' - ' . $dateTo->format('M j, Y'),
-            'performance_summary' => $this->getBatchPerformanceSummary($batchData),
-            'batch_analysis' => $batchData->map(function ($batch) {
                 return [
-                    'id' => $batch->id,
                     'name' => $batch->name,
                     'batch_code' => $batch->batch_code,
-                    'breed' => $batch->breed,
-                    'manager' => $batch->manager?->name,
-                    'incubator' => $batch->incubator?->name,
-                    'performance_score' => $this->calculatePerformanceScore($batch),
-                    'hatch_success' => $batch->hatch_rate,
-                    'growth_rate' => $this->calculateGrowthRate($batch),
-                    'feed_efficiency' => $this->calculateFeedEfficiency($batch),
-                    'health_score' => $this->calculateHealthScore($batch),
+                    'investment' => $this->formatRWF($investment),
+                    'investment_raw' => $investment,
+                    'revenue' => $this->formatRWF($revenue),
+                    'revenue_raw' => $revenue,
+                    'profit' => $this->formatRWF($profit),
+                    'profit_raw' => $profit,
+                    'roi_percentage' => round($roi, 2) . '%',
+                    'roi_raw' => round($roi, 2),
                 ];
             }),
-            'recommendations' => $this->generatePerformanceRecommendations($batchData),
         ];
     }
-
-    /**
-     * Generate incubator analysis report
-     */
-    private function generateIncubatorAnalysisReport($params)
-    {
-        $dateFrom = Carbon::parse($params['date_from']);
-        $dateTo = Carbon::parse($params['date_to']);
-        
-        $incubators = Incubator::with(['batches' => function($query) use ($dateFrom, $dateTo) {
-            $query->whereBetween('created_at', [$dateFrom, $dateTo]);
-        }]);
-        
-        if (!empty($params['incubator_ids'])) {
-            $incubators->whereIn('id', $params['incubator_ids']);
-        }
-        
-        $incubatorData = $incubators->get();
-        
-        return [
-            'title' => 'Incubator Analysis Report',
-            'period' => $dateFrom->format('M j, Y') . ' - ' . $dateTo->format('M j, Y'),
-            'analysis_summary' => $this->getIncubatorAnalysisSummary($incubatorData),
-            'incubator_performance' => $incubatorData->map(function ($incubator) {
-                return [
-                    'id' => $incubator->id,
-                    'name' => $incubator->name,
-                    'model' => $incubator->model,
-                    'efficiency_score' => $this->calculateIncubatorEfficiency($incubator),
-                    'reliability_score' => $this->calculateReliabilityScore($incubator),
-                    'maintenance_score' => $this->calculateMaintenanceScore($incubator),
-                    'energy_consumption' => $this->calculateEnergyConsumption($incubator),
-                    'batches_processed' => $incubator->batches->count(),
-                    'average_hatch_rate' => $incubator->batches->avg('hatch_rate'),
-                ];
-            }),
-            'maintenance_schedule' => $this->getMaintenanceSchedule($incubatorData),
-        ];
-    }
-
-    /**
-     * Generate schedule compliance report
-     */
-    private function generateScheduleComplianceReport($params)
-    {
-        $dateFrom = Carbon::parse($params['date_from']);
-        $dateTo = Carbon::parse($params['date_to']);
-        
-        $schedules = BatchSchedule::with(['batch', 'assignedTo'])
-            ->whereBetween('scheduled_date', [$dateFrom, $dateTo]);
-        
-        $scheduleData = $schedules->get();
-        
-        return [
-            'title' => 'Schedule Compliance Report',
-            'period' => $dateFrom->format('M j, Y') . ' - ' . $dateTo->format('M j, Y'),
-            'compliance_summary' => [
-                'total_schedules' => $scheduleData->count(),
-                'completed_on_time' => $scheduleData->where('status', ScheduleStatus::COMPLETED)->count(),
-                'overdue' => $scheduleData->where('status', ScheduleStatus::OVERDUE)->count(),
-                'compliance_rate' => $this->calculateComplianceRate($scheduleData),
-                'average_delay' => $this->calculateAverageDelay($scheduleData),
-            ],
-            'schedule_details' => $scheduleData->map(function ($schedule) {
-                return [
-                    'id' => $schedule->id,
-                    'title' => $schedule->title,
-                    'batch_name' => $schedule->batch?->name,
-                    'assigned_to' => $schedule->assignedTo?->name,
-                    'scheduled_date' => $schedule->scheduled_date->format('M j, Y H:i'),
-                    'completed_date' => $schedule->completed_at?->format('M j, Y H:i'),
-                    'status' => $schedule->status->label(),
-                    'delay_hours' => $this->calculateDelayHours($schedule),
-                ];
-            }),
-            'performance_by_type' => $this->getPerformanceByScheduleType($scheduleData),
-        ];
-    }
-
-    // Helper methods for calculations would go here
-    private function getProductionTrend() { return []; }
-    private function getEfficiencyMetrics() { return []; }
-    private function getBatchPerformanceMetrics() { return []; }
-    private function getIncubatorPerformanceMetrics() { return []; }
-    private function getProductionCharts($data) { return []; }
-    private function getEfficiencyCharts($data) { return []; }
-    private function getFinancialCharts($data) { return []; }
-    private function calculateOperationalEfficiency($incubators) { return 85.5; }
-    private function calculateEnergyEfficiency($incubator) { return 78.2; }
-    private function calculateUptimePercentage($incubator) { return 96.8; }
-    private function calculateTotalInvestment($batches) { return 50000; }
-    private function calculateTotalRevenue($batches) { return 75000; }
-    private function calculateTotalProfit($batches) { return 25000; }
-    private function calculateAverageROI($batches) { return 50.0; }
-    private function calculateCostPerBird($batches) { return 12.50; }
-    private function calculateRevenuePerBird($batches) { return 18.75; }
-    private function calculateBatchInvestment($batch) { return 5000; }
-    private function calculateBatchRevenue($batch) { return 7500; }
-    private function calculateBatchProfit($batch) { return 2500; }
-    private function calculateBatchROI($batch) { return 50.0; }
-    private function calculateBatchCostPerBird($batch) { return 12.50; }
-    private function getBatchPerformanceSummary($batches) { return []; }
-    private function calculatePerformanceScore($batch) { return 85.2; }
-    private function calculateGrowthRate($batch) { return 95.5; }
-    private function calculateFeedEfficiency($batch) { return 88.3; }
-    private function calculateHealthScore($batch) { return 92.1; }
-    private function generatePerformanceRecommendations($batches) { return []; }
-    private function getIncubatorAnalysisSummary($incubators) { return []; }
-    private function calculateIncubatorEfficiency($incubator) { return 87.5; }
-    private function calculateReliabilityScore($incubator) { return 94.2; }
-    private function calculateMaintenanceScore($incubator) { return 89.7; }
-    private function calculateEnergyConsumption($incubator) { return 1250.5; }
-    private function getMaintenanceSchedule($incubators) { return []; }
-    private function calculateComplianceRate($schedules) { return 88.5; }
-    private function calculateAverageDelay($schedules) { return 2.3; }
-    private function calculateDelayHours($schedule) { return 0; }
-    private function getPerformanceByScheduleType($schedules) { return []; }
 
     /**
      * Get available report types
@@ -624,27 +532,6 @@ class ReportsController extends Controller
                 'description' => 'Financial performance and profitability analysis',
                 'icon' => 'DollarSign',
                 'category' => 'financial'
-            ],
-            [
-                'key' => 'batch-performance',
-                'name' => 'Batch Performance Report',
-                'description' => 'Detailed analysis of individual batch performance',
-                'icon' => 'Package',
-                'category' => 'production'
-            ],
-            [
-                'key' => 'incubator-analysis',
-                'name' => 'Incubator Analysis Report',
-                'description' => 'Comprehensive incubator performance and maintenance analysis',
-                'icon' => 'Settings',
-                'category' => 'efficiency'
-            ],
-            [
-                'key' => 'schedule-compliance',
-                'name' => 'Schedule Compliance Report',
-                'description' => 'Track adherence to schedules and task completion',
-                'icon' => 'Calendar',
-                'category' => 'compliance'
             ],
         ];
     }

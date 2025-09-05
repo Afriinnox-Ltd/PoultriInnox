@@ -72,13 +72,18 @@ interface ReportGenerateProps {
 }
 
 export default function ReportGenerate({ reportTypes, batches, incubators }: ReportGenerateProps) {
-    const [selectedType, setSelectedType] = useState<string>('');
+    // Get the type from URL parameters if provided
+    const urlParams = new URLSearchParams(window.location.search);
+    const presetType = urlParams.get('type');
+
+    const [selectedType, setSelectedType] = useState<string>(presetType || '');
     const [dateFrom, setDateFrom] = useState<string>('');
     const [dateTo, setDateTo] = useState<string>('');
     const [selectedBatches, setSelectedBatches] = useState<number[]>([]);
     const [selectedIncubators, setSelectedIncubators] = useState<number[]>([]);
     const [format, setFormat] = useState<string>('json');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
     const getIcon = (iconName: string) => {
         const icons = {
@@ -121,28 +126,61 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsGenerating(true);
+        setFormErrors({}); // Clear previous errors
+
+        // Client-side validation
+        const errors: Record<string, string> = {};
+
+        if (!selectedType) {
+            errors.type = 'Please select a report type';
+        }
+
+        if (!dateFrom) {
+            errors.start_date = 'Please select a start date';
+        }
+
+        if (!dateTo) {
+            errors.end_date = 'Please select an end date';
+        }
+
+        if (dateFrom && dateTo && new Date(dateFrom) > new Date(dateTo)) {
+            errors.end_date = 'End date must be after start date';
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            setIsGenerating(false);
+            toast.error('Please fix the form errors before submitting.');
+            return;
+        }
 
         try {
             router.post('/batch-incubator/reports/generate', {
                 type: selectedType,
-                date_from: dateFrom,
-                date_to: dateTo,
-                batch_ids: selectedBatches,
-                incubator_ids: selectedIncubators,
+                start_date: dateFrom,
+                end_date: dateTo,
+                batch_ids: selectedBatches.length > 0 ? selectedBatches : null,
+                incubator_ids: selectedIncubators.length > 0 ? selectedIncubators : null,
                 format: format,
-            },{
-                onSuccess:()=>{
-                    toast.success('Report generation initiated successfully! You will be notified once it is ready.');
-                }
-                ,
+            }, {
+                onSuccess: () => {
+                    toast.success('Report generated successfully!');
+                },
                 onError: (errors) => {
-                    console.log(errors);
-                    toast.error('Failed to initiate report generation. Please check the form for errors.');
-                }
+                    console.log('Form validation errors:', errors);
+                    setFormErrors(errors);
+                    const errorMessage = Object.values(errors).flat().join(', ') || 'Failed to generate report. Please check the form for errors.';
+                    toast.error(errorMessage);
+                },
+                onFinish: () => {
+                    setIsGenerating(false);
+                },
+                preserveState: false,
+                preserveScroll: false,
             });
         } catch (error) {
             console.error('Error generating report:', error);
-        } finally {
+            toast.error('An unexpected error occurred while generating the report.');
             setIsGenerating(false);
         }
     };
@@ -162,12 +200,7 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Button asChild size="sm" variant="outline">
-                            <Link href="/batch-incubator/reports">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Reports
-                            </Link>
-                        </Button>
+                        
                         <QuickNav currentPage="reports" showCreateAction={false} />
                     </div>
                 </div>
@@ -197,9 +230,16 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                                                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                                                         selectedType === reportType.key
                                                             ? 'border-blue-500 bg-blue-50'
+                                                            : formErrors.type
+                                                            ? 'border-red-300 hover:border-red-400'
                                                             : 'border-gray-200 hover:border-gray-300'
                                                     }`}
-                                                    onClick={() => setSelectedType(reportType.key)}
+                                                    onClick={() => {
+                                                        setSelectedType(reportType.key);
+                                                        if (formErrors.type) {
+                                                            setFormErrors(prev => ({ ...prev, type: '' }));
+                                                        }
+                                                    }}
                                                 >
                                                     <div className="flex items-start gap-3">
                                                         <Icon className="h-5 w-5 text-blue-600 mt-0.5" />
@@ -219,6 +259,9 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                                             );
                                         })}
                                     </div>
+                                    {formErrors.type && (
+                                        <p className="text-sm text-red-500 mt-2">{formErrors.type}</p>
+                                    )}
                                 </CardContent>
                             </Card>
 
@@ -241,9 +284,18 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                                                 id="date_from"
                                                 type="date"
                                                 value={dateFrom}
-                                                onChange={(e) => setDateFrom(e.target.value)}
+                                                onChange={(e) => {
+                                                    setDateFrom(e.target.value);
+                                                    if (formErrors.start_date) {
+                                                        setFormErrors(prev => ({ ...prev, start_date: '' }));
+                                                    }
+                                                }}
+                                                className={formErrors.start_date ? 'border-red-300 focus:border-red-500' : ''}
                                                 required
                                             />
+                                            {formErrors.start_date && (
+                                                <p className="text-sm text-red-500">{formErrors.start_date}</p>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="date_to">To Date</Label>
@@ -251,10 +303,19 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                                                 id="date_to"
                                                 type="date"
                                                 value={dateTo}
-                                                onChange={(e) => setDateTo(e.target.value)}
+                                                onChange={(e) => {
+                                                    setDateTo(e.target.value);
+                                                    if (formErrors.end_date) {
+                                                        setFormErrors(prev => ({ ...prev, end_date: '' }));
+                                                    }
+                                                }}
                                                 min={dateFrom}
+                                                className={formErrors.end_date ? 'border-red-300 focus:border-red-500' : ''}
                                                 required
                                             />
+                                            {formErrors.end_date && (
+                                                <p className="text-sm text-red-500">{formErrors.end_date}</p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -280,6 +341,13 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
 
                                                         setDateFrom(startDate.toISOString().split('T')[0]);
                                                         setDateTo(endDate.toISOString().split('T')[0]);
+
+                                                        // Clear any date-related errors
+                                                        setFormErrors(prev => ({
+                                                            ...prev,
+                                                            start_date: '',
+                                                            end_date: ''
+                                                        }));
                                                     }}
                                                 >
                                                     {preset.label}

@@ -56,10 +56,10 @@ class BatchSeeder extends Seeder
                 'mortality_count' => 30,
                 'mortality_rate' => 3.16,
                 'cull_count' => 5,
-                'initial_cost' => 2850.0,
-                'feed_cost' => 1420.0,
-                'medication_cost' => 285.0,
-                'other_costs' => 190.0,
+                'initial_cost' => 2850000.0, // 2.85M RWF (converted from USD)
+                'feed_cost' => 1420000.0, // 1.42M RWF
+                'medication_cost' => 285000.0, // 285K RWF
+                'other_costs' => 190000.0, // 190K RWF
                 'revenue' => 0,
                 'manager_id' => $manager->id,
             ],
@@ -85,11 +85,11 @@ class BatchSeeder extends Seeder
                 'cull_count' => 3,
                 'total_eggs_produced' => 35400,
                 'avg_daily_production' => 506,
-                'initial_cost' => 3600.0,
-                'feed_cost' => 4720.0,
-                'medication_cost' => 360.0,
-                'other_costs' => 590.0,
-                'revenue' => 10620.0,
+                'initial_cost' => 3600000.0, // 3.6M RWF
+                'feed_cost' => 4720000.0, // 4.72M RWF
+                'medication_cost' => 360000.0, // 360K RWF
+                'other_costs' => 590000.0, // 590K RWF
+                'revenue' => 10620000.0, // 10.62M RWF
                 'batch_data' => [
                     'genetics' => 'Lohmann Brown Classic',
                     'peak_production_age' => '24-32 weeks',
@@ -124,10 +124,10 @@ class BatchSeeder extends Seeder
                 'cull_count' => 0,
                 'total_eggs_produced' => 0,
                 'avg_daily_production' => 0,
-                'initial_cost' => 1350.0, // $3 per egg
+                'initial_cost' => 1350000.0, // 1.35M RWF (3,000 RWF per egg)
                 'feed_cost' => 0, // No feed yet
                 'medication_cost' => 0,
-                'other_costs' => 45.0, // Incubation costs
+                'other_costs' => 45000.0, // 45K RWF - Incubation costs
                 'revenue' => 0,
                 'batch_data' => [
                     'genetics' => 'Cobb 500 Standard',
@@ -163,7 +163,7 @@ class BatchSeeder extends Seeder
                 'cull_count' => 0,
                 'total_eggs_produced' => 0,
                 'avg_daily_production' => 0,
-                'initial_cost' => 1500.0, // $5 per heritage breed egg
+                'initial_cost' => 1500000.0, // 1.5M RWF (5,000 RWF per heritage breed egg)
                 'feed_cost' => 0,
                 'medication_cost' => 0,
                 'other_costs' => 0,

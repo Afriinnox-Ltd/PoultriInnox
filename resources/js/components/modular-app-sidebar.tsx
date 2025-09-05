@@ -137,17 +137,17 @@ export function ModularAppSidebar({ enabledModules = [] }: ModularAppSidebarProp
                 case 'feed-management':
                     subItems = [
                         {
+                            title: 'Dashboard',
+                            href: '/feed-management',
+                            icon: Eye,
+                        },
+                        {
                             title: 'Inventory',
                             href: '/feed-management/inventory',
                             icon: Package,
                         },
                         {
-                            title: 'Feeding Schedules',
-                            href: '/feed-management/schedules',
-                            icon: Calendar,
-                        },
-                        {
-                            title: 'Consumption Tracking',
+                            title: 'Consumption',
                             href: '/feed-management/consumption',
                             icon: BarChart3,
                         },
