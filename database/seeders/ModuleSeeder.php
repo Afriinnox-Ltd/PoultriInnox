@@ -52,113 +52,42 @@ class ModuleSeeder extends Seeder
                 'is_core' => false,
                 'sort_order' => 1,
             ],
+
             [
                 'name' => 'Feed Management',
                 'slug' => 'feed-management',
                 'description' => 'Track feed inventory, consumption, and optimize feeding schedules for different poultry groups.',
                 'icon' => 'shopping-cart',
                 'version' => '1.0.0',
+                'dependencies' => ['batch-incubator'], // Requires Batch Incubator module
                 'config' => [
                     'features' => [
                         'Feed inventory tracking',
                         'Automated feeding schedules',
-                        'Consumption monitoring',
+                        'Admin feed program management',
+                        'Consumption monitoring with FCR calculation',
                         'Cost analysis and optimization',
                         'Supplier management',
-                        'Quality control tracking'
+                        'Quality control tracking',
+                        'Excel template uploads',
+                        'AI-powered feed program suggestions'
                     ],
                     'benefits' => [
                         'Reduce feed waste and costs',
                         'Ensure optimal nutrition timing',
                         'Track feed conversion rates',
-                        'Manage multiple feed types efficiently'
+                        'Manage multiple feed types efficiently',
+                        'Expert feeding programs from admin',
+                        'Automated batch-specific schedules'
                     ],
-                    'ideal_for' => 'Operations focusing on feed efficiency and cost management'
+                    'ideal_for' => 'Operations focusing on feed efficiency and cost management',
+                    'requires' => [
+                        'batch-incubator' => 'Needed for batch data, schedules, and FCR calculations'
+                    ]
                 ],
                 'is_active' => true,
                 'is_core' => false,
                 'sort_order' => 2,
-            ],
-            [
-                'name' => 'Health Monitoring',
-                'slug' => 'health-monitoring',
-                'description' => 'Monitor poultry health, track vaccinations, manage medical records and treatments.',
-                'icon' => 'heart',
-                'version' => '1.0.0',
-                'config' => [
-                    'features' => [
-                        'Health check scheduling',
-                        'Disease tracking and alerts',
-                        'Vaccination management',
-                        'Mortality tracking',
-                        'Treatment records',
-                        'Veterinary visit scheduling'
-                    ],
-                    'benefits' => [
-                        'Early disease detection and prevention',
-                        'Comprehensive health records',
-                        'Improved flock health outcomes',
-                        'Regulatory compliance tracking'
-                    ],
-                    'ideal_for' => 'Farms prioritizing flock health and preventive care'
-                ],
-                'is_active' => true,
-                'is_core' => false,
-                'sort_order' => 3,
-            ],
-            [
-                'name' => 'Financial Management',
-                'slug' => 'financial-management',
-                'description' => 'Track expenses, revenue, profitability analysis and financial reporting for your poultry operations.',
-                'icon' => 'dollar-sign',
-                'version' => '1.0.0',
-                'config' => [
-                    'features' => [
-                        'Revenue and expense tracking',
-                        'Profit margin analysis',
-                        'Cost per bird calculations',
-                        'Investment ROI tracking',
-                        'Budget planning and forecasting',
-                        'Financial reporting'
-                    ],
-                    'benefits' => [
-                        'Better financial visibility',
-                        'Identify cost reduction opportunities',
-                        'Plan investments effectively',
-                        'Track business performance'
-                    ],
-                    'ideal_for' => 'Business-focused farmers and commercial operations'
-                ],
-                'is_active' => true,
-                'is_core' => false,
-                'sort_order' => 4,
-            ],
-            [
-                'name' => 'Production Analytics',
-                'slug' => 'production-analytics',
-                'description' => 'Comprehensive analytics and reporting for production performance, trends, and optimization insights.',
-                'icon' => 'trending-up',
-                'version' => '1.0.0',
-                'config' => [
-                    'features' => [
-                        'Production performance tracking',
-                        'Efficiency metrics and KPIs',
-                        'Trend analysis and forecasting',
-                        'Comparative reporting',
-                        'Custom dashboard creation',
-                        'Data export capabilities'
-                    ],
-                    'benefits' => [
-                        'Data-driven decision making',
-                        'Identify improvement opportunities',
-                        'Benchmark performance',
-                        'Optimize operations'
-                    ],
-                    'ideal_for' => 'Data-driven operations seeking optimization insights'
-                ],
-                'is_active' => true,
-                'is_core' => false,
-                'sort_order' => 5,
             ],
         ];
 

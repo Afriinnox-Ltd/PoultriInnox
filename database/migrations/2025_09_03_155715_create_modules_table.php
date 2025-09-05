@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('icon')->nullable();
             $table->string('version')->default('1.0.0');
             $table->json('config')->nullable();
+            $table->json('dependencies')->nullable()->comment('Array of module slugs this module depends on');
             $table->boolean('is_active')->default(true);
             $table->boolean('is_core')->default(false);
             $table->integer('sort_order')->default(0);

@@ -106,6 +106,12 @@ const statusColors = {
     terminated: 'bg-red-100 text-red-800',
 };
 
+// Helper function to format currency as RWF
+const formatRWF = (amount: number | undefined | null): string => {
+    if (amount === undefined || amount === null || isNaN(amount)) return 'RWF 0';
+    return `RWF ${amount.toLocaleString()}`;
+};
+
 export default function BatchShow({ batch }: Props) {
     const [isEditingCounts, setIsEditingCounts] = useState(false);
     const [isEditingFinancials, setIsEditingFinancials] = useState(false);
@@ -254,7 +260,7 @@ export default function BatchShow({ batch }: Props) {
 
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6">
+                <div className="flex items-center justify-between flex-wrap gap-3 p-6">
                     <div className="flex items-center space-x-4 ">
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight">{batch.name}</h1>
@@ -384,7 +390,7 @@ export default function BatchShow({ batch }: Props) {
                                                 />
                                             </div>
                                             <div>
-                                                <Label htmlFor="feed_cost">Feed Cost ($)</Label>
+                                                <Label htmlFor="feed_cost">Feed Cost (RWF)</Label>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
@@ -408,7 +414,7 @@ export default function BatchShow({ batch }: Props) {
                                                 />
                                             </div>
                                             <div>
-                                                <Label htmlFor="medication_cost">Medication Cost ($)</Label>
+                                                <Label htmlFor="medication_cost">Medication Cost (RWF)</Label>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
@@ -432,7 +438,7 @@ export default function BatchShow({ batch }: Props) {
                                                 />
                                             </div>
                                             <div>
-                                                <Label htmlFor="vaccination_cost">Vaccination Cost ($)</Label>
+                                                <Label htmlFor="vaccination_cost">Vaccination Cost (RWF)</Label>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
@@ -449,7 +455,7 @@ export default function BatchShow({ batch }: Props) {
                                         eventForm.data.event_type === 'inspection' ||
                                         eventForm.data.event_type === 'other') && (
                                             <div>
-                                                <Label htmlFor="other_cost">Cost ($)</Label>
+                                                <Label htmlFor="other_cost">Cost (RWF)</Label>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
@@ -503,7 +509,7 @@ export default function BatchShow({ batch }: Props) {
                             </DialogContent>
                         </Dialog>
 
-                    
+
 
                         {/* Delete Button - Only show if batch can be deleted */}
                         {canDelete() && (
@@ -757,19 +763,19 @@ export default function BatchShow({ batch }: Props) {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Initial Cost</h4>
-                                            <p className="text-lg font-medium">${batch?.initial_cost?.toLocaleString()}</p>
+                                            <p className="text-lg font-medium">{formatRWF(batch?.initial_cost)}</p>
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Feed Cost</h4>
-                                            <p className="text-lg font-medium">${batch?.feed_cost?.toLocaleString()}</p>
+                                            <p className="text-lg font-medium">{formatRWF(batch?.feed_cost)}</p>
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Medication Cost</h4>
-                                            <p className="text-lg font-medium">${batch?.medication_cost?.toLocaleString()}</p>
+                                            <p className="text-lg font-medium">{formatRWF(batch?.medication_cost)}</p>
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Other Costs</h4>
-                                            <p className="text-lg font-medium">${batch?.other_costs?.toLocaleString()}</p>
+                                            <p className="text-lg font-medium">{formatRWF(batch?.other_costs)}</p>
                                         </div>
                                     </div>
 
@@ -778,16 +784,16 @@ export default function BatchShow({ batch }: Props) {
                                     <div className="flex justify-between items-center">
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Total Cost</h4>
-                                            <p className="text-xl font-bold">${batch?.total_cost?.toLocaleString()}</p>
+                                            <p className="text-xl font-bold">{formatRWF(batch?.total_cost)}</p>
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
-                                            <p className="text-xl font-bold text-green-600">${batch?.revenue?.toLocaleString()}</p>
+                                            <p className="text-xl font-bold text-green-600">{formatRWF(batch?.revenue)}</p>
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Profit/Loss</h4>
                                             <p className={`text-xl font-bold ${batch?.profit_loss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                ${batch?.profit_loss?.toLocaleString()}
+                                                {formatRWF(batch?.profit_loss)}
                                             </p>
                                         </div>
                                     </div>
@@ -828,7 +834,7 @@ export default function BatchShow({ batch }: Props) {
                                                         )}
                                                         {(event.feed_cost > 0 || event.medication_cost > 0 || event.vaccination_cost > 0 || event.other_cost > 0) && (
                                                             <span className="text-xs text-green-600">
-                                                                Cost: ${((event.feed_cost || 0) + (event.medication_cost || 0) + (event.vaccination_cost || 0) + (event.other_cost || 0)).toLocaleString()}
+                                                                Cost: {formatRWF((event.feed_cost || 0) + (event.medication_cost || 0) + (event.vaccination_cost || 0) + (event.other_cost || 0))}
                                                             </span>
                                                         )}
                                                     </div>

@@ -1,0 +1,3 @@
+Name,Description,Phases (JSON),Duration Days,Target Outcome,Instructions
+Quick Broiler Test,Simple broiler program,"{""phase1"":{""feed"":""starter""},""phase2"":{""feed"":""finisher""}}",42,2.5kg weight,Basic feeding program
+Quick Layer Test,Simple layer program,"{""phase1"":{""feed"":""starter""},""phase2"":{""feed"":""layer""}}",126,Egg production,Layer development program

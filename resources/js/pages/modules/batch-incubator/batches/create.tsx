@@ -283,7 +283,7 @@ export default function CreateBatch({ incubators, statuses }: CreateBatchProps) 
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="initial_cost">Initial Cost</Label>
+                                    <Label htmlFor="initial_cost">Initial Cost (RWF)</Label>
                                     <Input
                                         id="initial_cost"
                                         type="number"

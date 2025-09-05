@@ -47,8 +47,8 @@ export default function ReportsIndex({ reports, quickStats, performanceMetrics }
                     </div>
                 </div>
 
-                {/* Report Categories */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Report Categories - Simplified */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card className="hover:shadow-md transition-shadow">
                         <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-2 text-lg">
@@ -57,37 +57,14 @@ export default function ReportsIndex({ reports, quickStats, performanceMetrics }
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Daily Production</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=production&preset=daily">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Hatch Rate Analysis</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=production&preset=hatch-rate">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Mortality Tracking</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=production&preset=mortality">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <Button asChild className="w-full mt-3">
-                                    <Link href="/batch-incubator/reports/generate?category=production">
-                                        Generate Production Report
-                                    </Link>
-                                </Button>
-                            </div>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Track production metrics, hatch rates, and batch performance
+                            </p>
+                            <Button asChild className="w-full">
+                                <Link href="/batch-incubator/reports/generate?type=production">
+                                    Generate Production Report
+                                </Link>
+                            </Button>
                         </CardContent>
                     </Card>
 
@@ -99,37 +76,14 @@ export default function ReportsIndex({ reports, quickStats, performanceMetrics }
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Incubator Utilization</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=efficiency&preset=utilization">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Energy Consumption</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=efficiency&preset=energy">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Resource Optimization</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=efficiency&preset=optimization">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <Button asChild className="w-full mt-3">
-                                    <Link href="/batch-incubator/reports/generate?category=efficiency">
-                                        Generate Efficiency Report
-                                    </Link>
-                                </Button>
-                            </div>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Analyze incubator utilization and operational efficiency
+                            </p>
+                            <Button asChild className="w-full">
+                                <Link href="/batch-incubator/reports/generate?type=efficiency">
+                                    Generate Efficiency Report
+                                </Link>
+                            </Button>
                         </CardContent>
                     </Card>
 
@@ -141,37 +95,14 @@ export default function ReportsIndex({ reports, quickStats, performanceMetrics }
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Cost per Batch</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=financial&preset=cost-analysis">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Revenue Analysis</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=financial&preset=revenue">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Profitability Report</span>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href="/batch-incubator/reports/generate?type=financial&preset=profitability">
-                                            <Eye className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                                <Button asChild className="w-full mt-3">
-                                    <Link href="/batch-incubator/reports/generate?category=financial">
-                                        Generate Financial Report
-                                    </Link>
-                                </Button>
-                            </div>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Review costs, revenue, and profitability analysis
+                            </p>
+                            <Button asChild className="w-full">
+                                <Link href="/batch-incubator/reports/generate?type=financial">
+                                    Generate Financial Report
+                                </Link>
+                            </Button>
                         </CardContent>
                     </Card>
                 </div>
@@ -212,7 +143,7 @@ export default function ReportsIndex({ reports, quickStats, performanceMetrics }
                                     {quickStats?.avg_mortality_rate || 2.1}%
                                 </div>
                                 <div className="text-sm text-muted-foreground">Mortality Rate</div>
-                                <div className="text-xs text-green-600 mt-1">↘ -0.8% improvement</div>
+                                <div className="text-xs text-green-600 mt-1"> -0.8% improvement</div>
                             </div>
                         </div>
                     </CardContent>
@@ -222,35 +153,17 @@ export default function ReportsIndex({ reports, quickStats, performanceMetrics }
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Quick Report Generation</CardTitle>
+                            <CardTitle>Quick Actions</CardTitle>
                             <CardDescription>
-                                Generate common reports with pre-configured settings
+                                Generate reports with common date ranges
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
                                 <Button asChild className="w-full justify-start" variant="outline">
-                                    <Link href="/batch-incubator/reports/generate?type=production&period=week">
-                                        <TrendingUp className="h-4 w-4 mr-2" />
-                                        Weekly Production Summary
-                                    </Link>
-                                </Button>
-                                <Button asChild className="w-full justify-start" variant="outline">
-                                    <Link href="/batch-incubator/reports/generate?type=efficiency&period=month">
-                                        <BarChart3 className="h-4 w-4 mr-2" />
-                                        Monthly Efficiency Report
-                                    </Link>
-                                </Button>
-                                <Button asChild className="w-full justify-start" variant="outline">
-                                    <Link href="/batch-incubator/reports/generate?type=batch-performance&period=quarter">
+                                    <Link href="/batch-incubator/reports/generate">
                                         <FileText className="h-4 w-4 mr-2" />
-                                        Quarterly Performance Review
-                                    </Link>
-                                </Button>
-                                <Button asChild className="w-full justify-start" variant="outline">
-                                    <Link href="/batch-incubator/reports/generate?type=financial&period=year">
-                                        <Calendar className="h-4 w-4 mr-2" />
-                                        Annual Financial Analysis
+                                        Generate Custom Report
                                     </Link>
                                 </Button>
                             </div>
@@ -272,15 +185,19 @@ export default function ReportsIndex({ reports, quickStats, performanceMetrics }
                                             <div>
                                                 <p className="font-medium text-sm">{report.title}</p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Generated {report.created_at || 'Recently'}
+                                                    Generated {new Date(report.created_at).toLocaleDateString()}
                                                 </p>
                                             </div>
                                             <div className="flex gap-1">
-                                                <Button size="sm" variant="ghost">
-                                                    <Eye className="h-3 w-3" />
+                                                <Button asChild size="sm" variant="ghost">
+                                                    <Link href={`/batch-incubator/reports/${report.id}`}>
+                                                        <Eye className="h-3 w-3" />
+                                                    </Link>
                                                 </Button>
-                                                <Button size="sm" variant="ghost">
-                                                    <Download className="h-3 w-3" />
+                                                <Button size="sm" variant="ghost" asChild>
+                                                    <a href={`/batch-incubator/reports/${report.id}/download`} download>
+                                                        <Download className="h-3 w-3" />
+                                                    </a>
                                                 </Button>
                                             </div>
                                         </div>
