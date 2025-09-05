@@ -181,7 +181,7 @@ export default function BatchIncubatorIndex({
       <Head title="Batch Incubator - Overview" />
       <div className="space-y-6 p-6">
         {/* Header with Action Buttons */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center flex-wrap gap-3 justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Batch Incubator Management</h1>
             <p className="text-muted-foreground">
@@ -316,63 +316,6 @@ export default function BatchIncubatorIndex({
               </div>
             )}
 
-            {/* Quick Actions Grid */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  Quick Actions
-                </CardTitle>
-                <CardDescription>
-                  Common tasks and operations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  <Button asChild variant="outline" className="h-auto p-4 flex flex-col">
-                    <Link href="/batch-incubator/batches/create">
-                      <Plus className="h-6 w-6 mb-2 text-blue-600" />
-                      <span className="text-sm font-medium">New Batch</span>
-                    </Link>
-                  </Button>
-
-                  <Button asChild variant="outline" className="h-auto p-4 flex flex-col">
-                    <Link href="/batch-incubator/incubators/create">
-                      <Plus className="h-6 w-6 mb-2 text-green-600" />
-                      <span className="text-sm font-medium">Add Incubator</span>
-                    </Link>
-                  </Button>
-
-                  <Button asChild variant="outline" className="h-auto p-4 flex flex-col">
-                    <Link href="/batch-incubator/schedules/create">
-                      <Calendar className="h-6 w-6 mb-2 text-purple-600" />
-                      <span className="text-sm font-medium">Schedule Task</span>
-                    </Link>
-                  </Button>
-
-                  <Button asChild variant="outline" className="h-auto p-4 flex flex-col">
-                    <Link href="/batch-incubator/schedules">
-                      <Eye className="h-6 w-6 mb-2 text-orange-600" />
-                      <span className="text-sm font-medium">View Schedules</span>
-                    </Link>
-                  </Button>
-
-                  <Button asChild variant="outline" className="h-auto p-4 flex flex-col">
-                    <Link href="/batch-incubator/schedules-calendar">
-                      <Calendar className="h-6 w-6 mb-2 text-indigo-600" />
-                      <span className="text-sm font-medium">Calendar</span>
-                    </Link>
-                  </Button>
-
-                  <Button asChild variant="outline" className="h-auto p-4 flex flex-col">
-                    <Link href="/batch-incubator/reports">
-                      <BarChart3 className="h-6 w-6 mb-2 text-red-600" />
-                      <span className="text-sm font-medium">Reports</span>
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Operations Tab */}

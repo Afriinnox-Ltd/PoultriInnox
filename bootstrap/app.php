@@ -23,6 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ShareEnabledModules::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        // Register custom middleware aliases
+        $middleware->alias([
+            'module.dependencies' => \App\Http\Middleware\CheckModuleDependencies::class,
+            'admin.access' => \App\Http\Middleware\CheckAdminAccess::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

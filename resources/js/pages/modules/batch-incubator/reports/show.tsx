@@ -42,7 +42,35 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface ReportShowProps {
-    report: any;
+    report: {
+        title?: string;
+        period?: string;
+        summary?: {
+            total_batches?: number;
+            total_eggs_set?: number;
+            total_hatched?: number;
+            average_hatch_rate?: number;
+            total_incubators?: number;
+            average_utilization?: number;
+            total_capacity?: number;
+            current_load?: number;
+            total_investment?: number;
+            total_revenue?: number;
+            total_profit?: number;
+            average_roi?: number;
+            total_production?: number;
+            average_mortality?: number;
+            operational_efficiency?: number;
+        };
+        batch_details?: any[];
+        incubator_details?: any[];
+        batch_financials?: any[];
+        recommendations?: {
+            title: string;
+            description: string;
+            priority?: string;
+        }[];
+    } | null | undefined;
     type: string;
     parameters: any;
 }
@@ -62,6 +90,22 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
         return titles[type as keyof typeof titles] || 'Report';
     };
 
+    // Early return if report is not available
+    if (!report) {
+        return (
+            <AppLayout breadcrumbs={breadcrumbs}>
+                <Head title={`${getReportTitle(type)} - Batch Incubator`} />
+                <div className="space-y-6 p-6">
+                    <Card>
+                        <CardContent className="p-8 text-center">
+                            <p className="text-muted-foreground">Loading report data...</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            </AppLayout>
+        );
+    }
+
     const getReportIcon = (type: string) => {
         const icons = {
             'production': TrendingUp,
@@ -76,26 +120,32 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
 
     const ReportIcon = getReportIcon(type);
 
-    const formatNumber = (value: number, decimals = 0) => {
+    const formatNumber = (value: number | undefined, decimals = 0) => {
+        if (value === undefined || value === null) return '0';
         return new Intl.NumberFormat('en-US', {
             minimumFractionDigits: decimals,
             maximumFractionDigits: decimals,
         }).format(value);
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
+    const formatCurrency = (value: number | string | undefined) => {
+        // If it's already a formatted string (like "RWF 12,500,000"), return as is
+        if (typeof value === 'string') return value;
+
+        // If it's a number, format it as RWF
+        if (value === undefined || value === null) return 'RWF 0';
+        return 'RWF ' + new Intl.NumberFormat('en-US', {
+            maximumFractionDigits: 0,
         }).format(value);
     };
 
-    const formatPercentage = (value: number) => {
+    const formatPercentage = (value: number | undefined) => {
+        if (value === undefined || value === null) return '0.0%';
         return `${formatNumber(value, 1)}%`;
     };
 
     const renderSummaryCards = () => {
-        if (!report.summary) return null;
+        if (!report?.summary) return null;
 
         const cards = [];
         const summary = report.summary;
@@ -157,7 +207,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
         let columns: Array<{ key: string; label: string }> = [];
 
         // Determine data and columns based on report type
-        if (type === 'production' && report.batch_details) {
+        if (type === 'production' && report?.batch_details) {
             data = report.batch_details;
             columns = [
                 { key: 'name', label: 'Batch Name' },
@@ -169,7 +219,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                 { key: 'hatch_rate', label: 'Hatch Rate (%)' },
                 { key: 'mortality_rate', label: 'Mortality (%)' },
             ];
-        } else if (type === 'efficiency' && report.incubator_details) {
+        } else if (type === 'efficiency' && report?.incubator_details) {
             data = report.incubator_details;
             columns = [
                 { key: 'name', label: 'Incubator Name' },
@@ -180,15 +230,15 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                 { key: 'utilization_rate', label: 'Utilization (%)' },
                 { key: 'energy_efficiency', label: 'Energy Efficiency' },
             ];
-        } else if (type === 'financial' && report.batch_financials) {
+        } else if (type === 'financial' && report?.batch_financials) {
             data = report.batch_financials;
             columns = [
                 { key: 'name', label: 'Batch Name' },
+                { key: 'batch_code', label: 'Batch Code' },
                 { key: 'investment', label: 'Investment' },
                 { key: 'revenue', label: 'Revenue' },
                 { key: 'profit', label: 'Profit' },
                 { key: 'roi_percentage', label: 'ROI (%)' },
-                { key: 'cost_per_bird', label: 'Cost per Bird' },
             ];
         }
 
@@ -246,7 +296,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
     };
 
     const renderRecommendations = () => {
-        if (!report.recommendations || report.recommendations.length === 0) return null;
+        if (!report?.recommendations || report.recommendations.length === 0) return null;
 
         return (
             <Card>
@@ -287,10 +337,10 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                             <ReportIcon className="h-8 w-8" />
-                            {report.title}
+                            {report?.title || getReportTitle(type)}
                         </h1>
                         <p className="text-muted-foreground">
-                            Generated for period: {report.period}
+                            Generated for period: {report?.period || 'N/A'}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -300,14 +350,14 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                                 Back to Reports
                             </Link>
                         </Button>
-                        <Button size="sm" variant="outline">
-                            <Download className="h-4 w-4 mr-2" />
-                            Export PDF
-                        </Button>
-                        <Button size="sm" variant="outline">
-                            <Share className="h-4 w-4 mr-2" />
-                            Share
-                        </Button>
+                        {parameters?.report_id && (
+                            <Button size="sm" variant="outline" asChild>
+                                <a href={`/batch-incubator/reports/${parameters.report_id}/download`} download>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download Report
+                                </a>
+                            </Button>
+                        )}
                         <Button asChild size="sm">
                             <Link href="/batch-incubator/reports/generate">
                                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -327,7 +377,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                             </div>
                             <div>
                                 <span className="font-medium text-blue-800">Period:</span>
-                                <span className="ml-1 text-blue-700">{report.period}</span>
+                                <span className="ml-1 text-blue-700">{report?.period || 'N/A'}</span>
                             </div>
                             {parameters.batch_ids && parameters.batch_ids.length > 0 && (
                                 <div>
@@ -373,7 +423,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                             >
                                 Detailed Data
                             </button>
-                            {report.recommendations && (
+                            {report?.recommendations && (
                                 <button
                                     onClick={() => setActiveTab('recommendations')}
                                     className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -402,7 +452,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                                     <div className="prose max-w-none">
                                         <p>
                                             This {getReportTitle(type).toLowerCase()} covers the period from{' '}
-                                            <strong>{report.period}</strong> and provides comprehensive analysis
+                                            <strong>{report?.period || 'N/A'}</strong> and provides comprehensive analysis
                                             of your poultry operation's performance.
                                         </p>
 
