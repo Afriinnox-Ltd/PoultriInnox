@@ -31,16 +31,19 @@ import {
   RefreshCw,
   Heart,
   Info,
-  Utensils
+  Utensils,
+  Brain
 } from 'lucide-react';
 import { Head } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
+import { NavigationHelper, navigateToFeedConsumption, navigateToFeedManagement } from '@/utils/navigation';
+import { NavigationLink, QuickNavigation, EntityLink } from '@/components/navigation/NavigationComponents';
 
 // Simple Progress component
 const Progress = ({ value, className }: { value: number; className?: string }) => (
   <div className={`w-full bg-gray-200 rounded-full h-2 ${className}`}>
     <div
-      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+      className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
       style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
     />
   </div>
@@ -52,7 +55,7 @@ const getStatusColor = (status: string | { value: string } | undefined) => {
   switch (statusValue) {
     case 'active':
     case 'completed':
-      return 'bg-green-100 text-green-800';
+      return 'bg-emerald-100 text-emerald-800';
     case 'inactive':
     case 'pending':
       return 'bg-yellow-100 text-yellow-800';
@@ -164,7 +167,7 @@ export default function BatchIncubatorIndex({
       case 'running':
       case 'incubating':
       case 'growing':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-emerald-600" />;
       case 'idle':
       case 'planned':
         return <PauseCircle className="h-4 w-4 text-yellow-600" />;
@@ -197,6 +200,12 @@ export default function BatchIncubatorIndex({
               <Link href="/batch-incubator/schedules/create">
                 <Plus className="h-4 w-4 mr-2" />
                 Quick Schedule
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/batch-incubator/smart-scheduling/overview">
+                <Brain className="h-4 w-4 mr-2" />
+                Smart Insights
               </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
@@ -239,7 +248,7 @@ export default function BatchIncubatorIndex({
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{batchStats.active_batches}</div>
+                    <div className="text-2xl font-bold">{batchStats.active_batches}</div>
                     <p className="text-xs text-muted-foreground">
                       Total: {batchStats.total_batches} batches
                     </p>
@@ -259,7 +268,7 @@ export default function BatchIncubatorIndex({
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-blue-600">{batchStats.total_birds?.toLocaleString() || 0}</div>
+                    <div className="text-2xl font-bold ">{batchStats.total_birds?.toLocaleString() || 0}</div>
                     <p className="text-xs text-muted-foreground">
                       Survival rate: {batchStats.average_survival_rate?.toFixed(1) || 0}%
                     </p>
@@ -279,7 +288,7 @@ export default function BatchIncubatorIndex({
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-purple-600">{batchStats.daily_production || 0}</div>
+                    <div className="text-2xl font-bold ">{batchStats.daily_production || 0}</div>
                     <p className="text-xs text-muted-foreground">
                       Eggs per day
                     </p>
@@ -347,7 +356,12 @@ export default function BatchIncubatorIndex({
                             <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(batch.status?.value)}`}>
                               {typeof batch.status === 'object' ? batch.status.label : batch.status}
                             </span>
-                            <Button asChild size="sm" variant="ghost">
+                            <Button asChild size="sm" variant="ghost" title="Smart Recommendations">
+                              <Link href={`/batch-incubator/smart-scheduling/batches/${batch.id}/recommendations`}>
+                                <Brain className="h-3 w-3" />
+                              </Link>
+                            </Button>
+                            <Button asChild size="sm" variant="ghost" title="View Details">
                               <Link href={`/batch-incubator/batches/${batch.id}`}>
                                 <Eye className="h-3 w-3" />
                               </Link>
@@ -452,12 +466,12 @@ export default function BatchIncubatorIndex({
                         <div key={index} className={`p-3 border rounded-lg ${
                           alert.priority === 'high' ? 'border-red-200 bg-red-50' :
                           alert.priority === 'medium' ? 'border-yellow-200 bg-yellow-50' :
-                          'border-blue-200 bg-blue-50'
+                          'border-emerald-200 bg-emerald-50'
                         }`}>
                           <div className="flex items-start gap-3">
                             {alert.priority === 'high' && <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />}
                             {alert.priority === 'medium' && <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />}
-                            {alert.priority === 'low' && <Info className="h-4 w-4 text-blue-600 mt-0.5" />}
+                            {alert.priority === 'low' && <Info className="h-4 w-4 text-emerald-600 mt-0.5" />}
                             <div>
                               <p className="font-medium text-sm">{alert.title}</p>
                               <p className="text-xs text-muted-foreground">{alert.message}</p>
@@ -474,7 +488,7 @@ export default function BatchIncubatorIndex({
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
+                      <CheckCircle className="h-12 w-12 mx-auto text-emerald-500 mb-4" />
                       <p className="text-muted-foreground">All systems operating normally</p>
                     </div>
                   )}
@@ -614,13 +628,7 @@ export default function BatchIncubatorIndex({
                           <Plus className="h-6 w-6" />
                           <span className="text-sm">New Schedule</span>
                         </Link>
-                      </Button>
-                      <Button asChild variant="outline" className=" flex">
-                        <Link href="/batch-incubator/schedules-calendar">
-                          <Calendar className="h-6 w-6" />
-                          <span className="text-sm">Calendar View</span>
-                        </Link>
-                      </Button>
+                      </Button> 
                     </div>
 
                     <div className="border-t pt-4">

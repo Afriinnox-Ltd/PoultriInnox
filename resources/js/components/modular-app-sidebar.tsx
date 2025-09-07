@@ -36,7 +36,8 @@ import {
     Heart,
     DollarSign,
     TrendingUp,
-    HelpCircle
+    HelpCircle,
+    Store
 } from 'lucide-react';
 import AppLogo from './app-logo';
 import { useMemo } from 'react';
@@ -73,6 +74,7 @@ const iconMap = {
     'calendar': Calendar,
     'bar-chart-3': BarChart3,
     'settings': Settings,
+    'store': Store,
 };
 
 const footerNavItems: NavItem[] = [
@@ -207,6 +209,40 @@ export function ModularAppSidebar({ enabledModules = [] }: ModularAppSidebarProp
                             title: 'Analytics',
                             href: '/sales-management/analytics',
                             icon: BarChart3,
+                        },
+                    ];
+                    break;
+                case 'marketplace':
+                    subItems = [
+                        {
+                            title: 'Browse Products',
+                            href: '/marketplace',
+                            icon: Eye,
+                        },
+                        {
+                            title: 'Shopping Cart',
+                            href: '/marketplace/cart',
+                            icon: ShoppingCart,
+                        },
+                        {
+                            title: 'My Orders',
+                            href: '/marketplace/orders',
+                            icon: Package,
+                        },
+                        {
+                            title: 'Wishlist',
+                            href: '/marketplace/wishlist',
+                            icon: Heart,
+                        },
+                        {
+                            title: 'Vendor Dashboard',
+                            href: '/marketplace/vendor/dashboard',
+                            icon: BarChart3,
+                        },
+                        {
+                            title: 'Become a Vendor',
+                            href: '/marketplace/vendor/register',
+                            icon: Plus,
                         },
                     ];
                     break;

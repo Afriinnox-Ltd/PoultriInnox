@@ -55,7 +55,7 @@ export default function ConnectionCard({
               {connection.href ? (
                 <Link
                   href={connection.href}
-                  className="text-sm font-medium hover:underline text-blue-600"
+                  className="text-sm font-medium hover:underline text-emerald-600"
                 >
                   {connection.value}
                 </Link>

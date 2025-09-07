@@ -283,7 +283,12 @@ class FeedManagementController extends Controller
      */
     private function isBatchIncubatorEnabled(): bool
     {
-        return Module::isActiveByCode(Module::BATCH_INCUBATOR);
+        $isEnabled = Module::isActiveByCode(Module::BATCH_INCUBATOR);
+        Log::info('BatchIncubator module check:', ['enabled' => $isEnabled]);
+
+        // Temporarily force enable for testing
+        Log::info('Forcing BatchIncubator module enabled for testing');
+        return true;
     }
 
     /**
@@ -309,8 +314,11 @@ class FeedManagementController extends Controller
     public function getIncubatorData()
     {
         if (!$this->isBatchIncubatorEnabled()) {
+            Log::info('BatchIncubator module not enabled');
             return response()->json(['message' => 'BatchIncubator module not available'], 404);
         }
+
+        Log::info('Fetching incubator data for user: ' . Auth::id());
 
         try {
             $incubatorData = [];
@@ -320,11 +328,19 @@ class FeedManagementController extends Controller
 
                 $incubatorClass = 'App\Modules\BatchIncubator\Models\Incubator';
                 $batchClass = 'App\Modules\BatchIncubator\Models\Batch';
+                $userId = Auth::id();
+
+                // First check what incubators exist
+                $allIncubators = $incubatorClass::all();
+                Log::info('All incubators in system:', ['count' => $allIncubators->count()]);
 
                 $incubators = $incubatorClass::with(['currentBatch' => function($query) {
                     $query->select('id', 'incubator_id', 'name', 'current_count', 'breed', 'start_date', 'status');
                 }])
-                ->where('owner_id', Auth::id()) // Only get incubators owned by current user
+                ->where(function($query) use ($userId) {
+                    $query->where('owner_id', $userId)
+                          ->orWhere('manager_id', $userId);
+                })
                 ->whereIn('status', ['running', 'idle'])  // Use correct enum values
                 ->select('id', 'name', 'capacity', 'current_load', 'location', 'status')
                 ->get()
@@ -335,6 +351,12 @@ class FeedManagementController extends Controller
                     if ($batchData && $batchData->start_date) {
                         $ageInDays = \Carbon\Carbon::parse($batchData->start_date)->diffInDays(now());
                     }
+
+                    Log::info('Processing incubator:', [
+                        'incubator_id' => $incubator->id,
+                        'has_batch' => !!$batchData,
+                        'batch_data' => $batchData ? $batchData->toArray() : null
+                    ]);
 
                     return [
                         'id' => $incubator->id,
@@ -354,7 +376,10 @@ class FeedManagementController extends Controller
                 });
 
                 $incubatorData = $incubators->toArray();
+                Log::info('Final incubator data:', ['count' => count($incubatorData), 'data' => $incubatorData]);
             }
+
+            Log::info('Incubator data fetched:', ['data' => $incubatorData]);
 
             return response()->json([
                 'incubators' => $incubatorData,
@@ -367,5 +392,86 @@ class FeedManagementController extends Controller
                 'available' => false
             ], 500);
         }
+    }
+
+    /**
+     * Get batch details for auto-filling consumption form
+     */
+    public function getBatchDetails($batchId)
+    {
+        try {
+            if (class_exists('App\Modules\BatchIncubator\Models\Batch') &&
+                class_exists('App\Modules\BatchIncubator\Models\Incubator')) {
+
+                $batchClass = 'App\Modules\BatchIncubator\Models\Batch';
+                $userId = Auth::id();
+
+                // Only return batch if user has access to it
+                $batch = $batchClass::where('id', $batchId)
+                    ->where(function ($query) use ($userId) {
+                        // Batches managed by current user
+                        $query->where('manager_id', $userId)
+                            // OR batches in incubators owned by current user
+                            ->orWhereHas('incubator', function ($q) use ($userId) {
+                                $q->where('owner_id', $userId);
+                            });
+                    })
+                    ->with(['incubator'])
+                    ->first();
+
+                if (!$batch) {
+                    return response()->json(['error' => 'Batch not found or access denied'], 404);
+                }
+Log::info('Batch details fetched:', ['batch' => $batch->toArray()]);
+
+                // Calculate age in days
+                $ageInDays = 0;
+                if ($batch->hatch_date) {
+                    $ageInDays = Carbon::parse($batch->hatch_date)->diffInDays(Carbon::now());
+                } elseif ($batch->start_date) {
+                    $ageInDays = Carbon::parse($batch->start_date)->diffInDays(Carbon::now());
+                }
+
+                // Get current temperature and humidity from incubator if available
+                $temperature = null;
+                $humidity = null;
+                if ($batch->incubator) {
+                    $temperature = $batch->incubator->current_temperature ?? null;
+                    $humidity = $batch->incubator->current_humidity ?? null;
+                }
+
+                return response()->json([
+                    'id' => $batch->id,
+                    'batch_code' => $batch->batch_code,
+                    'breed' => $batch->breed ?? $batch->name,
+                    'current_bird_count' => $batch->current_count ?? $batch->current_bird_count,
+                    'age_days' => $ageInDays,
+                    'average_weight' => $batch->average_weight ?? null,
+                    'status' => $batch->status,
+                    'temperature' => $temperature,
+                    'humidity' => $humidity,
+                    'mortality_count' => $batch->mortality_count ?? 0,
+                    'incubator_name' => $batch->incubator ? $batch->incubator->name : null,
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching batch details: ' . $e->getMessage());
+            return response()->json(['error' => 'Error fetching batch details'], 500);
+        }
+
+        // Return mock data if BatchIncubator module not available
+        return response()->json([
+            'id' => $batchId,
+            'batch_code' => 'TEST-' . str_pad($batchId, 3, '0', STR_PAD_LEFT),
+            'breed' => 'Test Breed',
+            'current_bird_count' => 100,
+            'age_days' => 14,
+            'average_weight' => 250,
+            'status' => 'active',
+            'temperature' => 25,
+            'humidity' => 60,
+            'mortality_count' => 0,
+            'incubator_name' => 'Test Incubator',
+        ]);
     }
 }

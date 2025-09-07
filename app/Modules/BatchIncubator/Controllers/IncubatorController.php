@@ -17,61 +17,101 @@ class IncubatorController extends Controller
     /**
      * Display a listing of incubators
      */
-    public function index()
+    public function index(Request $request)
     {
-        $incubators = Incubator::with(['currentBatches', 'owner'])
-            ->get()
-            ->map(function ($incubator) {
-                return [
-                    'id' => $incubator->id,
-                    'name' => $incubator->name,
-                    'model' => $incubator->model,
-                    'serial_number' => $incubator->serial_number,
-                    'status' => [
-                        'value' => $incubator->status->value,
-                        'label' => $incubator->status->label(),
-                        'color' => $incubator->status->color(),
-                    ],
-                    'capacity' => $incubator->capacity,
-                    'current_load' => $incubator->current_load,
-                    'utilization_rate' => $incubator->utilization_rate,
-                    'target_temperature' => $incubator->target_temperature,
-                    'target_humidity' => $incubator->target_humidity,
-                    'current_temperature' => $incubator->current_temperature,
-                    'current_humidity' => $incubator->current_humidity,
-                    'temperature_variance' => $incubator->temperature_variance,
-                    'humidity_variance' => $incubator->humidity_variance,
-                    'location' => $incubator->location,
-                    'last_maintenance' => $incubator->last_maintenance?->format('Y-m-d'),
-                    'next_maintenance' => $incubator->next_maintenance?->format('Y-m-d'),
-                    'maintenance_due' => $incubator->maintenance_due,
-                    'current_batches' => $incubator->currentBatches->map(function ($batch) {
-                        return [
-                            'id' => $batch->id,
-                            'batch_code' => $batch->batch_code,
-                            'name' => $batch->name,
-                            'status' => $batch->status->label(),
-                            'current_count' => $batch->current_count,
-                        ];
-                    }),
-                    'owner' => [
-                        'name' => $incubator->owner->name,
-                    ],
-                ];
-            });
+        $user = Auth::user();
+        $perPage = $request->get('per_page', 15); // Default 15 items per page
+        $search = $request->get('search');
+        $status = $request->get('status');
 
+        $query = Incubator::with(['currentBatches', 'owner'])
+            ->accessibleBy($user); // Apply access control
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('model', 'like', "%{$search}%")
+                  ->orWhere('serial_number', 'like', "%{$search}%")
+                  ->orWhere('location', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply status filter
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $incubators = $query->latest()
+            ->paginate($perPage);
+
+        // Transform the paginated data
+        $incubators->getCollection()->transform(function ($incubator) use ($user) {
+            return [
+                'id' => $incubator->id,
+                'name' => $incubator->name,
+                'model' => $incubator->model,
+                'serial_number' => $incubator->serial_number,
+                'status' => [
+                    'value' => $incubator->status->value,
+                    'label' => $incubator->status->label(),
+                    'color' => $incubator->status->color(),
+                ],
+                'capacity' => $incubator->capacity,
+                'current_load' => $incubator->current_load,
+                'utilization_rate' => $incubator->getUtilizationPercentage(),
+                'target_temperature' => $incubator->target_temperature,
+                'target_humidity' => $incubator->target_humidity,
+                'current_temperature' => $incubator->current_temperature,
+                'current_humidity' => $incubator->current_humidity,
+                'location' => $incubator->location,
+                'last_maintenance' => $incubator->last_maintenance?->format('Y-m-d'),
+                'next_maintenance' => $incubator->next_maintenance?->format('Y-m-d'),
+                'maintenance_due' => $incubator->isMaintenanceDue(),
+                'current_batches' => $incubator->currentBatches->map(function ($batch) {
+                    return [
+                        'id' => $batch->id,
+                        'batch_code' => $batch->batch_code,
+                        'name' => $batch->name,
+                        'status' => $batch->status->label(),
+                        'current_count' => $batch->current_count,
+                    ];
+                }),
+                'owner' => [
+                    'name' => $incubator->owner->name,
+                ],
+                // User access info
+                'can_edit' => $incubator->userHasAccess($user) || $user->isAdmin(),
+                'is_owner' => $incubator->owner_id === $user->id,
+            ];
+        });
+
+        // Calculate stats only for accessible incubators
+        $accessibleIncubatorsQuery = Incubator::accessibleBy($user);
+        
         $stats = [
-            'total_incubators' => Incubator::count(),
-            'running_incubators' => Incubator::where('status', IncubatorStatus::RUNNING)->count(),
-            'idle_incubators' => Incubator::where('status', IncubatorStatus::IDLE)->count(),
-            'maintenance_due' => Incubator::whereDate('next_maintenance', '<=', now()->addDays(7))->count(),
-            'total_capacity' => Incubator::sum('capacity'),
-            'current_utilization' => Incubator::sum('current_load'),
+            'total_incubators' => $accessibleIncubatorsQuery->count(),
+            'running_incubators' => $accessibleIncubatorsQuery->where('status', IncubatorStatus::RUNNING)->count(),
+            'idle_incubators' => $accessibleIncubatorsQuery->where('status', IncubatorStatus::IDLE)->count(),
+            'maintenance_due' => $accessibleIncubatorsQuery->whereDate('next_maintenance', '<=', now()->addDays(7))->count(),
+            'total_capacity' => $accessibleIncubatorsQuery->sum('capacity'),
+            'current_utilization' => $accessibleIncubatorsQuery->sum('current_load'),
         ];
 
         return Inertia::render('modules/batch-incubator/incubators/index', [
             'incubators' => $incubators,
             'stats' => $stats,
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'per_page' => $perPage,
+            ],
+            'statuses' => array_map(function ($status) {
+                return [
+                    'value' => $status->value,
+                    'label' => $status->label(),
+                ];
+            }, IncubatorStatus::cases()),
         ]);
     }
 
@@ -157,6 +197,13 @@ class IncubatorController extends Controller
      */
     public function show(Incubator $incubator)
     {
+        $user = Auth::user();
+
+        // Check if user has access to this incubator
+        if (!$incubator->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to view this incubator.');
+        }
+
         $incubator->load(['currentBatches.manager', 'owner']);
 
         // Get all users for access management (only if user is owner)
@@ -182,13 +229,11 @@ class IncubatorController extends Controller
                 ],
                 'capacity' => $incubator->capacity,
                 'current_load' => $incubator->current_load,
-                'utilization_rate' => $incubator->utilization_rate,
+                'utilization_rate' => $incubator->getUtilizationPercentage(),
                 'target_temperature' => $incubator->target_temperature,
                 'target_humidity' => $incubator->target_humidity,
                 'current_temperature' => $incubator->current_temperature,
                 'current_humidity' => $incubator->current_humidity,
-                'temperature_variance' => $incubator->temperature_variance,
-                'humidity_variance' => $incubator->humidity_variance,
                 'location' => $incubator->location,
                 'settings' => $incubator->settings,
                 'sensors_data' => $incubator->sensors_data,
@@ -196,7 +241,7 @@ class IncubatorController extends Controller
                 'last_maintenance' => $incubator->last_maintenance?->format('Y-m-d'),
                 'next_maintenance' => $incubator->next_maintenance?->format('Y-m-d'),
                 'maintenance_notes' => $incubator->maintenance_notes,
-                'maintenance_due' => $incubator->maintenance_due,
+                'maintenance_due' => $incubator->isMaintenanceDue(),
                 'current_batches' => $incubator->currentBatches->map(function ($batch) {
                     return [
                         'id' => $batch->id,
@@ -225,6 +270,10 @@ class IncubatorController extends Controller
                     'id' => $incubator->owner->id,
                     'name' => $incubator->owner->name,
                 ],
+                // User permissions
+                'can_edit' => $incubator->userHasAccess($user) || $user->isAdmin(),
+                'is_owner' => $incubator->owner_id === $user->id,
+                'can_manage_access' => $incubator->owner_id === $user->id || $user->isAdmin(),
             ],
             'availableUsers' => $availableUsers,
         ]);
@@ -436,6 +485,13 @@ class IncubatorController extends Controller
      */
     public function update(Request $request, Incubator $incubator)
     {
+        $user = Auth::user();
+
+        // Check if user has access to this incubator
+        if (!$incubator->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to update this incubator.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -483,6 +539,13 @@ class IncubatorController extends Controller
      */
     public function updateStatus(Request $request, Incubator $incubator)
     {
+        $user = Auth::user();
+
+        // Check if user has access to this incubator
+        if (!$incubator->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to update this incubator status.');
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:' . implode(',', array_map(fn($s) => $s->value, IncubatorStatus::cases())),
         ]);
@@ -497,6 +560,13 @@ class IncubatorController extends Controller
      */
     public function recordMaintenance(Request $request, Incubator $incubator)
     {
+        $user = Auth::user();
+
+        // Check if user has access to this incubator
+        if (!$incubator->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to record maintenance for this incubator.');
+        }
+
         $validated = $request->validate([
             'maintenance_notes' => 'required|string',
             'next_maintenance_days' => 'required|integer|min:1|max:365',
@@ -516,13 +586,20 @@ class IncubatorController extends Controller
      */
     public function destroy(Incubator $incubator)
     {
+        $user = Auth::user();
+
+        // Check if user has access to delete this incubator (only owner or admin)
+        if (!$user->isAdmin() && $incubator->owner_id !== $user->id) {
+            abort(403, 'You do not have permission to delete this incubator.');
+        }
+
         if ($incubator->currentBatches()->exists()) {
             return back()->withErrors(['error' => 'Cannot delete incubator with active batches.']);
         }
 
         $incubator->delete();
 
-        return redirect()->route('incubators.index')
+        return redirect()->route('batch-incubator.incubators.index')
             ->with('success', 'Incubator deleted successfully!');
     }
 }

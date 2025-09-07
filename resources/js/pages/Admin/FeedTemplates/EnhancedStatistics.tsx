@@ -30,8 +30,8 @@ interface EnhancedStatisticsProps {
 
 export default function EnhancedStatistics({ statistics }: EnhancedStatisticsProps) {
     const categoryColors = {
-        'Starter': 'bg-blue-500',
-        'Grower': 'bg-green-500',
+        'Starter': 'bg-emerald-500',
+        'Grower': 'bg-emerald-500',
         'Finisher': 'bg-orange-500',
         'Layer': 'bg-purple-500'
     };
@@ -39,7 +39,7 @@ export default function EnhancedStatistics({ statistics }: EnhancedStatisticsPro
     const durationColors = {
         'Short (≤42 days)': 'bg-red-500',
         'Medium (43-84 days)': 'bg-yellow-500',
-        'Long (>84 days)': 'bg-blue-500'
+        'Long (>84 days)': 'bg-emerald-500'
     };
 
     return (
@@ -48,7 +48,7 @@ export default function EnhancedStatistics({ statistics }: EnhancedStatisticsPro
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <div className="p-2 rounded-md bg-blue-500">
+                        <div className="p-2 rounded-md bg-emerald-500">
                             <TrendingUp className="h-4 w-4 text-white" />
                         </div>
                         Feed Types Analysis
@@ -62,7 +62,7 @@ export default function EnhancedStatistics({ statistics }: EnhancedStatisticsPro
 
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Avg. Cost/kg</span>
-                        <span className="text-lg font-semibold text-green-600">
+                        <span className="text-lg font-semibold text-emerald-600">
                             ${statistics.feedTypes.averageCost?.toFixed(2) || '0.00'}
                         </span>
                     </div>
@@ -93,7 +93,7 @@ export default function EnhancedStatistics({ statistics }: EnhancedStatisticsPro
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <div className="p-2 rounded-md bg-green-500">
+                        <div className="p-2 rounded-md bg-emerald-500">
                             <Clock className="h-4 w-4 text-white" />
                         </div>
                         Feed Programs Analysis
@@ -164,7 +164,7 @@ export default function EnhancedStatistics({ statistics }: EnhancedStatisticsPro
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium">Certified Suppliers</span>
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
                                 {statistics.suppliers.withCertifications}
                             </Badge>
                         </div>

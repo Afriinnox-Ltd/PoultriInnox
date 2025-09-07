@@ -109,9 +109,9 @@ export default function ScheduleShow({ schedule, users }: ScheduleShowProps) {
 
     const getStatusColor = (status: string) => {
         const colors = {
-            pending: 'bg-blue-100 text-blue-800',
+            pending: 'bg-emerald-100 text-emerald-800',
             in_progress: 'bg-yellow-100 text-yellow-800',
-            completed: 'bg-green-100 text-green-800',
+            completed: 'bg-emerald-100 text-emerald-800',
             overdue: 'bg-red-100 text-red-800',
             cancelled: 'bg-gray-100 text-gray-800',
             postponed: 'bg-orange-100 text-orange-800',
@@ -122,7 +122,7 @@ export default function ScheduleShow({ schedule, users }: ScheduleShowProps) {
     const getPriorityColor = (priority: number) => {
         if (priority <= 2) return 'text-red-600';
         if (priority === 3) return 'text-yellow-600';
-        return 'text-green-600';
+        return 'text-emerald-600';
     };
 
     const getPriorityLabel = (priority: number) => {
@@ -335,7 +335,7 @@ export default function ScheduleShow({ schedule, users }: ScheduleShowProps) {
                             <CardContent>
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                                        <div className="w-3 h-3 rounded-full bg-emerald-600"></div>
                                         <div>
                                             <p className="font-medium">Schedule Created</p>
                                             <p className="text-sm text-muted-foreground">
@@ -358,7 +358,7 @@ export default function ScheduleShow({ schedule, users }: ScheduleShowProps) {
 
                                     {schedule.completed_at && (
                                         <div className="flex items-center gap-3">
-                                            <div className="w-3 h-3 rounded-full bg-green-600"></div>
+                                            <div className="w-3 h-3 rounded-full bg-emerald-600"></div>
                                             <div>
                                                 <p className="font-medium">Task Completed</p>
                                                 <p className="text-sm text-muted-foreground">
@@ -386,7 +386,7 @@ export default function ScheduleShow({ schedule, users }: ScheduleShowProps) {
                                         <Package className="h-4 w-4" />
                                         <Link
                                             href={`/batch-incubator/batches/${schedule.batch.id}`}
-                                            className="font-medium hover:text-blue-600"
+                                            className="font-medium hover:text-emerald-600"
                                         >
                                             {schedule.batch.name}
                                         </Link>
@@ -403,7 +403,7 @@ export default function ScheduleShow({ schedule, users }: ScheduleShowProps) {
                                             <MapPin className="h-4 w-4" />
                                             <Link
                                                 href={`/batch-incubator/incubators/${schedule.incubator.id}`}
-                                                className="font-medium hover:text-blue-600"
+                                                className="font-medium hover:text-emerald-600"
                                             >
                                                 {schedule.incubator.name}
                                             </Link>

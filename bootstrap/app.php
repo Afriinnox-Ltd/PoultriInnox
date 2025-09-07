@@ -28,6 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'module.dependencies' => \App\Http\Middleware\CheckModuleDependencies::class,
             'admin.access' => \App\Http\Middleware\CheckAdminAccess::class,
+            'vendor.access' => \App\Http\Middleware\CheckVendorAccess::class,
+            'vendor.approved' => \App\Http\Middleware\EnsureVendorIsApproved::class,
+            'ensure.vendor.approved' => \App\Http\Middleware\EnsureVendorIsApproved::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

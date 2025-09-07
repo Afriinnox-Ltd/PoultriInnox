@@ -49,8 +49,12 @@ class ScheduleController extends Controller
 
         $schedules = $query->paginate(15)->withQueryString();
 
-        // Get filter options
-        $batches = Batch::select('id', 'name')->orderBy('name')->get();
+        // Get filter options - only show accessible batches and incubators
+        $user = Auth::user();
+        $batches = Batch::select('id', 'name')
+            ->accessibleBy($user)
+            ->orderBy('name')
+            ->get();
         $statuses = collect(ScheduleStatus::cases())->map(fn($status) => [
             'value' => $status->value,
             'label' => $status->label()
@@ -84,12 +88,16 @@ class ScheduleController extends Controller
      */
     public function create()
     {
+        $user = Auth::user();
+
         $batches = Batch::with('incubator')
             ->select('id', 'name', 'batch_code', 'breed', 'incubator_id', 'status')
+            ->accessibleBy($user)
             ->orderBy('name')
             ->get();
 
         $incubators = Incubator::select('id', 'name', 'status')
+            ->accessibleBy($user)
             ->orderBy('name')
             ->get();
 
@@ -141,8 +149,9 @@ class ScheduleController extends Controller
         $validated['created_by'] = Auth::id();
         $validated['status'] = ScheduleStatus::PENDING;
 
-        // Set batch's incubator if not specified
-        $batch = Batch::find($validated['batch_id']);
+        // Set batch's incubator if not specified - verify user has access to batch
+        $user = Auth::user();
+        $batch = Batch::accessibleBy($user)->findOrFail($validated['batch_id']);
         if ($batch->incubator_id) {
             $validated['incubator_id'] = $batch->incubator_id;
         }
@@ -180,12 +189,16 @@ class ScheduleController extends Controller
      */
     public function edit(BatchSchedule $schedule)
     {
+        $user = Auth::user();
+
         $batches = Batch::with('incubator')
             ->select('id', 'name', 'batch_code', 'breed', 'incubator_id', 'status')
+            ->accessibleBy($user)
             ->orderBy('name')
             ->get();
 
         $incubators = Incubator::select('id', 'name', 'status')
+            ->accessibleBy($user)
             ->orderBy('name')
             ->get();
 
@@ -363,7 +376,7 @@ class ScheduleController extends Controller
                 ];
             });
 
-        return response()->json($schedules);
+            return redirect()->back();
     }
 
     /**

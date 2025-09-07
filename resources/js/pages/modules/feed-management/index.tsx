@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { toast } from 'sonner';
+import { NavigationHelper, navigateToBatchIncubator, navigateToBatch } from '@/utils/navigation';
+import { NavigationLink, QuickNavigation, EntityLink } from '@/components/navigation/NavigationComponents';
 
 interface DashboardStats {
   total_inventory_value: number;
@@ -411,7 +413,7 @@ export default function FeedManagementDashboard({ stats, inventory_alerts, feed_
                     <div className="relative">
                       <input
                         type="number"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         value={birdCount}
                         onChange={(e) => setBirdCount(parseInt(e.target.value) || 0)}
                         placeholder="Number of birds"
@@ -419,7 +421,7 @@ export default function FeedManagementDashboard({ stats, inventory_alerts, feed_
                       />
                       {autoFilling && (
                         <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                          <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
                         </div>
                       )}
                     </div>
@@ -430,7 +432,7 @@ export default function FeedManagementDashboard({ stats, inventory_alerts, feed_
                     <div className="relative">
                       <input
                         type="number"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         value={birdAge}
                         onChange={(e) => setBirdAge(parseInt(e.target.value) || 0)}
                         placeholder="Age in days"
@@ -438,7 +440,7 @@ export default function FeedManagementDashboard({ stats, inventory_alerts, feed_
                       />
                       {autoFilling && (
                         <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                          <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
                         </div>
                       )}
                     </div>

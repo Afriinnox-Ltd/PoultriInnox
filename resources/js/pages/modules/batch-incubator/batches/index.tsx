@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Icon } from '@/components/ui/icon';
 import QuickNav from '@/components/batch-incubator/quick-nav';
-import { useState, useEffect } from 'react';
+import { NavigationHelper, navigateToFeedConsumption, navigateToSchedule } from '@/utils/navigation';
+import { NavigationLink, QuickNavigation, EntityLink } from '@/components/navigation/NavigationComponents';
+import { useState } from 'react';
 import {
   Plus,
   Eye,
@@ -20,8 +22,8 @@ import {
   Egg,
   Search,
   Filter,
-  SortAsc,
-  SortDesc
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface Batch {
@@ -54,6 +56,15 @@ interface Batch {
   survival_rate: number;
   total_cost: number;
   profit_loss: number;
+  // Feed consumption data
+  total_feed_consumed?: number;
+  average_fcr?: number;
+  actual_feed_cost?: number;
+  feed_consumption_count?: number;
+  feed_efficiency_rating?: string;
+  // Access control
+  can_edit?: boolean;
+  is_owner?: boolean;
 }
 
 interface Stats {
@@ -63,103 +74,130 @@ interface Stats {
   daily_production: number;
 }
 
+interface PaginatedBatches {
+  data: Batch[];
+  links: {
+    first: string;
+    last: string;
+    prev: string | null;
+    next: string | null;
+  };
+  meta: {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    to: number;
+    total: number;
+  };
+}
+
 interface Props {
-  batches: Batch[];
-  stats: Stats;
+  batches?: PaginatedBatches;
+  stats?: Stats;
+  filters?: {
+    search?: string;
+    status?: string;
+    per_page?: number;
+  };
+  statuses?: Array<{
+    value: string;
+    label: string;
+  }>;
 }
 
 const statusColors = {
   planned: 'bg-gray-100 text-gray-800',
-  incubating: 'bg-green-100 text-green-800',
-  growing: 'bg-green-100 text-green-800',
+  incubating: 'bg-emerald-100 text-emerald-800',
+  growing: 'bg-emerald-100 text-emerald-800',
   laying: 'bg-yellow-100 text-yellow-800',
   completed: 'bg-purple-100 text-purple-800',
+  terminated: 'bg-red-100 text-red-800',
 };
 
-export default function BatchesIndex({ batches, stats }: Props) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [filteredBatches, setFilteredBatches] = useState(batches);
+const feedEfficiencyColors = {
+  excellent: 'bg-emerald-100 text-emerald-800',
+  very_good: 'bg-emerald-100 text-emerald-800',
+  good: 'bg-blue-100 text-blue-800',
+  acceptable: 'bg-yellow-100 text-yellow-800',
+  poor: 'bg-red-100 text-red-800',
+  no_data: 'bg-gray-100 text-gray-800',
+};
 
-  // Filter and sort batches
-  useEffect(() => {
-    let filtered = [...batches];
-
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(batch =>
-        batch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        batch.batch_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        batch.breed.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        batch.manager.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(batch => batch.status.value === statusFilter);
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue, bValue;
-
-      switch (sortBy) {
-        case 'name':
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
-          break;
-        case 'status':
-          aValue = a.status.label;
-          bValue = b.status.label;
-          break;
-        case 'current_count':
-          aValue = a.current_count;
-          bValue = b.current_count;
-          break;
-        case 'survival_rate':
-          aValue = a.survival_rate;
-          bValue = b.survival_rate;
-          break;
-        case 'age_days':
-          aValue = a.age_days || 0;
-          bValue = b.age_days || 0;
-          break;
-        case 'breed':
-          aValue = a.breed.toLowerCase();
-          bValue = b.breed.toLowerCase();
-          break;
-        default:
-          aValue = a.id;
-          bValue = b.id;
-      }
-
-      if (typeof aValue === 'string') {
-        return sortOrder === 'asc'
-          ? aValue.localeCompare(bValue as string)
-          : (bValue as string).localeCompare(aValue);
-      } else {
-        return sortOrder === 'asc' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number);
-      }
-    });
-
-    setFilteredBatches(filtered);
-  }, [batches, searchTerm, statusFilter, sortBy, sortOrder]);
-
-  const handleSortChange = (newSortBy: string) => {
-    if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
-      setSortOrder('asc');
+export default function BatchesIndex({ batches, stats, filters, statuses }: Props) {
+  // Provide fallback data structure if batches is not paginated
+  const paginatedBatches = batches || {
+    data: [],
+    meta: {
+      current_page: 1,
+      last_page: 1,
+      per_page: 15,
+      total: 0,
+      from: null,
+      to: null
+    },
+    links: {
+      first: '',
+      last: '',
+      prev: null,
+      next: null
     }
   };
 
-  const getSortIcon = (field: string) => {
-    if (sortBy !== field) return null;
-    return sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />;
+  const batchStats = stats || {
+    total_batches: 0,
+    active_batches: 0,
+    total_birds: 0,
+    daily_production: 0
+  };
+
+  const [searchTerm, setSearchTerm] = useState(filters?.search || '');
+  const [statusFilter, setStatusFilter] = useState(filters?.status || '');
+  const [perPage, setPerPage] = useState(filters?.per_page || paginatedBatches.meta.per_page);
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    applyFilters({ search: value });
+  };
+
+  const handleStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    applyFilters({ status: value === 'all' ? '' : value });
+  };
+
+  const handlePerPageChange = (value: string) => {
+    const newPerPage = parseInt(value);
+    setPerPage(newPerPage);
+    applyFilters({ per_page: newPerPage });
+  };
+
+  const applyFilters = (newFilters: any) => {
+    const params = {
+      search: searchTerm,
+      status: statusFilter,
+      per_page: perPage,
+      ...newFilters,
+      page: 1, // Reset to first page when filtering
+    };
+
+    // Remove empty values
+    Object.keys(params).forEach(key => {
+      if (params[key] === '' || params[key] === 'all') {
+        delete params[key];
+      }
+    });
+
+    router.get('/batch-incubator/batches', params, {
+      preserveState: true,
+      preserveScroll: true,
+    });
+  };
+
+    const navigateToPage = (url: string) => {
+    router.get(url, {}, {
+      preserveState: true,
+      preserveScroll: true,
+    });
   };
 
   return (
@@ -167,13 +205,12 @@ export default function BatchesIndex({ batches, stats }: Props) {
       <Head title="Batch Management" />
 
       <div className="space-y-6">
-        {/* Header */}
-                {/* Enhanced Header with Quick Actions */}
-              <div className="flex flex-col gap-4 md:flex-row md:items-center flex-wrap p-6 md:justify-between">
+        {/* Enhanced Header with Quick Actions */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center flex-wrap p-6 md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Batch Management</h1>
             <p className="text-muted-foreground">
-              Monitor and manage your poultry batches with comprehensive tracking
+              Monitor and manage your accessible poultry batches with comprehensive tracking
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -190,62 +227,52 @@ export default function BatchesIndex({ batches, stats }: Props) {
                 type="text"
                 placeholder="Search batches by name, code, breed, or manager..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="pl-10"
               />
             </div>
 
             <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={handleStatusFilter}>
                 <SelectTrigger className="w-40">
-                  <SelectValue />
+                  <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="planned">Planned</SelectItem>
-                  <SelectItem value="incubating">Incubating</SelectItem>
-                  <SelectItem value="growing">Growing</SelectItem>
-                  <SelectItem value="laying">Laying</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  {(statuses || []).map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-40">
+              <Select value={perPage.toString()} onValueChange={handlePerPageChange}>
+                <SelectTrigger className="w-24">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="created_at">Created Date</SelectItem>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="status">Status</SelectItem>
-                  <SelectItem value="breed">Breed</SelectItem>
-                  <SelectItem value="current_count">Count</SelectItem>
-                  <SelectItem value="survival_rate">Survival Rate</SelectItem>
-                  <SelectItem value="age_days">Age</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              >
-                {getSortIcon(sortBy) || <SortAsc className="h-4 w-4" />}
-              </Button>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
-              Showing {filteredBatches.length} of {batches.length} batches
+              Showing {paginatedBatches?.meta?.from || 0} to {paginatedBatches?.meta?.to || 0} of {paginatedBatches?.meta?.total} batches
             </span>
-            {(searchTerm || statusFilter !== 'all') && (
+            {(searchTerm || statusFilter) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSearchTerm('');
-                  setStatusFilter('all');
+                  setStatusFilter('');
+                  applyFilters({ search: '', status: '' });
                 }}
               >
                 Clear filters
@@ -255,16 +282,16 @@ export default function BatchesIndex({ batches, stats }: Props) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 px-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Batches</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total_batches}</div>
+              <div className="text-2xl font-bold">{batchStats.total_batches}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.active_batches} active
+                {batchStats.active_batches} active
               </p>
             </CardContent>
           </Card>
@@ -275,7 +302,7 @@ export default function BatchesIndex({ batches, stats }: Props) {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total_birds.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{batchStats.total_birds.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 Across all active batches
               </p>
@@ -288,7 +315,7 @@ export default function BatchesIndex({ batches, stats }: Props) {
               <Egg className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.daily_production}</div>
+              <div className="text-2xl font-bold">{batchStats.daily_production.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 Eggs per day
               </p>
@@ -297,58 +324,61 @@ export default function BatchesIndex({ batches, stats }: Props) {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Performance</CardTitle>
+              <CardTitle className="text-sm font-medium">Active Batches</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {batches.length > 0 ? Math.round(batches.reduce((acc, batch) => acc + batch.survival_rate, 0) / batches.length) : 0}%
-              </div>
+              <div className="text-2xl font-bold">{batchStats.active_batches}</div>
               <p className="text-xs text-muted-foreground">
-                Avg survival rate
+                Currently producing
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Batches Table */}
-        <Card>
+        {/* Batches List */}
+        <Card className="mx-6">
           <CardHeader>
-            <CardTitle>All Batches</CardTitle>
-            <CardDescription>
-              Manage and monitor your poultry batch operations
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Batch Overview</CardTitle>
+                <CardDescription>
+                  Manage and monitor your accessible poultry batch operations
+                </CardDescription>
+              </div>
+              <Link href="/batch-incubator/batches/create">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Batch
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {filteredBatches.length === 0 ? (
+              {paginatedBatches.data.length === 0 ? (
                 <div className="text-center py-8">
                   <Users className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-2 text-sm font-semibold text-gray-900">
-                    {batches.length === 0 ? 'No batches' : 'No batches found'}
+                    No accessible batches found
                   </h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {batches.length === 0
-                      ? 'Get started by creating your first batch.'
-                      : 'Try adjusting your search or filter criteria.'
-                    }
+                    You don't have access to any batches yet, or no batches match your search criteria.
                   </p>
-                  {batches.length === 0 && (
-                    <div className="mt-6">
-                      <Link href="/batch-incubator/batches/create">
-                        <Button>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Create Batch
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
+                  <div className="mt-6">
+                    <Link href="/batch-incubator/batches/create">
+                      <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Batch
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {filteredBatches.map((batch) => (
+                  {paginatedBatches.data.map((batch) => (
                     <Card key={batch.id} className="hover:shadow-md shadow-none transition-shadow">
-                      <CardContent className="">
+                      <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div className="flex-1 space-y-1">
                             <div className="flex items-center space-x-4">
@@ -356,6 +386,11 @@ export default function BatchesIndex({ batches, stats }: Props) {
                                 <h3 className="font-semibold text-lg">{batch.name}</h3>
                                 <p className="text-sm text-muted-foreground">
                                   {batch.batch_code} • {batch.breed}
+                                  {batch.is_owner && (
+                                    <Badge variant="outline" className="ml-2 text-xs">
+                                      Owner
+                                    </Badge>
+                                  )}
                                 </p>
                               </div>
                               <Badge
@@ -390,41 +425,109 @@ export default function BatchesIndex({ batches, stats }: Props) {
                                 </div>
                               )}
 
+                              {/* Feed Consumption Data */}
+                              {batch.total_feed_consumed && batch.total_feed_consumed > 0 && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Feed Consumed</p>
+                                  <p className="font-medium">{Number(batch.total_feed_consumed).toFixed(1)} kg</p>
+                                </div>
+                              )}
+
+                              {batch.average_fcr && batch.average_fcr > 0 && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">FCR</p>
+                                  <div className="flex items-center gap-1">
+                                    <p className="font-medium">{Number(batch.average_fcr).toFixed(2)}</p>
+                                  </div>
+                                </div>
+                              )}
+
                               <div>
                                 <p className="text-xs text-muted-foreground">Manager</p>
-                                <p className="font-medium text-xs">{batch.manager.name}</p>
+                                <p className="font-medium">{batch.manager.name}</p>
                               </div>
 
                               {batch.incubator && (
                                 <div>
                                   <p className="text-xs text-muted-foreground">Incubator</p>
-                                  <p className="font-medium text-xs">{batch.incubator.name}</p>
+                                  <p className="font-medium">{batch.incubator.name}</p>
                                 </div>
                               )}
                             </div>
-
-                            {batch.mortality_rate > 5 && (
-                              <div className="flex items-center space-x-2 mt-2">
-                                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                <span className="text-sm text-amber-600">
-                                  High mortality rate: {batch.mortality_rate}%
-                                </span>
-                              </div>
-                            )}
                           </div>
 
-                          <div className="flex items-center space-x-2">
+                          <div className="flex flex-col sm:flex-row gap-2 ml-4">
                             <Link href={`/batch-incubator/batches/${batch.id}`}>
                               <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4" />
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
                               </Button>
                             </Link>
+ 
 
+                            <NavigationLink
+                              onClick={() => navigateToSchedule(batch.id)}
+                              size="sm"
+                              variant="button"
+                              className="text-xs"
+                            >
+                              <Calendar className="mr-1 h-3 w-3" />
+                              Schedule
+                            </NavigationLink>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {paginatedBatches?.meta?.last_page > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-muted-foreground">
+                    Page {paginatedBatches?.meta?.current_page} of {paginatedBatches?.meta?.last_page}
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigateToPage(paginatedBatches?.links?.first)}
+                      disabled={!paginatedBatches?.links?.prev}
+                    >
+                      First
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigateToPage(paginatedBatches?.links?.prev || '')}
+                      disabled={!paginatedBatches?.links?.prev}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigateToPage(paginatedBatches?.links?.next || '')}
+                      disabled={!paginatedBatches?.links?.next}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigateToPage(paginatedBatches?.links?.last)}
+                      disabled={!paginatedBatches?.links?.last}
+                    >
+                      Last
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

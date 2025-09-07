@@ -138,7 +138,7 @@ export default function Dashboard() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between text-sm">
                                         <span>Broiler Batch Alpha</span>
-                                        <Badge variant="secondary" className="bg-green-100 text-green-800">Growing</Badge>
+                                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">Growing</Badge>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
                                         <span>Layer Batch Beta</span>
@@ -146,7 +146,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
                                         <span>Incubation Gamma</span>
-                                        <Badge variant="secondary" className="bg-green-100 text-green-800">Incubating</Badge>
+                                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">Incubating</Badge>
                                     </div>
                                 </div>
                             </div>
@@ -206,11 +206,11 @@ export default function Dashboard() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between text-sm">
                                         <span>Incubator A1</span>
-                                        <Badge variant="secondary" className="bg-green-100 text-green-800">Running</Badge>
+                                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">Running</Badge>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
                                         <span>Incubator B2</span>
-                                        <Badge variant="secondary" className="bg-green-100 text-green-800">Running</Badge>
+                                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">Running</Badge>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
                                         <span>Incubator C3</span>
@@ -286,8 +286,8 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                                <Calendar className="h-4 w-4 text-green-500 mt-0.5" />
+                            <div className="flex items-start space-x-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                                <Calendar className="h-4 w-4 text-emerald-500 mt-0.5" />
                                 <div className="flex-1">
                                     <p className="text-sm font-medium">Hatch Date Approaching</p>
                                     <p className="text-xs text-muted-foreground">
@@ -296,8 +296,8 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                                <TrendingUp className="h-4 w-4 text-green-500 mt-0.5" />
+                            <div className="flex items-start space-x-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                                <TrendingUp className="h-4 w-4 text-emerald-500 mt-0.5" />
                                 <div className="flex-1">
                                     <p className="text-sm font-medium">Production Milestone</p>
                                     <p className="text-xs text-muted-foreground">
@@ -358,7 +358,7 @@ export default function Dashboard() {
                     <CardContent>
                         <div className="grid gap-4 md:grid-cols-3">
                             <div className="flex items-start space-x-3">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-green-600 text-sm font-medium">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-sm font-medium">
                                     1
                                 </div>
                                 <div>
@@ -375,7 +375,7 @@ export default function Dashboard() {
                             </div>
 
                             <div className="flex items-start space-x-3">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-green-600 text-sm font-medium">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-sm font-medium">
                                     2
                                 </div>
                                 <div>

@@ -99,8 +99,8 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
 
     const getCategoryColor = (category: string) => {
         const colors = {
-            production: 'bg-blue-100 text-blue-800 border-blue-200',
-            efficiency: 'bg-green-100 text-green-800 border-green-200',
+            production: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+            efficiency: 'bg-emerald-100 text-emerald-800 border-emerald-200',
             financial: 'bg-purple-100 text-purple-800 border-purple-200',
             compliance: 'bg-indigo-100 text-indigo-800 border-indigo-200',
         };
@@ -229,7 +229,7 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                                                     key={reportType.key}
                                                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                                                         selectedType === reportType.key
-                                                            ? 'border-blue-500 bg-blue-50'
+                                                            ? 'border-emerald-500 bg-emerald-50'
                                                             : formErrors.type
                                                             ? 'border-red-300 hover:border-red-400'
                                                             : 'border-gray-200 hover:border-gray-300'
@@ -242,7 +242,7 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                                                     }}
                                                 >
                                                     <div className="flex items-start gap-3">
-                                                        <Icon className="h-5 w-5 text-blue-600 mt-0.5" />
+                                                        <Icon className="h-5 w-5 text-emerald-600 mt-0.5" />
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <h3 className="font-medium">{reportType.name}</h3>

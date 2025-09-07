@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Modules\BatchIncubator\Models\UserReminderPreference;
+use App\Modules\Marketplace\Models\Vendor;
 
 class User extends Authenticatable
 {
@@ -106,5 +107,29 @@ class User extends Authenticatable
     public function getReminderPreferences(): UserReminderPreference
     {
         return UserReminderPreference::getForUser($this);
+    }
+
+    /**
+     * Get the vendor profile for this user
+     */
+    public function vendor(): HasOne
+    {
+        return $this->hasOne(Vendor::class);
+    }
+
+    /**
+     * Check if user is a vendor
+     */
+    public function isVendor(): bool
+    {
+        return $this->vendor()->exists();
+    }
+
+    /**
+     * Check if user is an approved vendor
+     */
+    public function isApprovedVendor(): bool
+    {
+        return $this->vendor()->where('verification_status', 'verified')->exists();
     }
 }

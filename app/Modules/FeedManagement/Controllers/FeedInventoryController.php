@@ -17,9 +17,14 @@ class FeedInventoryController extends Controller
     /**
      * Display feed inventory
      */
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->input('batch_number');
+
         $inventory = FeedInventory::with(['feedType', 'supplier'])
+            ->when($search, function ($query, $search) {
+                $query->where('batch_number', 'like', "%{$search}%");
+            })
             ->orderBy('quantity', 'asc')
             ->get()
             ->map(function ($item) {

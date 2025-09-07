@@ -7,7 +7,6 @@ use App\Modules\FeedManagement\Models\FeedProgram;
 use App\Modules\FeedManagement\Models\FeedInventory;
 use App\Modules\FeedManagement\Models\FeedConsumption;
 use App\Modules\FeedManagement\Models\FeedPurchaseOrder;
-use App\Models\Schedule;
 use App\Modules\FeedManagement\Constants\FeedConstants;
 use App\Modules\FeedManagement\Enums\FeedCategory;
 use App\Modules\FeedManagement\Enums\InventoryStatus;

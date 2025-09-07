@@ -9,6 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NavigationLink } from '@/components/navigation/NavigationComponents';
+import ErrorBoundary from '@/components/ui/error-boundary';
+import SmartRecommendationsModal from '@/components/modules/batch-incubator/SmartRecommendationsModal';
 import { useState } from 'react';
 import {
     ArrowLeft,
@@ -31,7 +34,8 @@ import {
     CheckCircle,
     XCircle,
     PlayCircle,
-    Trash2
+    Trash2,
+    ChevronLeftCircleIcon
 } from 'lucide-react';
 
 interface Batch {
@@ -89,6 +93,25 @@ interface Batch {
     };
     events: any[];
     schedules: any[];
+    // Feed consumption data
+    feed_statistics?: {
+        total_feed_consumed_kg: number;
+        total_feed_cost: number;
+        average_fcr: number;
+        cumulative_fcr: number;
+        feed_cost_per_bird: number;
+        consumption_records_count: number;
+        last_feeding_date?: string;
+        feed_efficiency_rating: string;
+    };
+    feed_variance?: {
+        average_variance_percentage: number;
+        over_consumption_days: number;
+        under_consumption_days: number;
+        perfect_consumption_days: number;
+        variance_trend: string;
+    };
+    recent_feed_consumptions?: any[];
 }
 
 interface Props {
@@ -100,7 +123,7 @@ const statusColors = {
     incubating: 'bg-yellow-100 text-yellow-800',
     hatching: 'bg-orange-100 text-orange-800',
     brooding: 'bg-purple-100 text-purple-800',
-    growing: 'bg-green-100 text-green-800',
+    growing: 'bg-emerald-100 text-emerald-800',
     laying: 'bg-emerald-100 text-emerald-800',
     completed: 'bg-gray-100 text-gray-800',
     terminated: 'bg-red-100 text-red-800',
@@ -117,6 +140,7 @@ export default function BatchShow({ batch }: Props) {
     const [isEditingFinancials, setIsEditingFinancials] = useState(false);
     const [showEventDialog, setShowEventDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
 
     // Form for updating counts and basic info
     const countForm = useForm({
@@ -223,7 +247,7 @@ export default function BatchShow({ batch }: Props) {
             incubating: 'bg-yellow-100 text-yellow-800',
             hatching: 'bg-orange-100 text-orange-800',
             brooding: 'bg-purple-100 text-purple-800',
-            growing: 'bg-green-100 text-green-800',
+            growing: 'bg-emerald-100 text-emerald-800',
             laying: 'bg-emerald-100 text-emerald-800',
             completed: 'bg-gray-100 text-gray-800',
             terminated: 'bg-red-100 text-red-800',
@@ -287,14 +311,23 @@ export default function BatchShow({ batch }: Props) {
                             <Button
                                 onClick={() => handleStatusChange(getNextStatus(batch.status.value)!)}
                                 disabled={statusForm.processing}
-                                className="bg-green-600 hover:bg-green-700"
+                                className="bg-emerald-600 hover:bg-emerald-700"
                             >
                                 <PlayCircle className="mr-2 h-4 w-4" />
                                 {getStatusTransitionLabel(batch.status.value, getNextStatus(batch.status.value)!)}
                             </Button>
                         )}
 
+                        {/* Smart Recommendations Button */}
+                        <Link href={`/batch-incubator/smart-scheduling/batches/${batch.id}/recommendations`}
+                            className=""
+                            // onClick={() => setShowRecommendationsModal(true)}
+                        >
+                            <Button variant="outline">  <TrendingUp className="mr-2 h-4 w-4" />
+                                Smart Recommendations</Button>
 
+
+                        </Link>
 
                         {/* Add Event Dialog */}
                         <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
@@ -638,11 +671,11 @@ export default function BatchShow({ batch }: Props) {
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className={`text-2xl font-bold ${batch?.profit_loss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                ${batch?.profit_loss?.toLocaleString()}
+                            <div className={`text-2xl font-bold ${batch?.profit_loss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {formatRWF(batch?.profit_loss)}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                ${batch?.total_cost?.toLocaleString()} total cost
+                                {formatRWF(batch?.total_cost)} total cost
                             </p>
                         </CardContent>
                     </Card>
@@ -740,7 +773,7 @@ export default function BatchShow({ batch }: Props) {
 
                                         {batch.avg_humidity && (
                                             <div className="flex items-center space-x-2">
-                                                <Droplets className="h-4 w-4 text-green-500" />
+                                                <Droplets className="h-4 w-4 text-emerald-500" />
                                                 <div>
                                                     <p className="text-sm font-medium">{batch.avg_humidity}%</p>
                                                     <p className="text-xs text-muted-foreground">Average Humidity</p>
@@ -750,6 +783,135 @@ export default function BatchShow({ batch }: Props) {
                                     </div>
                                 </CardContent>
                             </Card>
+                        )}
+
+                        {/* Feed Performance */}
+                        {batch.feed_statistics && (
+                            <ErrorBoundary>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Feed Performance</CardTitle>
+                                        <CardDescription>Feed consumption statistics and efficiency metrics</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-muted-foreground">Total Feed Consumed</h4>
+                                                    <p className="text-lg font-medium">
+                                                        {batch.feed_statistics.total_feed_consumed_kg ? batch.feed_statistics.total_feed_consumed_kg.toFixed(1) : '0.0'} kg
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-muted-foreground">Feed Conversion Ratio</h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-lg font-medium">
+                                                            {batch.feed_statistics.average_fcr ? batch.feed_statistics.average_fcr.toFixed(2) : '0.00'}
+                                                        </p>
+                                                        {batch.feed_statistics.feed_efficiency_rating && (
+                                                            <Badge
+                                                                className={`text-xs ${batch.feed_statistics.feed_efficiency_rating === 'excellent' ? 'bg-emerald-100 text-emerald-700' :
+                                                                        batch.feed_statistics.feed_efficiency_rating === 'very_good' ? 'bg-emerald-100 text-emerald-700' :
+                                                                            batch.feed_statistics.feed_efficiency_rating === 'good' ? 'bg-yellow-100 text-yellow-700' :
+                                                                                batch.feed_statistics.feed_efficiency_rating === 'acceptable' ? 'bg-orange-100 text-orange-700' :
+                                                                                    'bg-red-100 text-red-700'
+                                                                    }`}
+                                                            >
+                                                                {batch.feed_statistics.feed_efficiency_rating.replace('_', ' ')}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-muted-foreground">Feed Cost per Bird</h4>
+                                                    <p className="text-lg font-medium">{formatRWF(batch.feed_statistics.feed_cost_per_bird || 0)}</p>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-muted-foreground">Feeding Records</h4>
+                                                    <p className="text-lg font-medium">{batch.feed_statistics.consumption_records_count || 0}</p>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-muted-foreground">Cumulative FCR</h4>
+                                                    <p className="text-lg font-medium">
+                                                        {batch.feed_statistics.cumulative_fcr ? batch.feed_statistics.cumulative_fcr.toFixed(2) : '0.00'}
+                                                    </p>
+                                                </div>
+                                                {batch.feed_statistics.last_feeding_date && (
+                                                    <div>
+                                                        <h4 className="text-sm font-medium text-muted-foreground">Last Feeding</h4>
+                                                        <p className="text-lg font-medium">{new Date(batch.feed_statistics.last_feeding_date).toLocaleDateString()}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {batch.feed_variance && (
+                                                <>
+                                                    <Separator />
+                                                    <div>
+                                                        <h4 className="text-sm font-medium mb-3">Feed Consumption Variance Analysis</h4>
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Average Variance</p>
+                                                                <p className="font-medium">
+                                                                    {batch.feed_variance.average_variance_percentage ? batch.feed_variance.average_variance_percentage.toFixed(1) : '0.0'}%
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Over Consumption Days</p>
+                                                                <p className="font-medium text-red-600">{batch.feed_variance.over_consumption_days || 0}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Perfect Days</p>
+                                                                <p className="font-medium text-emerald-600">{batch.feed_variance.perfect_consumption_days || 0}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Trend</p>
+                                                                <Badge variant="outline">{batch.feed_variance.variance_trend || 'unknown'}</Badge>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {batch.recent_feed_consumptions && batch.recent_feed_consumptions.length > 0 && (
+                                                <>
+                                                    <Separator />
+                                                    <div>
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h4 className="text-sm font-medium">Recent Feed Consumption</h4>
+                                                            <NavigationLink
+                                                                onClick={() => window.location.href = `/feed-management/consumption?batch_id=${batch.id}`}
+                                                                size="sm"
+                                                                variant="button"
+                                                            >
+                                                                View All Feed Records
+                                                            </NavigationLink>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {batch.recent_feed_consumptions.slice(0, 5).map((consumption: any) => (
+                                                                <div key={consumption.id} className="flex items-center justify-between p-2 border rounded">
+                                                                    <div>
+                                                                        <p className="text-sm font-medium">{consumption.feed_type || 'Unknown Feed'}</p>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            {consumption.consumption_date ? new Date(consumption.consumption_date).toLocaleDateString() : 'No date'}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="text-sm font-medium">
+                                                                            {consumption.amount_consumed_kg ? consumption.amount_consumed_kg.toFixed(1) : '0.0'} kg
+                                                                        </p>
+                                                                        <p className="text-xs text-muted-foreground">{formatRWF(consumption.cost || 0)}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </ErrorBoundary>
                         )}
 
                         {/* Financial Summary */}
@@ -788,11 +950,11 @@ export default function BatchShow({ batch }: Props) {
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
-                                            <p className="text-xl font-bold text-green-600">{formatRWF(batch?.revenue)}</p>
+                                            <p className="text-xl font-bold text-emerald-600">{formatRWF(batch?.revenue)}</p>
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Profit/Loss</h4>
-                                            <p className={`text-xl font-bold ${batch?.profit_loss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            <p className={`text-xl font-bold ${batch?.profit_loss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                                 {formatRWF(batch?.profit_loss)}
                                             </p>
                                         </div>
@@ -833,7 +995,7 @@ export default function BatchShow({ batch }: Props) {
                                                             <span className="text-xs text-red-600">Mortality: {event.mortality_count}</span>
                                                         )}
                                                         {(event.feed_cost > 0 || event.medication_cost > 0 || event.vaccination_cost > 0 || event.other_cost > 0) && (
-                                                            <span className="text-xs text-green-600">
+                                                            <span className="text-xs text-emerald-600">
                                                                 Cost: {formatRWF((event.feed_cost || 0) + (event.medication_cost || 0) + (event.vaccination_cost || 0) + (event.other_cost || 0))}
                                                             </span>
                                                         )}
@@ -955,6 +1117,52 @@ export default function BatchShow({ batch }: Props) {
 
                 </div>
             </div>
+
+            {/* Smart Recommendations Modal */}
+            <SmartRecommendationsModal
+                isOpen={showRecommendationsModal}
+                onClose={() => setShowRecommendationsModal(false)}
+                batch={batch}
+                onAddEvent={(type, data) => {
+                    // Map recommendation data to event form
+                    let eventType = type;
+                    let title = '';
+                    let description = '';
+                    let vaccine_name = '';
+                    let medication_name = '';
+
+                    if (data.protocol) {
+                        if (type === 'vaccination') {
+                            title = data.protocol.vaccine_name || data.protocol.name || 'Vaccination';
+                            vaccine_name = data.protocol.vaccine_name || '';
+                            description = data.protocol.description || data.recommendation_reason || '';
+                        } else if (type === 'medication') {
+                            title = data.protocol.medication_name || data.protocol.name || 'Medication';
+                            medication_name = data.protocol.medication_name || '';
+                            description = data.protocol.description || data.recommendation_reason || '';
+                        } else if (type === 'feed') {
+                            eventType = 'feeding';
+                            title = data.protocol.name || 'Feed Program';
+                            description = data.protocol.description || data.recommendation_reason || '';
+                        }
+                    }
+
+                    // Pre-fill the event form with recommendation data
+                    eventForm.setData({
+                        ...eventForm.data,
+                        event_type: eventType,
+                        title: title,
+                        description: description,
+                        vaccine_name: vaccine_name,
+                        medication_name: medication_name,
+                        notes: data.suggested ? 'Added from Smart Recommendations' : ''
+                    });
+
+                    // Close recommendations modal and open event dialog
+                    setShowRecommendationsModal(false);
+                    setShowEventDialog(true);
+                }}
+            />
         </AppLayout>
     );
 }

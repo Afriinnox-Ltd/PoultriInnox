@@ -178,7 +178,7 @@ export default function Dashboard({
                 {enabledModules.length === 0 && (
                     <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
                         <div className="max-w-md mx-auto">
-                            <Package className="h-16 w-16 text-green-600 mx-auto mb-4" />
+                            <Package className="h-16 w-16 text-emerald-600 mx-auto mb-4" />
                             <h2 className="text-2xl font-bold mb-2">Welcome to PoultriInnox</h2>
                             <p className="text-muted-foreground mb-6">
                                 Get started by activating modules that match your poultry operation needs.
@@ -200,9 +200,9 @@ export default function Dashboard({
                                 </Button>
                             </div>
 
-                            <Card className="border-green-200 bg-green-50">
+                            <Card className="border-emerald-200 bg-emerald-50">
                                 <CardContent className="">
-                                    <p className="text-sm text-green-800">
+                                    <p className="text-sm text-emerald-800">
                                         💡 <strong>Tip:</strong> Start with the Batch Incubator module if you're managing egg incubation and chicken raising.
                                     </p>
                                 </CardContent>
@@ -221,15 +221,15 @@ export default function Dashboard({
                                 const quickActions = getModuleQuickActions(module.slug);
 
                                 return (
-                                    <Card key={module.id} className="border-green-200 bg-white">
+                                    <Card key={module.id} className="border-emerald-200 bg-white">
                                         <CardHeader className="pb-4">
                                             <CardTitle className="flex items-center gap-3">
-                                                <div className="p-2 bg-green-600 rounded-lg">
+                                                <div className="p-2 bg-emerald-600 rounded-lg">
                                                     <IconComponent className="h-5 w-5 text-white" />
                                                 </div>
                                                 <div>
                                                     <h3 className="text-xl font-bold">{module.name}</h3>
-                                                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 text-xs">
+                                                    <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">
                                                         Active
                                                     </Badge>
                                                 </div>
@@ -240,19 +240,19 @@ export default function Dashboard({
                                         </CardHeader>
                                         <CardContent>
                                             <div className="">
-                                                {quickActions.length > 4 && (
+                                                {/* {quickActions.length > 4 && ( */}
                                                     <Button
                                                         asChild
                                                         variant="outline"
                                                         size="sm"
-                                                        className="w-full  border-green-300 text-green-700 hover:bg-green-50"
+                                                        className="w-full"
                                                     >
                                                         <Link href={`/${module.slug}`}>
                                                             Open
                                                             <ArrowRight className="h-3 w-3 ml-2" />
                                                         </Link>
                                                     </Button>
-                                                )}
+                                                { }
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -262,24 +262,24 @@ export default function Dashboard({
 
 
                         {/* Add More Modules Suggestion */}
-                        <Card className="border-green-200 bg-green-50">
+                        <Card className="border-emerald-200 bg-emerald-50">
                             <CardHeader>
-                                <CardTitle className="text-green-800">Expand Your System</CardTitle>
-                                <CardDescription className="text-green-700">
+                                <CardTitle className="text-emerald-800">Expand Your System</CardTitle>
+                                <CardDescription className="text-emerald-700">
                                     Discover more modules to enhance your poultry management capabilities
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm text-green-800 mb-2">
+                                        <p className="text-sm text-emerald-800 mb-2">
                                             <strong>Available modules:</strong> Feed Management, Health Monitoring, Financial Tracking, and Production Analytics
                                         </p>
-                                        <p className="text-sm text-green-700">
+                                        <p className="text-sm text-emerald-700">
                                             Each module integrates seamlessly with your existing setup and adds specialized functionality.
                                         </p>
                                     </div>
-                                    <Button asChild variant="outline" className="border-green-300 text-green-700 hover:bg-green-100">
+                                    <Button asChild variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-100">
                                         <Link href="/modules">
                                             Explore Modules
                                             <ArrowRight className="h-4 w-4 ml-2" />

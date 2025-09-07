@@ -30,10 +30,131 @@ import {
     DollarSign,
     Truck,
     Calendar,
-    Scale
+    Scale,
+    Info,
+    HelpCircle,
+    Warehouse,
+    ShieldCheck
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { toast } from 'sonner';
+import { NavigationHelper, navigateToFeedConsumption, navigateToFeedType, navigateToInventory } from '@/utils/navigation';
+import { NavigationLink, QuickNavigation, EntityLink } from '@/components/navigation/NavigationComponents';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Helper component for informative table headers with tooltips
+const InfoTableHead = ({ children, tooltip }: { children: React.ReactNode; tooltip: string }) => (
+  <TableHead>
+    <div className="flex items-center gap-1">
+      {children}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <HelpCircle className="h-3 w-3 text-gray-400 hover:text-gray-600 cursor-help" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="max-w-xs">{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  </TableHead>
+);
+
+// Helper component for complex data fields with explanations
+const InfoField = ({
+  value,
+  tooltip,
+  icon: Icon,
+  className = ""
+}: {
+  value: React.ReactNode;
+  tooltip: string;
+  icon?: any;
+  className?: string;
+}) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <div className={`cursor-help ${className}`}>
+        {Icon && <div className="flex items-center gap-1"><Icon className="h-3 w-3 text-gray-400" />{value}</div>}
+        {!Icon && value}
+      </div>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p className="max-w-xs">{tooltip}</p>
+    </TooltipContent>
+  </Tooltip>
+);
+
+// Explanation panel component for inventory
+const InventoryExplanationPanel = ({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) => (
+  <Card className={`mb-4 transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-95'}`}>
+    <CardHeader className="pb-2">
+      <div className="flex items-center justify-between">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Info className="h-4 w-4" />
+          Feed Inventory Guide
+        </CardTitle>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="h-6 w-6 p-0"
+        >
+          {isOpen ? '−' : '+'}
+        </Button>
+      </div>
+    </CardHeader>
+    {isOpen && (
+      <CardContent className="pt-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+          <div className="space-y-2">
+            <h4 className="font-semibold text-emerald-600 flex items-center gap-1">
+              <Package className="h-3 w-3" />
+              Basic Information
+            </h4>
+            <ul className="space-y-1 text-gray-600">
+              <li><strong>Feed Type:</strong> Type and category of feed stored</li>
+              <li><strong>Batch Number:</strong> Supplier's batch/lot identifier</li>
+              <li><strong>Internal Code:</strong> Your internal tracking code</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-emerald-600 flex items-center gap-1">
+              <Scale className="h-3 w-3" />
+              Quantity & Status
+            </h4>
+            <ul className="space-y-1 text-gray-600">
+              <li><strong>Current Quantity:</strong> Available stock amount</li>
+              <li><strong>Original Quantity:</strong> Initially received amount</li>
+              <li><strong>Reserved:</strong> Allocated for specific use</li>
+              <li><strong>Status:</strong> Active, Low Stock, Expired, or Depleted</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-purple-600 flex items-center gap-1">
+              <DollarSign className="h-3 w-3" />
+              Financial & Dates
+            </h4>
+            <ul className="space-y-1 text-gray-600">
+              <li><strong>Unit Cost:</strong> Price per kilogram</li>
+              <li><strong>Total Value:</strong> Current stock value</li>
+              <li><strong>Expiry Date:</strong> Use-by date for quality</li>
+              <li><strong>Storage:</strong> Physical location in warehouse</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-emerald-50 rounded-lg">
+          <p className="text-xs text-emerald-700 flex items-center gap-1">
+            <Info className="h-3 w-3" />
+            <strong>Tip:</strong> Click on feed types to view detailed information. Use the consumption link to see how inventory is being used.
+          </p>
+        </div>
+      </CardContent>
+    )}
+  </Card>
+);
 
 interface FeedInventory {
     id: number;
@@ -110,13 +231,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function FeedInventoryIndex({ 
-    inventory = [], 
-    feedTypes = [], 
-    suppliers = [], 
-    availableBatchNumbers = [], 
-    stats = { total_items: 0, low_stock_items: 0, total_value: 0, expiring_soon: 0 }, 
-    filters 
+export default function FeedInventoryIndex({
+    inventory = [],
+    feedTypes = [],
+    suppliers = [],
+    availableBatchNumbers = [],
+    stats = { total_items: 0, low_stock_items: 0, total_value: 0, expiring_soon: 0 },
+    filters
 }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [feedTypeFilter, setFeedTypeFilter] = useState(filters?.feed_type || 'all');
@@ -126,6 +247,7 @@ export default function FeedInventoryIndex({
     const [showAdjustDialog, setShowAdjustDialog] = useState(false);
     const [selectedItem, setSelectedItem] = useState<FeedInventory | null>(null);
     const [allowNewBatchNumber, setAllowNewBatchNumber] = useState(false);
+    const [showExplanationPanel, setShowExplanationPanel] = useState(false);
 
     // Form state for adding inventory
     const [newInventory, setNewInventory] = useState({
@@ -176,7 +298,7 @@ export default function FeedInventoryIndex({
                 return 'text-gray-600';
             case 'active':
             default:
-                return 'text-green-600';
+                return 'text-emerald-600';
         }
     };
 
@@ -282,7 +404,16 @@ export default function FeedInventoryIndex({
                             <h1 className="text-2xl font-bold text-gray-900">Feed Inventory</h1>
                             <p className="text-gray-600">Manage your feed stock and monitor inventory levels</p>
                         </div>
-                        <Dialog open={showAddDialog} onOpenChange={(open) => {
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowExplanationPanel(!showExplanationPanel)}
+                            >
+                                <Info className="h-4 w-4 mr-2" />
+                                {showExplanationPanel ? 'Hide' : 'Show'} Guide
+                            </Button>
+                            <Dialog open={showAddDialog} onOpenChange={(open) => {
                             setShowAddDialog(open);
                             if (!open) {
                                 setAllowNewBatchNumber(false);
@@ -374,7 +505,7 @@ export default function FeedInventoryIndex({
                                                                     {batchNumber}
                                                                 </SelectItem>
                                                             ))}
-                                                            <SelectItem value="new_batch" className="font-semibold text-blue-600">
+                                                            <SelectItem value="new_batch" className="font-semibold text-emerald-600">
                                                                 + Create New Batch Number
                                                             </SelectItem>
                                                         </SelectContent>
@@ -529,7 +660,14 @@ export default function FeedInventoryIndex({
                                 </form>
                             </DialogContent>
                         </Dialog>
+                        </div>
                     </div>
+
+                    {/* Inventory Guide */}
+                    <InventoryExplanationPanel
+                        isOpen={showExplanationPanel}
+                        onToggle={() => setShowExplanationPanel(!showExplanationPanel)}
+                    />
 
                     {/* Filters */}
                     <Card>
@@ -603,14 +741,30 @@ export default function FeedInventoryIndex({
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Feed Type</TableHead>
-                                            <TableHead>Batch Number</TableHead>
-                                            <TableHead>Quantity</TableHead>
-                                            <TableHead>Unit Cost</TableHead>
-                                            <TableHead>Total Value</TableHead>
-                                            <TableHead>Expiry Date</TableHead>
-                                            <TableHead>Storage</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <InfoTableHead tooltip="Type and category of feed. Click on feed names to view detailed nutritional information.">
+                                                Feed Type
+                                            </InfoTableHead>
+                                            <InfoTableHead tooltip="Supplier's batch/lot number for tracking. Internal codes help with your own inventory system.">
+                                                Batch Number
+                                            </InfoTableHead>
+                                            <InfoTableHead tooltip="Current available quantity vs original received amount. Reserved shows allocated stock.">
+                                                Quantity
+                                            </InfoTableHead>
+                                            <InfoTableHead tooltip="Cost per unit (kilogram) of feed as purchased from supplier.">
+                                                Unit Cost
+                                            </InfoTableHead>
+                                            <InfoTableHead tooltip="Total value of current stock (quantity × unit cost).">
+                                                Total Value
+                                            </InfoTableHead>
+                                            <InfoTableHead tooltip="Use-by date for quality. Color coding: red = expired soon, orange = expiring, green = fresh.">
+                                                Expiry Date
+                                            </InfoTableHead>
+                                            <InfoTableHead tooltip="Physical storage location in warehouse, including specific sections or bays.">
+                                                Storage
+                                            </InfoTableHead>
+                                            <InfoTableHead tooltip="Current inventory status: Active = normal, Low Stock = below reorder point, Expired = past use-by date, Depleted = empty.">
+                                                Status
+                                            </InfoTableHead>
                                             <TableHead>Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -618,84 +772,158 @@ export default function FeedInventoryIndex({
                                         {filteredInventory.map((item) => (
                                             <TableRow key={item.id}>
                                                 <TableCell>
-                                                    <div>
-                                                        <div className="font-medium">{item.feed_type.name}</div>
-                                                        <div className="text-sm text-gray-500">{item.feed_type.category}</div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <div className="font-medium">{item.batch_number}</div>
-                                                        {item.internal_code && (
-                                                            <div className="text-sm text-gray-500">{item.internal_code}</div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <div className="font-medium">{item.quantity} {item.unit_of_measure}</div>
-                                                        <div className="text-sm text-gray-500">
-                                                            Original: {item.original_quantity} {item.unit_of_measure}
-                                                        </div>
-                                                        {item.reserved_quantity > 0 && (
-                                                            <div className="text-sm text-orange-600">
-                                                                Reserved: {item.reserved_quantity} {item.unit_of_measure}
+                                                    <InfoField
+                                                        value={
+                                                            <div>
+                                                                {item.feed_type.name}
+                                                                <div className="text-sm text-gray-500">{item.feed_type.category}</div>
+                                                                {item.feed_type.protein_content && (
+                                                                    <div className="text-xs text-emerald-600">{item.feed_type.protein_content}% protein</div>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="font-medium">
-                                                        {item.currency} {Number(item.cost_per_unit || 0).toFixed(2)}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="font-medium">
-                                                        {item.currency} {Number(item.total_cost || 0).toFixed(2)}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <div className="font-medium">{item.formatted_expiry_date || item.expiry_date}</div>
-                                                        <div className={`text-sm ${item.days_until_expiry < 7 ? 'text-red-600' :
-                                                            item.days_until_expiry < 30 ? 'text-orange-600' : 'text-green-600'}`}>
-                                                            {item.days_until_expiry} days left
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <div className="font-medium">{item.storage_location}</div>
-                                                        {item.warehouse_section && (
-                                                            <div className="text-sm text-gray-500">{item.warehouse_section}</div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant={getStatusBadgeVariant(item.status)}>
-                                                        {item.status.replace('_', ' ')}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex space-x-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                setSelectedItem(item);
-                                                                setShowAdjustDialog(true);
-                                                            }}
-                                                        >
-                                                            <Scale className="h-4 w-4" />
-                                                        </Button>
+                                                        }
+                                                        tooltip={`${item.feed_type.name} is a ${item.feed_type.category} feed${item.feed_type.protein_content ? ` with ${item.feed_type.protein_content}% protein content` : ''}. Click to view detailed nutritional information and feeding guidelines.`}
 
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleDelete(item.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <InfoField
+                                                        value={
+                                                            <div>
+                                                                {item.batch_number && (
+                                                                    <div className="font-medium">{item.batch_number}</div>
+                                                                )}
+                                                                {item.internal_code && (
+                                                                    <div className="text-sm text-gray-500">{item.internal_code}</div>
+                                                                )}
+                                                            </div>
+                                                        }
+                                                        tooltip={`Batch: ${item.batch_number} - Supplier's tracking number for this specific production lot. ${item.internal_code ? `Internal code: ${item.internal_code} for your inventory system.` : 'No internal code assigned.'} Use for quality control and traceability.`}
+
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <InfoField
+                                                        value={
+                                                            <div>
+                                                                <div className="font-medium">{item.quantity} {item.unit_of_measure}</div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    Original: {item.original_quantity} {item.unit_of_measure}
+                                                                </div>
+                                                                {item.reserved_quantity > 0 && (
+                                                                    <div className="text-sm text-orange-600">
+                                                                        Reserved: {item.reserved_quantity} {item.unit_of_measure}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        }
+                                                        tooltip={`Current available: ${item.quantity} ${item.unit_of_measure}. Originally received: ${item.original_quantity} ${item.unit_of_measure}. ${item.reserved_quantity > 0 ? `${item.reserved_quantity} ${item.unit_of_measure} is reserved for specific batches or schedules.` : 'No reservations on this stock.'} Available for consumption: ${item.quantity - item.reserved_quantity} ${item.unit_of_measure}.`}
+
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <InfoField
+                                                        value={
+                                                            <div className="font-medium">
+                                                                {item.currency} {Number(item.cost_per_unit || 0).toFixed(2)}
+                                                            </div>
+                                                        }
+                                                        tooltip={`Cost per ${item.unit_of_measure}: ${item.currency} ${Number(item.cost_per_unit || 0).toFixed(2)}. This is the purchase price from supplier, used to calculate total inventory value and feeding costs.`}
+
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <InfoField
+                                                        value={
+                                                            <div className="font-medium">
+                                                                {item.currency} {Number(item.total_cost || 0).toFixed(2)}
+                                                            </div>
+                                                        }
+                                                        tooltip={`Total value of current stock: ${item.currency} ${Number(item.total_cost || 0).toFixed(2)} (${item.quantity} ${item.unit_of_measure} × ${item.currency} ${Number(item.cost_per_unit || 0).toFixed(2)}). Represents current inventory investment.`}
+
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <InfoField
+                                                        value={
+                                                            <div>
+                                                                <div className="font-medium">{item.formatted_expiry_date || item.expiry_date}</div>
+                                                                <div className={`text-sm ${item.days_until_expiry < 7 ? 'text-red-600' :
+                                                                    item.days_until_expiry < 30 ? 'text-orange-600' : 'text-emerald-600'}`}>
+                                                                    {item.days_until_expiry} days left
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                        tooltip={`Expires on: ${item.formatted_expiry_date || item.expiry_date}. ${item.days_until_expiry} days remaining. ${item.days_until_expiry < 7 ? 'URGENT: Use immediately or discard.' : item.days_until_expiry < 30 ? 'CAUTION: Use soon to avoid waste.' : 'GOOD: Fresh stock with adequate shelf life.'} Feed quality degrades after expiry.`}
+                                                      
+                                                        className={item.days_until_expiry < 7 ? 'text-red-600' : item.days_until_expiry < 30 ? 'text-orange-600' : 'text-emerald-600'}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <InfoField
+                                                        value={
+                                                            <div>
+                                                                <div className="font-medium">{item.storage_location}</div>
+                                                                {item.warehouse_section && (
+                                                                    <div className="text-sm text-gray-500">{item.warehouse_section}</div>
+                                                                )}
+                                                            </div>
+                                                        }
+                                                        tooltip={`Stored at: ${item.storage_location}${item.warehouse_section ? `, Section: ${item.warehouse_section}` : ''}. This helps locate the feed quickly and maintain proper storage conditions. Ensure proper temperature and humidity for feed quality.`}
+
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <InfoField
+                                                        value={
+                                                            <Badge variant={getStatusBadgeVariant(item.status)}>
+                                                                {item.status.replace('_', ' ')}
+                                                            </Badge>
+                                                        }
+                                                        tooltip={`Status: ${item.status.replace('_', ' ').toUpperCase()}. ${
+                                                            item.status === 'active' ? 'Normal stock level, ready for use.' :
+                                                            item.status === 'low_stock' ? `Below reorder point (${item.reorder_point} ${item.unit_of_measure}). Consider ordering more.` :
+                                                            item.status === 'expired' ? 'Past expiry date. Do not use for feeding.' :
+                                                            item.status === 'depleted' ? 'Stock is empty. Reorder immediately.' :
+                                                            'Unknown status.'
+                                                        }`}
+                                                        icon={ShieldCheck}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col space-y-2">
+                                                        <div className="flex space-x-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    setSelectedItem(item);
+                                                                    setShowAdjustDialog(true);
+                                                                }}
+                                                            >
+                                                                <Scale className="h-4 w-4" />
+                                                            </Button>
+
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(item.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+
+                                                        {/* Quick Navigation */}
+                                                        <div className="flex gap-1">
+                                                            <NavigationLink
+                                                                onClick={() => navigateToFeedConsumption(null, item.id)}
+                                                                size="sm"
+                                                                variant="button"
+                                                                className="text-xs"
+                                                            >
+                                                                Consumption
+                                                            </NavigationLink>
+                                                        </div>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>

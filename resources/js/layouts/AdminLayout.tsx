@@ -10,7 +10,8 @@ import {
     BarChart3,
     Menu,
     Bell,
-    LogOut
+    LogOut,
+    Shield
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -22,7 +23,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const navigation = [
         { name: 'Dashboard', href: '/admin', icon: BarChart3 },
         { name: 'Feed Templates', href: '/admin/feed-templates', icon: Database },
+        { name: 'Smart Scheduling', href: '/admin/smart-scheduling', icon: Shield },
         { name: 'Users', href: '/admin/users', icon: Users },
+        { name: 'Marketplace', href: '/admin/marketplace', icon: ShoppingCart },
     ];
 
     return (
