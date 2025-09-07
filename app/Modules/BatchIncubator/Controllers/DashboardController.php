@@ -9,6 +9,7 @@ use App\Modules\BatchIncubator\Models\BatchSchedule;
 use App\Modules\BatchIncubator\Enums\BatchStatus;
 use App\Modules\BatchIncubator\Enums\IncubatorStatus;
 use App\Modules\BatchIncubator\Enums\ScheduleStatus;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -19,37 +20,39 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        // Get batch statistics
+        $user = Auth::user();
+        
+        // Get batch statistics - only show accessible batches
         $batchStats = [
-            'total_batches' => Batch::count(),
-            'active_batches' => Batch::whereIn('status', [
+            'total_batches' => Batch::accessibleBy($user)->count(),
+            'active_batches' => Batch::accessibleBy($user)->whereIn('status', [
                 BatchStatus::INCUBATING,
                 BatchStatus::GROWING,
                 BatchStatus::LAYING
             ])->count(),
-            'total_birds' => Batch::whereIn('status', [
+            'total_birds' => Batch::accessibleBy($user)->whereIn('status', [
                 BatchStatus::GROWING,
                 BatchStatus::LAYING
             ])->sum('current_count'),
-            'daily_production' => Batch::where('status', BatchStatus::LAYING)
+            'daily_production' => Batch::accessibleBy($user)->where('status', BatchStatus::LAYING)
                 ->sum('avg_daily_production'),
-            'average_survival_rate' => Batch::whereNotNull('mortality_rate')
+            'average_survival_rate' => Batch::accessibleBy($user)->whereNotNull('mortality_rate')
                 ->avg(DB::raw('(100 - mortality_rate)')),
         ];
 
-        // Get incubator statistics
+        // Get incubator statistics - only show accessible incubators
         $incubatorStats = [
-            'total_incubators' => Incubator::count(),
-            'active_incubators' => Incubator::where('status', IncubatorStatus::RUNNING)->count(),
-            'idle_incubators' => Incubator::where('status', IncubatorStatus::IDLE)->count(),
-            'total_capacity' => Incubator::sum('capacity'),
-            'current_utilization' => Incubator::sum('current_load'),
-            'average_temperature' => Incubator::whereNotNull('current_temperature')->avg('current_temperature'),
-            'average_humidity' => Incubator::whereNotNull('current_humidity')->avg('current_humidity'),
+            'total_incubators' => Incubator::accessibleBy($user)->count(),
+            'active_incubators' => Incubator::accessibleBy($user)->where('status', IncubatorStatus::RUNNING)->count(),
+            'idle_incubators' => Incubator::accessibleBy($user)->where('status', IncubatorStatus::IDLE)->count(),
+            'total_capacity' => Incubator::accessibleBy($user)->sum('capacity'),
+            'current_utilization' => Incubator::accessibleBy($user)->sum('current_load'),
+            'average_temperature' => Incubator::accessibleBy($user)->whereNotNull('current_temperature')->avg('current_temperature'),
+            'average_humidity' => Incubator::accessibleBy($user)->whereNotNull('current_humidity')->avg('current_humidity'),
         ];
 
-        // Get recent batches for overview
-        $recentBatches = Batch::with(['incubator', 'manager'])
+        // Get recent batches for overview - only accessible batches
+        $recentBatches = Batch::accessibleBy($user)->with(['incubator', 'manager'])
             ->latest()
             ->limit(5)
             ->get()
@@ -68,8 +71,8 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Get incubator status overview
-        $incubatorOverview = Incubator::get(['id', 'name', 'status', 'current_load', 'capacity'])
+        // Get incubator status overview - only accessible incubators
+        $incubatorOverview = Incubator::accessibleBy($user)->get(['id', 'name', 'status', 'current_load', 'capacity'])
             ->map(function ($incubator) {
                 return [
                     'id' => $incubator->id,
@@ -86,8 +89,8 @@ class DashboardController extends Controller
         // Get upcoming alerts and notifications
         $alerts = collect();
 
-        // Maintenance due alerts
-        $maintenanceDue = Incubator::whereDate('next_maintenance', '<=', now()->addDays(7))
+        // Maintenance due alerts - only for accessible incubators
+        $maintenanceDue = Incubator::accessibleBy($user)->whereDate('next_maintenance', '<=', now()->addDays(7))
             ->get(['id', 'name', 'next_maintenance'])
             ->map(function ($incubator) {
                 return [
@@ -100,8 +103,8 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Hatch date approaching alerts
-        $hatchingSoon = Batch::where('status', BatchStatus::INCUBATING)
+        // Hatch date approaching alerts - only for accessible batches
+        $hatchingSoon = Batch::accessibleBy($user)->where('status', BatchStatus::INCUBATING)
             ->whereDate('hatch_date', '<=', now()->addDays(10))
             ->get(['id', 'name', 'hatch_date'])
             ->map(function ($batch) {
@@ -115,8 +118,8 @@ class DashboardController extends Controller
                 ];
             });
 
-        // High mortality alerts
-        $highMortality = Batch::where('mortality_rate', '>', 5)
+        // High mortality alerts - only for accessible batches
+        $highMortality = Batch::accessibleBy($user)->where('mortality_rate', '>', 5)
             ->whereIn('status', [BatchStatus::GROWING, BatchStatus::LAYING])
             ->get(['id', 'name', 'mortality_rate'])
             ->map(function ($batch) {
@@ -135,8 +138,10 @@ class DashboardController extends Controller
                         ->sortByDesc('priority')
                         ->take(5);
 
-        // Get upcoming schedules
+        // Get upcoming schedules - only for accessible batches
+        $accessibleBatchIds = Batch::accessibleBy($user)->pluck('id');
         $upcomingSchedules = BatchSchedule::with(['batch', 'assignedTo'])
+            ->whereIn('batch_id', $accessibleBatchIds)
             ->where('status', ScheduleStatus::PENDING)
             ->whereDate('scheduled_date', '>=', now())
             ->whereDate('scheduled_date', '<=', now()->addDays(7))

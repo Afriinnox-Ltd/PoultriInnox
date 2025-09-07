@@ -222,7 +222,7 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
                                     {users.filter(u => u.email_verified_at).length}
                                 </p>
                             </div>
-                            <Check className="h-8 w-8 text-green-600" />
+                            <Check className="h-8 w-8 text-emerald-600" />
                         </div>
                     </CardContent>
                 </Card>
@@ -246,7 +246,7 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
                                 <p className="text-sm font-medium text-muted-foreground">Active Filter</p>
                                 <p className="text-2xl font-bold">{filteredUsers.length}</p>
                             </div>
-                            <Search className="h-8 w-8 text-blue-600" />
+                            <Search className="h-8 w-8 text-emerald-600" />
                         </div>
                     </CardContent>
                 </Card>

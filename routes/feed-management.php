@@ -24,6 +24,8 @@ Route::prefix('feed-management')->name('feed-management.')->middleware(['auth', 
     Route::get('/api/programs', [FeedManagementController::class, 'getPrograms'])->name('api.programs');
     Route::get('/api/feed-types', [FeedManagementController::class, 'getFeedTypes'])->name('api.feed-types');
     Route::get('/api/incubator-data', [FeedManagementController::class, 'getIncubatorData'])->name('api.incubator-data');
+    Route::get('/api/batch-details/{batch}', [FeedManagementController::class, 'getBatchDetails'])->name('api.batch-details');
+    Route::get('/api/test-batches', [FeedConsumptionController::class, 'testBatches'])->name('api.test-batches');
     Route::post('/api/calculate-requirements', [FeedManagementController::class, 'calculateRequirements'])->name('api.calculate-requirements');
 
     // Feed Inventory Management

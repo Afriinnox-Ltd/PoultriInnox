@@ -66,4 +66,48 @@ Route::prefix('admin')->middleware(['auth', 'admin.access'])->name('admin.')->gr
         Route::get('/user/{user}/modules', [App\Http\Controllers\Admin\UserModuleController::class, 'getUserModules'])->name('user-modules');
     });
 
+    // Protocol Management (Smart Scheduling Admin)
+    Route::prefix('smart-scheduling')->name('smart-scheduling.')->group(function () {
+        Route::get('/', function () {
+            return app(\App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class)->index();
+        })->name('index');
+        
+        // Statistics
+        Route::get('/statistics', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'getStatistics'])->name('statistics');
+        
+        // Protocol Management
+        Route::prefix('protocols')->name('protocols.')->group(function () {
+            // Medication Protocol Management
+            Route::prefix('medication')->name('medication.')->group(function () {
+                Route::get('/create', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'createMedication'])->name('create');
+                Route::post('/', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'storeMedication'])->name('store');
+                Route::get('/{medication}/edit', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'editMedication'])->name('edit');
+                Route::put('/{medication}', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'updateMedication'])->name('update');
+                Route::delete('/{medication}', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'destroy'])->name('destroy')->defaults('type', 'medication');
+                
+                // Upload routes
+                Route::get('/upload', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'showUpload'])->name('upload')->defaults('type', 'medication');
+                Route::post('/upload', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'processUpload'])->name('upload.process')->defaults('type', 'medication');
+                Route::get('/template', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'downloadTemplate'])->name('template')->defaults('type', 'medication');
+            });
+
+            // Vaccination Protocol Management
+            Route::prefix('vaccination')->name('vaccination.')->group(function () {
+                Route::get('/create', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'createVaccination'])->name('create');
+                Route::post('/', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'storeVaccination'])->name('store');
+                Route::get('/{vaccination}/edit', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'editVaccination'])->name('edit');
+                Route::put('/{vaccination}', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'updateVaccination'])->name('update');
+                Route::delete('/{vaccination}', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'destroy'])->name('destroy')->defaults('type', 'vaccination');
+                
+                // Upload routes
+                Route::get('/upload', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'showUpload'])->name('upload')->defaults('type', 'vaccination');
+                Route::post('/upload', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'processUpload'])->name('upload.process')->defaults('type', 'vaccination');
+                Route::get('/template', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'downloadTemplate'])->name('template')->defaults('type', 'vaccination');
+            });
+
+            // Toggle status routes
+            Route::patch('{type}/{id}/status', [App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController::class, 'toggleStatus'])->name('toggle-status');
+        });
+    });
+
 });

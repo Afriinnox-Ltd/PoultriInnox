@@ -11,7 +11,7 @@ export default function Dashboard() {
             title: 'Total Users',
             value: '1,234',
             icon: Users,
-            color: 'bg-blue-500'
+            color: 'bg-emerald-500'
         }
     ];
 

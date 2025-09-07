@@ -65,6 +65,7 @@ class DatabaseSeeder extends Seeder
             BatchSeeder::class,
             BatchEventSeeder::class,
             BatchScheduleSeeder::class,
+            SmartSchedulingSeeder::class, // Add smart scheduling protocols
         ]);
     }
 }

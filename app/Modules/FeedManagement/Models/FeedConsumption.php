@@ -3,7 +3,7 @@
 namespace App\Modules\FeedManagement\Models;
 
 use App\Models\User;
-use App\Models\Schedule;
+use App\Modules\BatchIncubator\Models\BatchSchedule;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,8 +20,7 @@ class FeedConsumption extends Model
         'consumption_date',
         'planned_amount',
         'actual_amount',
-        'variance_amount',
-        'variance_percentage',
+        // Note: variance_amount, variance_percentage, cost_per_bird are virtual columns - do not include
         'unit_of_measure',
         'bird_count',
         'average_bird_weight',
@@ -32,7 +31,6 @@ class FeedConsumption extends Model
         'cumulative_fcr',
         'feed_cost_per_unit',
         'total_feed_cost',
-        'cost_per_bird',
         'currency',
         'temperature',
         'humidity',
@@ -51,9 +49,7 @@ class FeedConsumption extends Model
         'actual_waste_kg',
         'feed_conversion_actual',
         'recorded_by',
-        'verified_by',
-        'created_by',
-        'updated_by'
+        'verified_by'
     ];
 
     protected $casts = [
@@ -116,7 +112,7 @@ class FeedConsumption extends Model
      */
     public function schedule(): BelongsTo
     {
-        return $this->belongsTo(Schedule::class);
+        return $this->belongsTo(BatchSchedule::class);
     }
 
     /**

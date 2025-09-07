@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,17 @@ import {
     Repeat,
     User,
     Package,
-    CheckCircle
+    CheckCircle,
+    Brain,
+    Pill,
+    Syringe,
+    Utensils,
+    Target,
+    Lightbulb
 } from 'lucide-react';
 import { Link, Head, useForm } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
+import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -72,6 +79,36 @@ interface ScheduleCreateProps {
         label: string;
         description?: string;
     }>;
+}
+
+interface Recommendation {
+    timing?: any;
+    dose_info?: any;
+    booster_requirements?: any;
+    protocol?: any;
+    program?: any;
+    compatibility_score?: number;
+    urgency_level?: string;
+    priority_level?: string;
+    recommendation_reason: string;
+    dosage_info?: any;
+    timing_info?: any;
+    cost_estimate?: number;
+    expected_benefits?: string[];
+    implementation_notes?: string;
+}
+
+interface SmartRecommendationsData {
+    success: boolean;
+    event_type: string;
+    recommendations: Recommendation[];
+    batch_info: {
+        id: number;
+        name: string;
+        age_days: number;
+        breed: string;
+        current_count: number;
+    };
 }
 
 interface ScheduleData {
@@ -133,6 +170,11 @@ export default function ScheduleCreate({
     const [emailResults, setEmailResults] = useState<typeof users>([]);
     const [showEmailResults, setShowEmailResults] = useState(false);
     const [selectedUser, setSelectedUser] = useState<typeof users[0] | null>(null);
+
+    // Smart recommendations state
+    const [smartRecommendations, setSmartRecommendations] = useState<Recommendation[]>([]);
+    const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+    const [showRecommendations, setShowRecommendations] = useState(false);
 
     // Email search handlers
     const handleEmailChange = (email: string) => {
@@ -203,6 +245,180 @@ export default function ScheduleCreate({
         if (eventType) {
             setData('title', eventType.label);
         }
+
+        // Fetch smart recommendations for relevant event types
+        if (['feeding', 'vaccination', 'medication'].includes(value) && data.batch_id) {
+            fetchSmartRecommendations(data.batch_id, value);
+        } else {
+            setSmartRecommendations([]);
+            setShowRecommendations(false);
+        }
+    };
+
+    // Function to fetch smart recommendations
+    const fetchSmartRecommendations = async (batchId: string, eventType: string) => {
+        if (!batchId || !eventType) return;
+
+        setLoadingRecommendations(true);
+        try {
+            const response = await fetch(
+                `/batch-incubator/smart-scheduling/batches/${batchId}/recommendations-by-type?event_type=${eventType}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    },
+                }
+            );
+
+            if (response.ok) {
+                const data: SmartRecommendationsData = await response.json();
+                if (data.success && data.recommendations.length > 0) {
+                    setSmartRecommendations(data.recommendations);
+                    setShowRecommendations(true);
+                    toast.success(`Found ${data.recommendations.length} smart recommendations for ${eventType}`);
+                } else {
+                    setSmartRecommendations([]);
+                    setShowRecommendations(false);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching smart recommendations:', error);
+            toast.error('Failed to fetch smart recommendations');
+        } finally {
+            setLoadingRecommendations(false);
+        }
+    };
+
+    // Update handleBatchChange to also trigger recommendations
+    const handleBatchChangeWithRecommendations = (batchId: string) => {
+        handleBatchChange(batchId);
+
+        // Fetch recommendations if event type is already selected
+        if (['feeding', 'vaccination', 'medication'].includes(data.event_type) && batchId) {
+            fetchSmartRecommendations(batchId, data.event_type);
+        }
+    };
+
+    // Function to apply recommendation to form
+    const applyRecommendation = (recommendation: Recommendation) => {
+        // Update form based on recommendation type
+        if (recommendation.protocol) {
+            // For vaccination/medication
+            setData('description', recommendation.recommendation_reason);
+
+            // Fill Requirements & Notes with detailed information
+            let notesContent = '';
+            if (recommendation.implementation_notes) {
+                notesContent += `Implementation Notes: ${recommendation.implementation_notes}\n\n`;
+            }
+
+            // Add dosage information for medications
+            if (recommendation.dosage_info && data.event_type === 'medication') {
+                notesContent += `Dosage Information:\n`;
+                notesContent += `- Per Bird: ${recommendation.dosage_info.dosage_per_bird} ${recommendation.dosage_info.unit}\n`;
+                notesContent += `- Total Required: ${recommendation.dosage_info.total_dosage} ${recommendation.dosage_info.unit}\n`;
+                if (recommendation.dosage_info.administration_method) {
+                    notesContent += `- Administration: ${recommendation.dosage_info.administration_method}\n`;
+                }
+                notesContent += '\n';
+
+                // Set required quantity and unit for medications
+                setData('required_quantity', recommendation.dosage_info.total_dosage.toString());
+                setData('required_unit', recommendation.dosage_info.unit);
+            }
+
+            // Add dose information for vaccinations
+            if (recommendation.dose_info && data.event_type === 'vaccination') {
+                notesContent += `Vaccination Information:\n`;
+                notesContent += `- Total Doses Required: ${recommendation.dose_info.total_doses}\n`;
+                if (recommendation.dose_info.administration_method) {
+                    notesContent += `- Administration Method: ${recommendation.dose_info.administration_method}\n`;
+                }
+                if (recommendation.booster_requirements?.required) {
+                    notesContent += `- Booster Required: Yes, in ${recommendation.booster_requirements.interval} days\n`;
+                } else {
+                    notesContent += `- Booster Required: No\n`;
+                }
+                notesContent += '\n';
+
+                // Set required quantity and unit for vaccinations
+                setData('required_quantity', recommendation.dose_info.total_doses.toString());
+                setData('required_unit', 'doses');
+            }
+
+            // Add timing information
+            if (recommendation.timing) {
+                notesContent += `Timing:\n`;
+                if (recommendation.timing.recommended_start) {
+                    notesContent += `- Start: ${recommendation.timing.recommended_start}\n`;
+                }
+                if (recommendation.timing.duration) {
+                    notesContent += `- Duration: ${recommendation.timing.duration}\n`;
+                }
+                notesContent += '\n';
+            }
+
+            // Add timing info for vaccinations
+            if (recommendation.timing_info) {
+                notesContent += `Optimal Timing: ${recommendation.timing_info.recommended_age}\n\n`;
+            }
+
+            // Add cost estimate
+            if (recommendation.cost_estimate) {
+                notesContent += `Estimated Cost: $${recommendation.cost_estimate.toFixed(2)}\n\n`;
+            }
+
+            // Add expected benefits
+            if (recommendation.expected_benefits && recommendation.expected_benefits.length > 0) {
+                notesContent += `Expected Benefits:\n`;
+                recommendation.expected_benefits.forEach(benefit => {
+                    notesContent += `- ${benefit}\n`;
+                });
+                notesContent += '\n';
+            }
+
+            setData('notes', notesContent.trim());
+
+            // Set priority based on urgency
+            if (recommendation.urgency_level === 'high' || recommendation.priority_level === 'high') {
+                setData('priority', 2);
+                setData('is_critical', true);
+            } else if (recommendation.urgency_level === 'medium' || recommendation.priority_level === 'medium') {
+                setData('priority', 3);
+            }
+
+        } else if (recommendation.program) {
+            // For feed recommendations
+            setData('description', recommendation.recommendation_reason);
+
+            let notesContent = '';
+            if (recommendation.implementation_notes) {
+                notesContent += `Implementation Notes: ${recommendation.implementation_notes}\n\n`;
+            }
+
+            // Add expected benefits for feed programs
+            if (recommendation.expected_benefits && recommendation.expected_benefits.length > 0) {
+                notesContent += `Expected Benefits:\n`;
+                recommendation.expected_benefits.forEach(benefit => {
+                    notesContent += `- ${benefit}\n`;
+                });
+                notesContent += '\n';
+            }
+
+            // Add compatibility score
+            if (recommendation.compatibility_score) {
+                notesContent += `Compatibility Score: ${recommendation.compatibility_score}% match\n\n`;
+            }
+
+            setData('notes', notesContent.trim());
+            setData('required_unit', 'kg'); // Default unit for feed
+        }
+
+        toast.success('Recommendation applied to schedule form');
+        setShowRecommendations(false);
     };
 
     const getPriorityLabel = (priority: number) => {
@@ -219,7 +435,7 @@ export default function ScheduleCreate({
     const getPriorityColor = (priority: number) => {
         if (priority <= 2) return 'text-red-600';
         if (priority === 3) return 'text-yellow-600';
-        return 'text-green-600';
+        return 'text-emerald-600';
     };
 
     return (
@@ -290,7 +506,7 @@ export default function ScheduleCreate({
                                     <Label htmlFor="batch_id">Batch *</Label>
                                     <Select
                                         value={data.batch_id}
-                                        onValueChange={handleBatchChange}
+                                        onValueChange={handleBatchChangeWithRecommendations}
                                         required
                                     >
                                         <SelectTrigger>
@@ -350,6 +566,138 @@ export default function ScheduleCreate({
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Smart Recommendations */}
+                    {showRecommendations && (
+                        <Card className="border-l-4 border-l-blue-500">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Brain className="h-5 w-5 text-blue-600" />
+                                    Smart Recommendations
+                                    <Badge className="bg-blue-100 text-blue-800">
+                                        {smartRecommendations.length} suggestions
+                                    </Badge>
+                                </CardTitle>
+                                <CardDescription>
+                                   Suggestions based on your selected batch and event type
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {smartRecommendations.map((recommendation, index) => (
+                                    <div key={index} className="border rounded-lg p-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-2">
+                                                {data.event_type === 'vaccination' && <Syringe className="h-4 w-4 text-purple-600" />}
+                                                {data.event_type === 'medication' && <Pill className="h-4 w-4 text-blue-600" />}
+                                                {data.event_type === 'feeding' && <Utensils className="h-4 w-4 text-green-600" />}
+                                                <h4 className="font-semibold">
+                                                    {recommendation.protocol?.vaccine_name ||
+                                                     recommendation.protocol?.medication_name ||
+                                                     recommendation.program?.name ||
+                                                     'Recommendation'}
+                                                </h4>
+                                                {recommendation.compatibility_score && (
+                                                    <Badge className="bg-green-100 text-green-800">
+                                                        {recommendation.compatibility_score}% Match
+                                                    </Badge>
+                                                )}
+                                                {(recommendation.urgency_level === 'high' || recommendation.priority_level === 'high') && (
+                                                    <Badge className="bg-red-100 text-red-800">
+                                                        High Priority
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                onClick={() => applyRecommendation(recommendation)}
+                                                className="bg-blue-600 hover:bg-blue-700"
+                                            >
+                                                <Target className="h-4 w-4 mr-1" />
+                                                Apply
+                                            </Button>
+                                        </div>
+
+                                        <p className="text-gray-600 text-sm">
+                                            {recommendation.recommendation_reason}
+                                        </p>
+
+                                        {recommendation.expected_benefits && (
+                                            <div>
+                                                <h5 className="font-medium text-sm mb-1">Expected Benefits:</h5>
+                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                    {recommendation.expected_benefits.map((benefit, i) => (
+                                                        <li key={i}>{benefit}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {recommendation.timing_info && (
+                                            <div className="bg-gray-50 p-2 rounded text-sm">
+                                                <strong>Timing:</strong> {recommendation.timing_info.recommended_age}
+                                            </div>
+                                        )}
+
+                                        {recommendation.cost_estimate && (
+                                            <div className="bg-gray-50 p-2 rounded text-sm">
+                                                <strong>Estimated Cost:</strong> ${recommendation.cost_estimate.toFixed(2)}
+                                            </div>
+                                        )}
+
+                                        {/* Show what will be applied */}
+                                        <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm">
+                                            <h5 className="font-medium text-blue-800 mb-2 flex items-center">
+                                                <Info className="h-4 w-4 mr-1" />
+                                                Will be applied to form:
+                                            </h5>
+                                            <ul className="space-y-1 text-blue-700">
+                                                <li>✓ Description: {recommendation.recommendation_reason.substring(0, 50)}...</li>
+                                                {(recommendation.dosage_info || recommendation.dose_info) && (
+                                                    <li>✓ Required Quantity: {
+                                                        recommendation.dosage_info?.total_dosage ||
+                                                        recommendation.dose_info?.total_doses
+                                                    } {
+                                                        recommendation.dosage_info?.unit || 'doses'
+                                                    }</li>
+                                                )}
+                                                {(recommendation.urgency_level === 'high' || recommendation.priority_level === 'high') && (
+                                                    <li>✓ Priority: High (Critical)</li>
+                                                )}
+                                                <li>✓ Notes: Detailed implementation notes & benefits</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <div className="flex items-center justify-between mt-4">
+                                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                                        <Lightbulb className="h-4 w-4" />
+                                        <span>Click "Apply" to automatically fill form fields with recommendation details</span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowRecommendations(false)}
+                                    >
+                                        Hide Recommendations
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {loadingRecommendations && (
+                        <Card className="border-l-4 border-l-yellow-500">
+                            <CardContent className="p-4">
+                                <div className="flex items-center space-x-2">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                    <span className="text-sm text-gray-600">Loading smart recommendations...</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Schedule Details */}
                     <Card>
@@ -502,14 +850,14 @@ export default function ScheduleCreate({
 
                                     {/* Selected User Display */}
                                     {selectedUser && (
-                                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                                        <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-md">
                                             <div className="flex items-center gap-2">
-                                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                                <CheckCircle className="h-4 w-4 text-emerald-600" />
                                                 <div>
-                                                    <div className="text-sm font-medium text-green-800">
+                                                    <div className="text-sm font-medium text-emerald-800">
                                                         {selectedUser.name}
                                                     </div>
-                                                    <div className="text-xs text-green-600">
+                                                    <div className="text-xs text-emerald-600">
                                                         {selectedUser.email}
                                                     </div>
                                                 </div>
@@ -572,10 +920,10 @@ export default function ScheduleCreate({
 
                                         if (autoFilled) {
                                             return (
-                                                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                                <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-md">
                                                     <div className="flex items-center gap-2">
-                                                        <Info className="h-4 w-4 text-blue-600" />
-                                                        <div className="text-sm text-blue-800">
+                                                        <Info className="h-4 w-4 text-emerald-600" />
+                                                        <div className="text-sm text-emerald-800">
                                                             Auto-filled from selected batch
                                                         </div>
                                                     </div>

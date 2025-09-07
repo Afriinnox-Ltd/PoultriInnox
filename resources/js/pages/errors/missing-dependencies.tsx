@@ -93,11 +93,11 @@ export default function MissingDependencies({
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-emerald-900 mb-2">
                   What you need to do:
                 </h4>
-                <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                <ol className="text-sm text-emerald-800 space-y-1 list-decimal list-inside">
                   <li>Go to the Modules settings page</li>
                   <li>Enable the required modules listed above</li>
                   <li>Return to use the {module.name} module</li>

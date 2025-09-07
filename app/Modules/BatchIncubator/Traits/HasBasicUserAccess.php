@@ -3,6 +3,7 @@
 namespace App\Modules\BatchIncubator\Traits;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Trait for models that need basic user access control
@@ -14,6 +15,11 @@ trait HasBasicUserAccess
      */
     public function userHasAccess(User $user): bool
     {
+        // Admin users have access to everything
+        if ($user->isAdmin()) {
+            return true;
+        }
+
         // Check if user is the owner/manager
         if (isset($this->owner_id) && $this->owner_id === $user->id) {
             return true;
@@ -26,6 +32,31 @@ trait HasBasicUserAccess
         // Check authorized users array
         $authorizedUsers = $this->authorized_users ?? [];
         return in_array($user->id, $authorizedUsers);
+    }
+
+    /**
+     * Scope to filter results by user access
+     */
+    public function scopeAccessibleBy(Builder $query, User $user): Builder
+    {
+        // Admin users can see everything
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user) {
+            // Check owner/manager
+            if (in_array('owner_id', $this->fillable)) {
+                $q->orWhere('owner_id', $user->id);
+            }
+            
+            if (in_array('manager_id', $this->fillable)) {
+                $q->orWhere('manager_id', $user->id);
+            }
+
+            // Check authorized users array
+            $q->orWhereJsonContains('authorized_users', $user->id);
+        });
     }
 
     /**

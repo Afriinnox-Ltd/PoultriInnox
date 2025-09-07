@@ -246,7 +246,7 @@ export default function ScheduleEdit({
     const getPriorityColor = (priority: number) => {
         if (priority <= 2) return 'text-red-600';
         if (priority === 3) return 'text-yellow-600';
-        return 'text-green-600';
+        return 'text-emerald-600';
     };
 
     const canEditRecurrence = schedule.is_recurring && ['pending'].includes(schedule.status);
@@ -563,14 +563,14 @@ export default function ScheduleEdit({
 
                                     {/* Selected User Display */}
                                     {selectedUser && (
-                                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                                        <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-md">
                                             <div className="flex items-center gap-2">
-                                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                                <CheckCircle className="h-4 w-4 text-emerald-600" />
                                                 <div>
-                                                    <div className="text-sm font-medium text-green-800">
+                                                    <div className="text-sm font-medium text-emerald-800">
                                                         {selectedUser.name}
                                                     </div>
-                                                    <div className="text-xs text-green-600">
+                                                    <div className="text-xs text-emerald-600">
                                                         {selectedUser.email}
                                                     </div>
                                                 </div>

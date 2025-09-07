@@ -21,7 +21,7 @@ export default function Welcome() {
 
     const features = [
         {
-            icon: <Thermometer className="w-12 h-12 text-green-600" />,
+            icon: <Thermometer className="w-12 h-12 text-emerald-600" />,
             title: "Smart Temperature Control",
             description: "Automated temperature monitoring and control system ensures optimal brooding conditions 24/7 with real-time adjustments."
         },
@@ -31,7 +31,7 @@ export default function Welcome() {
             description: "Advanced health tracking system monitors chick behavior, feeding patterns, and vital signs to detect issues early."
         },
         {
-            icon: <BarChart3 className="w-12 h-12 text-green-600" />,
+            icon: <BarChart3 className="w-12 h-12 text-emerald-600" />,
             title: "Growth Analytics",
             description: "Comprehensive growth tracking with detailed analytics, weight monitoring, and performance metrics for optimal development."
         },
@@ -69,18 +69,18 @@ export default function Welcome() {
             </Head>
             <div className="bg-white min-h-screen">
                 {/* Hero Section */}
-                <div className="bg-gradient-to-br from-green-50 to-green-50 py-20">
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-50 py-20">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center">
                             <h1 className="text-5xl font-extrabold text-gray-900 mb-6">
-                                Welcome to <span className="text-green-600">Poultriinnox</span>
+                                Welcome to <span className="text-emerald-600">Poultriinnox</span>
                             </h1>
                             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
                                 Revolutionary IoT-powered chick brooding system that combines smart technology with proven farming practices.
                                 Maximize your chick survival rates while minimizing manual labor through automated monitoring and control.
                             </p>
                             <div className="flex justify-center space-x-4 mb-12">
-                                <Link href="/store" className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center space-x-2">
+                                <Link href="/store" className="bg-emerald-600 text-white px-8 py-4 rounded-lg hover:bg-emerald-700 transition-colors font-semibold flex items-center space-x-2">
                                     <ShoppingCart className="w-5 h-5" />
                                     <span>Explore Marketplace</span>
                                 </Link>
@@ -137,7 +137,7 @@ export default function Welcome() {
                                 <div className="space-y-4">
                                     {benefits.map((benefit, index) => (
                                         <div key={index} className="flex items-center space-x-3">
-                                            <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
+                                            <CheckCircle className="w-6 h-6 text-emerald-600 flex-shrink-0" />
                                             <span className="text-gray-700 font-medium">{benefit}</span>
                                         </div>
                                     ))}
@@ -159,11 +159,11 @@ export default function Welcome() {
                                     <h3 className="text-2xl font-semibold text-gray-800 mb-2">Proven Results</h3>
                                     <div className="grid grid-cols-2 gap-4 mt-6">
                                         <div className="text-center">
-                                            <div className="text-3xl font-bold text-green-600">95%</div>
+                                            <div className="text-3xl font-bold text-emerald-600">95%</div>
                                             <div className="text-sm text-gray-600">Survival Rate</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-3xl font-bold text-green-600">50%</div>
+                                            <div className="text-3xl font-bold text-emerald-600">50%</div>
                                             <div className="text-sm text-gray-600">Time Saved</div>
                                         </div>
                                         <div className="text-center">
@@ -182,7 +182,7 @@ export default function Welcome() {
                 </div>
 
                 {/* Analytics Showcase */}
-                <div className="py-20 bg-gradient-to-br from-green-50 to-indigo-50">
+                <div className="py-20 bg-gradient-to-br from-emerald-50 to-indigo-50">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                             <div className="bg-white rounded-xl shadow-lg p-8">
@@ -201,8 +201,8 @@ export default function Welcome() {
 
                                 <div className="space-y-6">
                                     <div className="flex items-start space-x-4">
-                                        <div className="bg-green-100 rounded-lg p-3">
-                                            <BarChart3 className="w-6 h-6 text-green-600" />
+                                        <div className="bg-emerald-100 rounded-lg p-3">
+                                            <BarChart3 className="w-6 h-6 text-emerald-600" />
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-semibold text-gray-900">Growth Tracking</h3>
@@ -211,8 +211,8 @@ export default function Welcome() {
                                     </div>
 
                                     <div className="flex items-start space-x-4">
-                                        <div className="bg-green-100 rounded-lg p-3">
-                                            <TrendingUp className="w-6 h-6 text-green-600" />
+                                        <div className="bg-emerald-100 rounded-lg p-3">
+                                            <TrendingUp className="w-6 h-6 text-emerald-600" />
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-semibold text-gray-900">Performance Metrics</h3>
@@ -244,16 +244,16 @@ export default function Welcome() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-                            <div className="text-center p-8 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                                <div className="bg-green-600 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                            <div className="text-center p-8 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl">
+                                <div className="bg-emerald-600 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-lg">
                                     <Wifi className="w-10 h-10 text-white" />
                                 </div>
                                 <h3 className="text-xl font-semibold mb-4 text-gray-900">Cloud Connectivity</h3>
                                 <p className="text-gray-600 leading-relaxed">Seamless connection to our secure cloud platform for real-time data storage, backup, and advanced analysis capabilities.</p>
                             </div>
 
-                            <div className="text-center p-8 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                                <div className="bg-green-600 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                            <div className="text-center p-8 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl">
+                                <div className="bg-emerald-600 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-lg">
                                     <BarChart3 className="w-10 h-10 text-white" />
                                 </div>
                                 <h3 className="text-xl font-semibold mb-4 text-gray-900">Real-time Analytics</h3>
@@ -282,7 +282,7 @@ export default function Welcome() {
                                     <p className="text-sm font-medium text-gray-900">Temperature Sensors</p>
                                 </div>
                                 <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                                    <Monitor className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                                    <Monitor className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                                     <p className="text-sm font-medium text-gray-900">Humidity Monitors</p>
                                 </div>
                                 <div className="text-center p-4 bg-white rounded-lg shadow-sm">
@@ -319,8 +319,8 @@ export default function Welcome() {
                                     "ChicksBrooder increased our survival rate from 85% to 97%. The automated monitoring gives us peace of mind, especially during critical first weeks."
                                 </p>
                                 <div className="flex items-center">
-                                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                                        <Users className="w-6 h-6 text-green-600" />
+                                    <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mr-4">
+                                        <Users className="w-6 h-6 text-emerald-600" />
                                     </div>
                                     <div>
                                         <h4 className="font-semibold text-gray-900">Sarah Johnson</h4>
@@ -339,8 +339,8 @@ export default function Welcome() {
                                     "The analytics dashboard helped us identify optimal feeding schedules. We've reduced feed waste by 30% while improving growth rates."
                                 </p>
                                 <div className="flex items-center">
-                                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                                        <Users className="w-6 h-6 text-green-600" />
+                                    <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mr-4">
+                                        <Users className="w-6 h-6 text-emerald-600" />
                                     </div>
                                     <div>
                                         <h4 className="font-semibold text-gray-900">Michael Chen</h4>
@@ -373,17 +373,17 @@ export default function Welcome() {
                 </div>
 
                 {/* CTA Section */}
-                <div className="bg-gradient-to-r from-green-600 to-green-600 py-20">
+                <div className="bg-gradient-to-r from-emerald-600 to-emerald-600 py-20">
                     <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
                         <h2 className="text-4xl font-bold text-white mb-6">Ready to Transform Your Brooding Operation?</h2>
-                        <p className="text-xl text-green-100 mb-8">
+                        <p className="text-xl text-emerald-100 mb-8">
                             Join the smart farming revolution and give your chicks the best start in life with ChicksBrooder technology.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-                            <Link href="/store" className="bg-white text-green-600 px-8 py-4 rounded-lg hover:bg-gray-100 transition-colors font-semibold">
+                            <Link href="/store" className="bg-white text-emerald-600 px-8 py-4 rounded-lg hover:bg-gray-100 transition-colors font-semibold">
                                 Explore Marketplace
                             </Link>
-                            <Link href="/dashboard" className="bg-green-800 text-white px-8 py-4 rounded-lg hover:bg-green-900 transition-colors font-semibold">
+                            <Link href="/dashboard" className="bg-emerald-800 text-white px-8 py-4 rounded-lg hover:bg-emerald-900 transition-colors font-semibold">
                                 Explore our products
                             </Link>
                         </div>

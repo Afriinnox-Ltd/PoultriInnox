@@ -26,7 +26,7 @@ import { type BreadcrumbItem } from '@/types';
 const Progress = ({ value, className }: { value: number; className?: string }) => (
   <div className={`w-full bg-gray-200 rounded-full h-2 ${className}`}>
     <div
-      className="bg-green-600 h-2 rounded-full transition-all duration-300"
+      className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
       style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
     />
   </div>
@@ -375,7 +375,7 @@ export default function Dashboard({
                 {upcomingSchedules?.length > 0 ? (
                   upcomingSchedules.map((schedule) => (
                     <div key={schedule.id} className="flex items-start gap-3 p-3 rounded-lg border bg-gray-50">
-                      <Clock className="h-4 w-4 mt-0.5 text-green-600" />
+                      <Clock className="h-4 w-4 mt-0.5 text-emerald-600" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{schedule.title}</p>
                         <p className="text-xs text-muted-foreground">
@@ -455,7 +455,7 @@ export default function Dashboard({
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-start gap-4">
-                <div className="bg-green-100 text-green-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
+                <div className="bg-emerald-100 text-emerald-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
                   1
                 </div>
                 <div>
@@ -472,7 +472,7 @@ export default function Dashboard({
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="bg-green-100 text-green-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
+                <div className="bg-emerald-100 text-emerald-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
                   2
                 </div>
                 <div>
@@ -489,7 +489,7 @@ export default function Dashboard({
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="bg-green-100 text-green-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
+                <div className="bg-emerald-100 text-emerald-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
                   3
                 </div>
                 <div>

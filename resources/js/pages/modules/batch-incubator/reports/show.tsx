@@ -65,6 +65,14 @@ interface ReportShowProps {
         batch_details?: any[];
         incubator_details?: any[];
         batch_financials?: any[];
+        batch_feed_details?: any[];
+        efficiency_distribution?: any;
+        feed_insights?: {
+            most_efficient_batch?: any;
+            least_efficient_batch?: any;
+            cost_optimization_potential?: number;
+            recommendations?: string[];
+        };
         recommendations?: {
             title: string;
             description: string;
@@ -83,6 +91,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
             'production': 'Production Report',
             'efficiency': 'Efficiency Report',
             'financial': 'Financial Report',
+            'feed': 'Feed Analytics Report',
             'batch-performance': 'Batch Performance Report',
             'incubator-analysis': 'Incubator Analysis Report',
             'schedule-compliance': 'Schedule Compliance Report',
@@ -111,6 +120,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
             'production': TrendingUp,
             'efficiency': BarChart3,
             'financial': DollarSign,
+            'feed': TrendingUp,
             'batch-performance': Target,
             'incubator-analysis': BarChart3,
             'schedule-compliance': Calendar,
@@ -180,6 +190,16 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
             );
         }
 
+        // Feed Analytics Report Cards
+        if (type === 'feed') {
+            cards.push(
+                { label: 'Batches Analyzed', value: summary.total_batches_analyzed, icon: Target },
+                { label: 'Total Feed Consumed', value: summary.total_feed_consumed, icon: TrendingUp },
+                { label: 'Average FCR', value: summary.average_fcr, icon: BarChart3 },
+                { label: 'Total Feed Cost', value: formatCurrency(summary.total_feed_cost), icon: DollarSign },
+            );
+        }
+
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {cards.map((card, index) => {
@@ -192,7 +212,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                                         <p className="text-sm text-muted-foreground">{card.label}</p>
                                         <p className="text-2xl font-bold">{card.value}</p>
                                     </div>
-                                    <IconComponent className="h-8 w-8 text-blue-600" />
+                                    <IconComponent className="h-8 w-8 text-emerald-600" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -239,6 +259,18 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                 { key: 'revenue', label: 'Revenue' },
                 { key: 'profit', label: 'Profit' },
                 { key: 'roi_percentage', label: 'ROI (%)' },
+            ];
+        } else if (type === 'feed' && report?.batch_feed_details) {
+            data = report.batch_feed_details;
+            columns = [
+                { key: 'name', label: 'Batch Name' },
+                { key: 'batch_code', label: 'Batch Code' },
+                { key: 'feed_consumed_kg', label: 'Feed Consumed (kg)' },
+                { key: 'feed_cost', label: 'Feed Cost' },
+                { key: 'average_fcr', label: 'FCR' },
+                { key: 'efficiency_rating', label: 'Efficiency' },
+                { key: 'feed_cost_per_bird', label: 'Cost per Bird' },
+                { key: 'variance_percentage', label: 'Variance (%)' },
             ];
         }
 
@@ -296,6 +328,109 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
     };
 
     const renderRecommendations = () => {
+        // Handle feed insights recommendations
+        if (type === 'feed' && report?.feed_insights?.recommendations) {
+            return (
+                <div className="space-y-6">
+                    {/* Feed Insights Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {report.feed_insights.most_efficient_batch && (
+                            <Card className="bg-emerald-50 border-emerald-200">
+                                <CardHeader>
+                                    <CardTitle className="text-emerald-800">Most Efficient Batch</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        <p className="font-medium">{report.feed_insights.most_efficient_batch.name}</p>
+                                        <p className="text-sm text-emerald-700">
+                                            FCR: {report.feed_insights.most_efficient_batch.fcr}
+                                            ({report.feed_insights.most_efficient_batch.efficiency_rating})
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {report.feed_insights.least_efficient_batch && (
+                            <Card className="bg-red-50 border-red-200">
+                                <CardHeader>
+                                    <CardTitle className="text-red-800">Needs Attention</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        <p className="font-medium">{report.feed_insights.least_efficient_batch.name}</p>
+                                        <p className="text-sm text-red-700">
+                                            FCR: {report.feed_insights.least_efficient_batch.fcr}
+                                            ({report.feed_insights.least_efficient_batch.efficiency_rating})
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    {/* Cost Optimization */}
+                    {report.feed_insights.cost_optimization_potential && (
+                        <Card className="bg-emerald-50 border-emerald-200">
+                            <CardHeader>
+                                <CardTitle className="text-emerald-800">Cost Optimization Potential</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-2xl font-bold text-emerald-700">
+                                    {report.feed_insights.cost_optimization_potential}%
+                                </p>
+                                <p className="text-sm text-emerald-600">
+                                    Potential cost reduction through improved feed efficiency
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Feed Efficiency Distribution */}
+                    {report.efficiency_distribution && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Feed Efficiency Distribution</CardTitle>
+                                <CardDescription>Breakdown of batch efficiency ratings</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                    {Object.entries(report.efficiency_distribution).map(([rating, count]) => (
+                                        <div key={rating} className="text-center p-3 border rounded-lg">
+                                            <div className="text-2xl font-bold">{count as number}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {rating.replace('_', ' ').toUpperCase()}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Recommendations */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Target className="h-5 w-5" />
+                                Feed Management Recommendations
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {report.feed_insights.recommendations.map((recommendation: string, index: number) => (
+                                    <div key={index} className="border-l-4 border-emerald-500 pl-4 py-2">
+                                        <p className="text-sm">{recommendation}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            );
+        }
+
+        // Handle standard recommendations
         if (!report?.recommendations || report.recommendations.length === 0) return null;
 
         return (
@@ -312,7 +447,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                 <CardContent>
                     <div className="space-y-3">
                         {report.recommendations.map((recommendation: any, index: number) => (
-                            <div key={index} className="border-l-4 border-blue-500 pl-4 py-2">
+                            <div key={index} className="border-l-4 border-emerald-500 pl-4 py-2">
                                 <h4 className="font-medium">{recommendation.title}</h4>
                                 <p className="text-sm text-muted-foreground">{recommendation.description}</p>
                                 {recommendation.priority && (
@@ -368,27 +503,27 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                 </div>
 
                 {/* Report Parameters */}
-                <Card className="bg-blue-50 border-blue-200">
+                <Card className="bg-emerald-50 border-emerald-200">
                     <CardContent className="p-4">
                         <div className="flex flex-wrap gap-4 text-sm">
                             <div>
-                                <span className="font-medium text-blue-800">Type:</span>
-                                <span className="ml-1 text-blue-700">{getReportTitle(type)}</span>
+                                <span className="font-medium text-emerald-800">Type:</span>
+                                <span className="ml-1 text-emerald-700">{getReportTitle(type)}</span>
                             </div>
                             <div>
-                                <span className="font-medium text-blue-800">Period:</span>
-                                <span className="ml-1 text-blue-700">{report?.period || 'N/A'}</span>
+                                <span className="font-medium text-emerald-800">Period:</span>
+                                <span className="ml-1 text-emerald-700">{report?.period || 'N/A'}</span>
                             </div>
                             {parameters.batch_ids && parameters.batch_ids.length > 0 && (
                                 <div>
-                                    <span className="font-medium text-blue-800">Batches:</span>
-                                    <span className="ml-1 text-blue-700">{parameters.batch_ids.length} selected</span>
+                                    <span className="font-medium text-emerald-800">Batches:</span>
+                                    <span className="ml-1 text-emerald-700">{parameters.batch_ids.length} selected</span>
                                 </div>
                             )}
                             {parameters.incubator_ids && parameters.incubator_ids.length > 0 && (
                                 <div>
-                                    <span className="font-medium text-blue-800">Incubators:</span>
-                                    <span className="ml-1 text-blue-700">{parameters.incubator_ids.length} selected</span>
+                                    <span className="font-medium text-emerald-800">Incubators:</span>
+                                    <span className="ml-1 text-emerald-700">{parameters.incubator_ids.length} selected</span>
                                 </div>
                             )}
                         </div>
@@ -407,7 +542,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                                 onClick={() => setActiveTab('summary')}
                                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                                     activeTab === 'summary'
-                                        ? 'border-blue-500 text-blue-600'
+                                        ? 'border-emerald-500 text-emerald-600'
                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                             >
@@ -417,22 +552,22 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                                 onClick={() => setActiveTab('details')}
                                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                                     activeTab === 'details'
-                                        ? 'border-blue-500 text-blue-600'
+                                        ? 'border-emerald-500 text-emerald-600'
                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                             >
                                 Detailed Data
                             </button>
-                            {report?.recommendations && (
+                            {(report?.recommendations || (type === 'feed' && report?.feed_insights)) && (
                                 <button
                                     onClick={() => setActiveTab('recommendations')}
                                     className={`py-2 px-1 border-b-2 font-medium text-sm ${
                                         activeTab === 'recommendations'
-                                            ? 'border-blue-500 text-blue-600'
+                                            ? 'border-emerald-500 text-emerald-600'
                                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                                 >
-                                    Recommendations
+                                    {type === 'feed' ? 'Feed Insights' : 'Recommendations'}
                                 </button>
                             )}
                         </nav>
@@ -488,6 +623,22 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                                                     <li>Total revenue: {formatCurrency(report.summary?.total_revenue || 0)}</li>
                                                     <li>Net profit: {formatCurrency(report.summary?.total_profit || 0)}</li>
                                                     <li>Average ROI: {formatPercentage(report.summary?.average_roi || 0)}</li>
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {type === 'feed' && (
+                                            <div className="mt-4">
+                                                <h4 className="font-medium">Feed Analytics Highlights:</h4>
+                                                <ul className="list-disc list-inside mt-2 space-y-1">
+                                                    <li>{report.summary?.total_batches_analyzed || 0} batches analyzed with feed data</li>
+                                                    <li>Total feed consumed: {report.summary?.total_feed_consumed || '0 kg'}</li>
+                                                    <li>Average FCR: {report.summary?.average_fcr || 'N/A'}</li>
+                                                    <li>Best performing FCR: {report.summary?.best_fcr || 'N/A'}</li>
+                                                    <li>Total feed cost: {formatCurrency(report.summary?.total_feed_cost || 0)}</li>
+                                                    <li>Average cost per bird: {formatCurrency(report.summary?.avg_feed_cost_per_bird || 0)}</li>
+                                                    <li>Excellent efficiency batches: {report.summary?.excellent_efficiency_batches || 0}</li>
+                                                    <li>Poor efficiency batches: {report.summary?.poor_efficiency_batches || 0}</li>
                                                 </ul>
                                             </div>
                                         )}

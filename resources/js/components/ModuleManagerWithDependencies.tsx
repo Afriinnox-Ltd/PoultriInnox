@@ -179,7 +179,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
             </CardTitle>
             <div className="flex items-center gap-2">
               {is_enabled ? (
-                <Badge variant="default" className="bg-green-500">
+                <Badge variant="default" className="bg-emerald-500">
                   Enabled
                 </Badge>
               ) : (
@@ -267,7 +267,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
                   <ul className="mt-2">
                     {moduleStatus.dependent_modules.map(dep => (
                       <li key={dep.id} className="flex items-center">
-                        <CheckCircle className="text-green-500 mr-2 h-4 w-4" />
+                        <CheckCircle className="text-emerald-500 mr-2 h-4 w-4" />
                         {dep.name}
                       </li>
                     ))}
@@ -285,7 +285,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
                 <li key={index}>• {feature}</li>
               ))}
               {module.config.features.length > 3 && (
-                <li className="text-blue-500">• And {module.config.features.length - 3} more...</li>
+                <li className="text-emerald-500">• And {module.config.features.length - 3} more...</li>
               )}
             </ul>
           </div>
@@ -326,7 +326,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
               <ul className="space-y-2">
                 {selectedModule.missing_dependencies.map(dep => (
                   <li key={dep.slug} className="flex items-center p-3 bg-gray-50 rounded">
-                    <Info className="text-blue-500 mr-3 h-4 w-4" />
+                    <Info className="text-emerald-500 mr-3 h-4 w-4" />
                     <div>
                       <div className="font-semibold">{dep.name}</div>
                       {dep.module && (

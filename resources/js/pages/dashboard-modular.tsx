@@ -30,7 +30,7 @@ import { type BreadcrumbItem } from '@/types';
 const Progress = ({ value, className }: { value: number; className?: string }) => (
   <div className={`w-full bg-gray-200 rounded-full h-2 ${className}`}>
     <div
-      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+      className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
       style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
     />
   </div>
@@ -162,10 +162,10 @@ export default function Dashboard({
 
         {/* No Modules Active */}
         {enabledModules.length === 0 && (
-          <Card className="border-blue-200 bg-blue-50">
+          <Card className="border-emerald-200 bg-emerald-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-blue-600" />
+                <Package className="h-5 w-5 text-emerald-600" />
                 Welcome to PoultriInnox
               </CardTitle>
               <CardDescription>
@@ -180,7 +180,7 @@ export default function Dashboard({
                 </p>
 
                 <div className="flex gap-4">
-                  <Button asChild className="bg-blue-600 hover:bg-blue-700">
+                  <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
                     <Link href="/modules">
                       <Plus className="h-4 w-4 mr-2" />
                       Activate Modules
@@ -206,12 +206,12 @@ export default function Dashboard({
                 const IconComponent = getModuleIcon(module.icon);
 
                 return (
-                  <Card key={module.id} className="border-green-200 bg-green-50">
+                  <Card key={module.id} className="border-emerald-200 bg-emerald-50">
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-lg">
-                        <IconComponent className="h-5 w-5 text-green-600" />
+                        <IconComponent className="h-5 w-5 text-emerald-600" />
                         {module.name}
-                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 text-xs">
+                        <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">
                           Active
                         </Badge>
                       </CardTitle>
@@ -511,7 +511,7 @@ export default function Dashboard({
                       {upcomingSchedules && upcomingSchedules.length > 0 ? (
                         upcomingSchedules.map((schedule) => (
                           <div key={schedule.id} className="flex items-start gap-3 p-3 rounded-lg border bg-gray-50">
-                            <Clock className="h-4 w-4 mt-0.5 text-blue-600" />
+                            <Clock className="h-4 w-4 mt-0.5 text-emerald-600" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium">{schedule.title}</p>
                               <p className="text-xs text-muted-foreground">
@@ -542,7 +542,7 @@ export default function Dashboard({
 
         {/* Add Module Suggestion */}
         {enabledModules.length > 0 && (
-          <Card className="border-blue-200 bg-blue-50">
+          <Card className="border-emerald-200 bg-emerald-50">
             <CardHeader>
               <CardTitle>Expand Your System</CardTitle>
               <CardDescription>

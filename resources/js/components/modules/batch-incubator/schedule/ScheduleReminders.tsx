@@ -240,8 +240,8 @@ export default function ScheduleReminders({
 
     const getStatusBadge = (status: string) => {
         const variants = {
-            pending: 'bg-blue-100 text-blue-800',
-            sent: 'bg-green-100 text-green-800',
+            pending: 'bg-emerald-100 text-emerald-800',
+            sent: 'bg-emerald-100 text-emerald-800',
             failed: 'bg-red-100 text-red-800',
             cancelled: 'bg-gray-100 text-gray-800',
         };
@@ -350,14 +350,14 @@ export default function ScheduleReminders({
 
                                         {/* Selected User Display */}
                                         {selectedUser && (
-                                            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                                            <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-md">
                                                 <div className="flex items-center gap-2">
-                                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                                    <CheckCircle className="h-4 w-4 text-emerald-600" />
                                                     <div>
-                                                        <div className="text-sm font-medium text-green-800">
+                                                        <div className="text-sm font-medium text-emerald-800">
                                                             {selectedUser.name}
                                                         </div>
-                                                        <div className="text-xs text-green-600">
+                                                        <div className="text-xs text-emerald-600">
                                                             {selectedUser.email}
                                                         </div>
                                                     </div>
@@ -531,7 +531,7 @@ export default function ScheduleReminders({
                                                 </div>
                                             )}
                                             {reminder.sent_at && (
-                                                <div className="text-green-600">
+                                                <div className="text-emerald-600">
                                                     Sent: {formatDateTime(reminder.sent_at)}
                                                 </div>
                                             )}

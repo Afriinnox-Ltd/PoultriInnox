@@ -25,7 +25,7 @@ class ReportsController extends Controller
             ->take(10)
             ->get();
 
-        $quickStats = $this->getQuickStats();
+        $quickStats = $this->getQuickStats(Auth::user());
 
         return Inertia::render('modules/batch-incubator/reports/index', [
             'reports' => $recentReports,
@@ -38,9 +38,16 @@ class ReportsController extends Controller
      */
     public function create()
     {
+        $user = Auth::user();
         $reportTypes = $this->getReportTypes();
-        $batches = Batch::select('id', 'name', 'batch_code', 'status')->get();
-        $incubators = Incubator::select('id', 'name', 'model', 'status')->get();
+        
+        // Only show accessible batches and incubators
+        $batches = Batch::select('id', 'name', 'batch_code', 'status')
+            ->accessibleBy($user)
+            ->get();
+        $incubators = Incubator::select('id', 'name', 'model', 'status')
+            ->accessibleBy($user)
+            ->get();
 
         return Inertia::render('modules/batch-incubator/reports/create', [
             'reportTypes' => $reportTypes,
@@ -55,7 +62,7 @@ class ReportsController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'type' => 'required|string|in:production,efficiency,financial',
+            'type' => 'required|string|in:production,efficiency,financial,feed',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'batch_ids' => 'nullable|array',
@@ -77,6 +84,7 @@ class ReportsController extends Controller
                 'production' => $this->generateProductionReport($dateRange, $request->batch_ids),
                 'efficiency' => $this->generateEfficiencyReport($dateRange, $request->incubator_ids),
                 'financial' => $this->generateFinancialReport($dateRange, $request->batch_ids),
+                'feed' => $this->generateFeedAnalyticsReport($dateRange, $request->batch_ids),
             };
 
             // Store the report in database
@@ -228,6 +236,47 @@ class ReportsController extends Controller
             }
         }
 
+        // Add feed details section
+        if (isset($data['batch_feed_details'])) {
+            $content[] = 'FEED CONSUMPTION DETAILS';
+            $content[] = str_repeat('-', 24);
+            foreach ($data['batch_feed_details'] as $batch) {
+                $content[] = 'Batch: ' . ($batch['name'] ?? 'N/A');
+                $content[] = '  Code: ' . ($batch['batch_code'] ?? 'N/A');
+                $content[] = '  Feed Consumed: ' . ($batch['feed_consumed_kg'] ?? 'N/A') . ' kg';
+                $content[] = '  Feed Cost: ' . ($batch['feed_cost'] ?? 'N/A');
+                $content[] = '  FCR: ' . ($batch['average_fcr'] ?? 'N/A');
+                $content[] = '  Efficiency: ' . ($batch['efficiency_rating'] ?? 'N/A');
+                $content[] = '  Cost per Bird: ' . ($batch['feed_cost_per_bird'] ?? 'N/A');
+                $content[] = '';
+            }
+        }
+
+        // Add feed insights section
+        if (isset($data['feed_insights'])) {
+            $content[] = 'FEED INSIGHTS & RECOMMENDATIONS';
+            $content[] = str_repeat('-', 32);
+
+            if (isset($data['feed_insights']['most_efficient_batch'])) {
+                $batch = $data['feed_insights']['most_efficient_batch'];
+                $content[] = 'Most Efficient: ' . ($batch['name'] ?? 'N/A') . ' (FCR: ' . ($batch['fcr'] ?? 'N/A') . ')';
+            }
+
+            if (isset($data['feed_insights']['least_efficient_batch'])) {
+                $batch = $data['feed_insights']['least_efficient_batch'];
+                $content[] = 'Least Efficient: ' . ($batch['name'] ?? 'N/A') . ' (FCR: ' . ($batch['fcr'] ?? 'N/A') . ')';
+            }
+
+            if (isset($data['feed_insights']['recommendations'])) {
+                $content[] = '';
+                $content[] = 'Recommendations:';
+                foreach ($data['feed_insights']['recommendations'] as $recommendation) {
+                    $content[] = '- ' . $recommendation;
+                }
+            }
+            $content[] = '';
+        }
+
         if (isset($data['batch_financials'])) {
             $content[] = 'FINANCIAL DETAILS';
             $content[] = str_repeat('-', 17);
@@ -328,6 +377,38 @@ class ReportsController extends Controller
             $csv[] = '';
         }
 
+        // Add batch feed details as CSV
+        if (isset($data['batch_feed_details']) && count($data['batch_feed_details']) > 0) {
+            $csv[] = '"BATCH FEED CONSUMPTION DETAILS"';
+
+            // Get headers from first batch feed record, excluding raw values
+            $firstBatch = $data['batch_feed_details'][0];
+            $headers = array_filter(array_keys($firstBatch), function($key) {
+                return strpos($key, '_raw') === false;
+            });
+            $csv[] = '"' . implode('","', array_map('ucwords', array_map(function($h) { return str_replace('_', ' ', $h); }, $headers))) . '"';
+
+            // Add data rows
+            foreach ($data['batch_feed_details'] as $batch) {
+                $row = [];
+                foreach ($headers as $header) {
+                    $row[] = $batch[$header] ?? '';
+                }
+                $csv[] = '"' . implode('","', $row) . '"';
+            }
+            $csv[] = '';
+        }
+
+        // Add efficiency distribution as CSV
+        if (isset($data['efficiency_distribution'])) {
+            $csv[] = '"FEED EFFICIENCY DISTRIBUTION"';
+            $csv[] = '"Rating","Count"';
+            foreach ($data['efficiency_distribution'] as $rating => $count) {
+                $csv[] = '"' . ucwords(str_replace('_', ' ', $rating)) . '","' . $count . '"';
+            }
+            $csv[] = '';
+        }
+
         // Add incubator details as CSV
         if (isset($data['incubator_details']) && count($data['incubator_details']) > 0) {
             $csv[] = '"INCUBATOR DETAILS"';
@@ -353,20 +434,237 @@ class ReportsController extends Controller
     /**
      * Get quick statistics for dashboard
      */
-    private function getQuickStats()
+    private function getQuickStats($user)
     {
+        // Only calculate stats from accessible batches and incubators
+        $accessibleBatchesQuery = Batch::accessibleBy($user);
+        $accessibleIncubatorsQuery = Incubator::accessibleBy($user);
+        
         return [
-            'avg_hatch_rate' => round(Batch::whereNotNull('hatch_rate')->avg('hatch_rate') ?? 0, 1),
+            'avg_hatch_rate' => round($accessibleBatchesQuery->whereNotNull('hatch_rate')->avg('hatch_rate') ?? 0, 1),
             'incubator_utilization' => round(
-                (Incubator::sum('current_load') / max(Incubator::sum('capacity'), 1)) * 100, 1
+                ($accessibleIncubatorsQuery->sum('current_load') / max($accessibleIncubatorsQuery->sum('capacity'), 1)) * 100, 1
             ),
-            'active_batches' => Batch::whereIn('status', [
+            'active_batches' => $accessibleBatchesQuery->whereIn('status', [
                 BatchStatus::INCUBATING,
                 BatchStatus::GROWING,
                 BatchStatus::LAYING
             ])->count(),
-            'avg_mortality_rate' => round(Batch::whereNotNull('mortality_rate')->avg('mortality_rate') ?? 0, 1),
+            'total_batches' => $accessibleBatchesQuery->count(),
+            'avg_mortality_rate' => round($accessibleBatchesQuery->whereNotNull('mortality_rate')->avg('mortality_rate') ?? 0, 1),
+            'avg_fcr' => $this->calculateAverageFCR($user),
         ];
+    }
+
+    /**
+     * Calculate average FCR across accessible batches with feed consumption data
+     */
+    private function calculateAverageFCR($user)
+    {
+        $batches = Batch::accessibleBy($user)
+            ->whereHas('feedConsumptions')
+            ->get();
+        $totalFCR = 0;
+        $batchCount = 0;
+
+        foreach ($batches as $batch) {
+            $fcr = $batch->getAverageFCR();
+            if ($fcr > 0) {
+                $totalFCR += $fcr;
+                $batchCount++;
+            }
+        }
+
+        return $batchCount > 0 ? round($totalFCR / $batchCount, 2) : 1.85;
+    }
+
+    /**
+     * Generate comprehensive feed analytics report
+     */
+    private function generateFeedAnalyticsReport($dateRange, $batchIds = null)
+    {
+        $user = Auth::user();
+        $batchesQuery = Batch::accessibleBy($user)->with(['feedConsumptions' => function($query) use ($dateRange) {
+            $query->whereBetween('consumption_date', [$dateRange['start'], $dateRange['end']]);
+        }])->whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+
+        if (!empty($batchIds)) {
+            $batchesQuery->whereIn('id', $batchIds);
+        }
+
+        $batches = $batchesQuery->get();
+
+        // Calculate comprehensive feed metrics
+        $totalFeedConsumed = 0;
+        $totalFeedCost = 0;
+        $batchFeedData = [];
+        $fcrData = [];
+        $efficiencyCategories = [
+            'excellent' => 0,
+            'very_good' => 0,
+            'good' => 0,
+            'acceptable' => 0,
+            'poor' => 0
+        ];
+
+        foreach ($batches as $batch) {
+            $feedStats = $batch->getFeedConsumptionStats();
+            $varianceAnalysis = $batch->getFeedVarianceAnalysis();
+
+            if ($feedStats['total_feed_consumed_kg'] > 0) {
+                $totalFeedConsumed += $feedStats['total_feed_consumed_kg'];
+                $totalFeedCost += $feedStats['total_feed_cost'];
+
+                // Track FCR data
+                if ($feedStats['average_fcr'] > 0) {
+                    $fcrData[] = $feedStats['average_fcr'];
+                }
+
+                // Count efficiency categories
+                $rating = $feedStats['feed_efficiency_rating'];
+                if (isset($efficiencyCategories[$rating])) {
+                    $efficiencyCategories[$rating]++;
+                }
+
+                $batchFeedData[] = [
+                    'name' => $batch->name,
+                    'batch_code' => $batch->batch_code,
+                    'status' => $batch->status->label(),
+                    'feed_consumed_kg' => round($feedStats['total_feed_consumed_kg'], 2),
+                    'feed_cost' => $this->formatRWF($feedStats['total_feed_cost']),
+                    'feed_cost_raw' => $feedStats['total_feed_cost'],
+                    'average_fcr' => round($feedStats['average_fcr'], 2),
+                    'cumulative_fcr' => round($feedStats['cumulative_fcr'], 2),
+                    'feed_cost_per_bird' => $this->formatRWF($feedStats['feed_cost_per_bird']),
+                    'feed_cost_per_bird_raw' => $feedStats['feed_cost_per_bird'],
+                    'efficiency_rating' => ucwords(str_replace('_', ' ', $feedStats['feed_efficiency_rating'])),
+                    'consumption_records' => $feedStats['consumption_records_count'],
+                    'variance_percentage' => round($varianceAnalysis['average_variance_percentage'], 1),
+                    'over_consumption_days' => $varianceAnalysis['over_consumption_days'],
+                    'perfect_consumption_days' => $varianceAnalysis['perfect_consumption_days'],
+                    'variance_trend' => $varianceAnalysis['variance_trend'],
+                    'current_count' => $batch->current_count,
+                ];
+            }
+        }
+
+        // Calculate summary statistics
+        $avgFCR = count($fcrData) > 0 ? array_sum($fcrData) / count($fcrData) : 0;
+        $minFCR = count($fcrData) > 0 ? min($fcrData) : 0;
+        $maxFCR = count($fcrData) > 0 ? max($fcrData) : 0;
+        $avgFeedCostPerBird = $totalFeedConsumed > 0 ? $totalFeedCost / array_sum(array_column($batchFeedData, 'current_count')) : 0;
+
+        return [
+            'title' => 'Feed Analytics Report',
+            'period' => $dateRange['start']->format('M j, Y') . ' - ' . $dateRange['end']->format('M j, Y'),
+            'currency' => 'RWF',
+            'summary' => [
+                'total_batches_analyzed' => count($batchFeedData),
+                'total_feed_consumed' => round($totalFeedConsumed, 1) . ' kg',
+                'total_feed_consumed_raw' => round($totalFeedConsumed, 1),
+                'total_feed_cost' => $this->formatRWF($totalFeedCost),
+                'total_feed_cost_raw' => $totalFeedCost,
+                'average_fcr' => round($avgFCR, 2),
+                'best_fcr' => round($minFCR, 2),
+                'worst_fcr' => round($maxFCR, 2),
+                'avg_feed_cost_per_bird' => $this->formatRWF($avgFeedCostPerBird),
+                'avg_feed_cost_per_bird_raw' => $avgFeedCostPerBird,
+                'excellent_efficiency_batches' => $efficiencyCategories['excellent'],
+                'good_or_better_batches' => $efficiencyCategories['excellent'] + $efficiencyCategories['very_good'] + $efficiencyCategories['good'],
+                'poor_efficiency_batches' => $efficiencyCategories['poor'],
+            ],
+            'efficiency_distribution' => [
+                'excellent' => $efficiencyCategories['excellent'],
+                'very_good' => $efficiencyCategories['very_good'],
+                'good' => $efficiencyCategories['good'],
+                'acceptable' => $efficiencyCategories['acceptable'],
+                'poor' => $efficiencyCategories['poor'],
+            ],
+            'batch_feed_details' => $batchFeedData,
+            'feed_insights' => [
+                'most_efficient_batch' => $this->getMostEfficientBatch($batchFeedData),
+                'least_efficient_batch' => $this->getLeastEfficientBatch($batchFeedData),
+                'cost_optimization_potential' => $this->calculateCostOptimizationPotential($batchFeedData),
+                'recommendations' => $this->generateFeedRecommendations($batchFeedData, $avgFCR),
+            ],
+        ];
+    }
+
+    /**
+     * Get most efficient batch from feed data
+     */
+    private function getMostEfficientBatch($batchFeedData)
+    {
+        if (empty($batchFeedData)) return null;
+
+        $mostEfficient = collect($batchFeedData)->sortBy('average_fcr')->first();
+        return $mostEfficient ? [
+            'name' => $mostEfficient['name'],
+            'fcr' => $mostEfficient['average_fcr'],
+            'efficiency_rating' => $mostEfficient['efficiency_rating']
+        ] : null;
+    }
+
+    /**
+     * Get least efficient batch from feed data
+     */
+    private function getLeastEfficientBatch($batchFeedData)
+    {
+        if (empty($batchFeedData)) return null;
+
+        $leastEfficient = collect($batchFeedData)->sortByDesc('average_fcr')->first();
+        return $leastEfficient ? [
+            'name' => $leastEfficient['name'],
+            'fcr' => $leastEfficient['average_fcr'],
+            'efficiency_rating' => $leastEfficient['efficiency_rating']
+        ] : null;
+    }
+
+    /**
+     * Calculate cost optimization potential
+     */
+    private function calculateCostOptimizationPotential($batchFeedData)
+    {
+        if (empty($batchFeedData)) return 0;
+
+        $costs = array_column($batchFeedData, 'feed_cost_per_bird_raw');
+        $minCost = min($costs);
+        $maxCost = max($costs);
+        $avgCost = array_sum($costs) / count($costs);
+
+        return round((($maxCost - $minCost) / $avgCost) * 100, 1);
+    }
+
+    /**
+     * Generate feed recommendations based on data analysis
+     */
+    private function generateFeedRecommendations($batchFeedData, $avgFCR)
+    {
+        $recommendations = [];
+
+        if ($avgFCR > 2.2) {
+            $recommendations[] = "Consider reviewing feed quality and composition to improve FCR.";
+        }
+
+        if ($avgFCR > 2.5) {
+            $recommendations[] = "FCR is above industry standards - investigate feed management practices.";
+        }
+
+        $poorPerformers = collect($batchFeedData)->where('average_fcr', '>', 2.2)->count();
+        if ($poorPerformers > 0) {
+            $recommendations[] = "{$poorPerformers} batch(es) showing poor feed efficiency - requires attention.";
+        }
+
+        $varianceIssues = collect($batchFeedData)->where('variance_percentage', '>', 5)->count();
+        if ($varianceIssues > 0) {
+            $recommendations[] = "{$varianceIssues} batch(es) showing high feed consumption variance - review feeding schedules.";
+        }
+
+        if (empty($recommendations)) {
+            $recommendations[] = "Feed efficiency is within acceptable ranges. Continue current practices.";
+        }
+
+        return $recommendations;
     }
 
     /**
@@ -374,7 +672,8 @@ class ReportsController extends Controller
      */
     private function generateProductionReport($dateRange, $batchIds = null)
     {
-        $batches = Batch::whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+        $user = Auth::user();
+        $batches = Batch::accessibleBy($user)->whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
 
         if (!empty($batchIds)) {
             $batches->whereIn('id', $batchIds);
@@ -413,7 +712,8 @@ class ReportsController extends Controller
      */
     private function generateEfficiencyReport($dateRange, $incubatorIds = null)
     {
-        $incubators = Incubator::query();
+        $user = Auth::user();
+        $incubators = Incubator::accessibleBy($user);
         if (!empty($incubatorIds)) {
             $incubators->whereIn('id', $incubatorIds);
         }
@@ -455,7 +755,8 @@ class ReportsController extends Controller
      */
     private function generateFinancialReport($dateRange, $batchIds = null)
     {
-        $batches = Batch::whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+        $user = Auth::user();
+        $batches = Batch::accessibleBy($user)->whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
 
         if (!empty($batchIds)) {
             $batches->whereIn('id', $batchIds);
@@ -532,6 +833,13 @@ class ReportsController extends Controller
                 'description' => 'Financial performance and profitability analysis',
                 'icon' => 'DollarSign',
                 'category' => 'financial'
+            ],
+            [
+                'key' => 'feed',
+                'name' => 'Feed Analytics Report',
+                'description' => 'Comprehensive feed consumption, FCR, and efficiency analysis',
+                'icon' => 'TrendingUp',
+                'category' => 'feed'
             ],
         ];
     }
