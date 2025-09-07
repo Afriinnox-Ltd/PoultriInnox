@@ -17,7 +17,7 @@ return new class extends Migration
             // Related entities
             $table->foreignId('batch_id')->constrained('batches')->onDelete('cascade');
             $table->foreignId('feed_type_id')->constrained('feed_types')->onDelete('cascade');
-            $table->foreignId('feed_inventory_id')->nullable()->constrained('feed_inventory')->onDelete('set null');
+            $table->foreignId('feed_inventory_id')->nullable()->constrained('feed_inventories')->onDelete('set null');
             $table->foreignId('schedule_id')->nullable()->constrained('batch_schedules')->onDelete('set null');
 
             // Consumption data

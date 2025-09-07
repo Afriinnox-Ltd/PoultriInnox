@@ -91,6 +91,54 @@ class ModuleSeeder extends Seeder
                 'is_core' => false,
                 'sort_order' => 2,
             ],
+
+            [
+                'name' => 'Marketplace',
+                'slug' => 'marketplace',
+                'code' => 'MARKETPLACE',
+                'description' => 'Complete e-commerce marketplace for buying and selling poultry equipment, supplies, and services.',
+                'icon' => 'store',
+                'version' => '1.0.0',
+                'config' => [
+                    'features' => [
+                        'Product catalog and search',
+                        'Multi-vendor marketplace',
+                        'Shopping cart and checkout',
+                        'Order management and tracking',
+                        'Vendor registration and dashboard',
+                        'Product reviews and ratings',
+                        'Commission system for vendors',
+                        'Secure payment processing',
+                        'Shipping and delivery tracking',
+                        'Inventory management',
+                        'Sales analytics and reporting',
+                        'Wishlist and favorites'
+                    ],
+                    'benefits' => [
+                        'Buy equipment and supplies easily',
+                        'Sell your products to wider audience',
+                        'Compare prices from multiple vendors',
+                        'Track orders and deliveries',
+                        'Secure payment processing',
+                        'Professional vendor tools'
+                    ],
+                    'ideal_for' => 'Farmers looking to buy/sell equipment and suppliers wanting to reach customers',
+                    'dashboard_widgets' => [
+                        'marketplace_stats',
+                        'recent_orders',
+                        'vendor_performance',
+                        'popular_products',
+                        'revenue_overview'
+                    ],
+                    'routes' => [
+                        'prefix' => 'marketplace',
+                        'namespace' => 'App\\Modules\\Marketplace\\Controllers'
+                    ]
+                ],
+                'is_active' => true,
+                'is_core' => false,
+                'sort_order' => 3,
+            ],
         ];
 
         foreach ($modules as $moduleData) {

@@ -13,14 +13,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // For SQLite, we need to recreate the table to update enum values
-        // First, create a backup of the data
+        // First, backup the data
         $events = DB::table('batch_events')->get();
+        $schedules = DB::table('batch_schedules')->get();
 
-        // Drop the existing table
+        // Temporarily drop the foreign key constraint from batch_schedules
+        Schema::table('batch_schedules', function (Blueprint $table) {
+            $table->dropForeign(['completed_event_id']);
+        });
+
+        // Now we can safely drop the batch_events table
         Schema::dropIfExists('batch_events');
 
-        // Recreate with updated enum values
+        // Recreate batch_events with updated enum values
         Schema::create('batch_events', function (Blueprint $table) {
             $table->id();
 
@@ -103,10 +108,15 @@ return new class extends Migration
             $table->index(['event_type', 'vaccination_cost']);
         });
 
-        // Restore the data
+        // Restore the batch_events data
         foreach ($events as $event) {
             DB::table('batch_events')->insert((array) $event);
         }
+
+        // Re-add the foreign key constraint to batch_schedules
+        Schema::table('batch_schedules', function (Blueprint $table) {
+            $table->foreign('completed_event_id')->references('id')->on('batch_events')->onDelete('set null');
+        });
     }
 
     /**
@@ -114,8 +124,19 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Recreate the original table structure without status_change
-        // This is complex for SQLite, so we'll just note that manual intervention may be needed
-        // In production, you'd want a more robust rollback strategy
+        // Note: Rolling back this migration is complex as it involves changing enum values
+        // In a production environment, you would need to ensure that only the original
+        // enum values are present in the data before rolling back
+
+        // For now, we'll leave this as a placeholder since rolling back enum changes
+        // requires careful data validation and potentially data migration
+        //
+        // To properly rollback, you would:
+        // 1. Check if any data uses the new enum values
+        // 2. If so, either migrate or remove that data
+        // 3. Drop foreign key constraint from batch_schedules
+        // 4. Recreate batch_events table with original enum values
+        // 5. Restore data
+        // 6. Re-add foreign key constraint
     }
 };

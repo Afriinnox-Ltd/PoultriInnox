@@ -10,7 +10,10 @@ import {
     BarChart3,
     Menu,
     Bell,
-    LogOut
+    LogOut,
+    Shield,
+    DollarSign,
+    ChevronRight
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -19,10 +22,32 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
+    const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
+        marketplace: window.location.pathname.startsWith('/admin/marketplace')
+    });
+
+    const toggleSection = (section: string) => {
+        setExpandedSections(prev => ({
+            ...prev,
+            [section]: !prev[section]
+        }));
+    };
+
     const navigation = [
         { name: 'Dashboard', href: '/admin', icon: BarChart3 },
         { name: 'Feed Templates', href: '/admin/feed-templates', icon: Database },
+        { name: 'Smart Scheduling', href: '/admin/smart-scheduling', icon: Shield },
         { name: 'Users', href: '/admin/users', icon: Users },
+    ];
+
+    const marketplaceNavigation = [
+        { name: 'Overview', href: '/admin/marketplace' },
+        { name: 'Products', href: '/admin/marketplace/products' },
+        { name: 'Vendors', href: '/admin/marketplace/vendors' },
+        { name: 'Orders', href: '/admin/marketplace/orders' },
+        { name: 'Categories', href: '/admin/marketplace/categories' },
+        { name: 'Payments', href: '/admin/marketplace/payments' },
+        { name: 'Analytics', href: '/admin/marketplace/analytics' },
     ];
 
     return (
@@ -65,6 +90,64 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                     </Link>
                                 );
                             })}
+
+                            {/* Marketplace Section */}
+                            <div className="space-y-1">
+                                <button
+                                    onClick={() => toggleSection('marketplace')}
+                                    className={cn(
+                                        'group flex w-full items-center px-2 py-2 text-sm font-medium rounded-md',
+                                        window.location.pathname.startsWith('/admin/marketplace')
+                                            ? 'bg-gray-100 text-gray-900'
+                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    )}
+                                >
+                                    <ShoppingCart
+                                        className={cn(
+                                            'mr-3 h-5 w-5 flex-shrink-0',
+                                            window.location.pathname.startsWith('/admin/marketplace')
+                                                ? 'text-gray-500'
+                                                : 'text-gray-400 group-hover:text-gray-500'
+                                        )}
+                                    />
+                                    <span className="flex-1 text-left">Marketplace</span>
+                                    <ChevronRight
+                                        className={cn(
+                                            'ml-auto h-4 w-4 transform transition-transform duration-200',
+                                            expandedSections.marketplace ? 'rotate-90' : ''
+                                        )}
+                                    />
+                                </button>
+
+                                {expandedSections.marketplace && (
+                                    <div className="ml-8 space-y-1">
+                                        {marketplaceNavigation.map((subItem) => {
+                                            const isSubActive = window.location.pathname === subItem.href ||
+                                                (subItem.href !== '/admin/marketplace' && window.location.pathname.startsWith(subItem.href));
+
+                                            return (
+                                                <Link
+                                                    key={subItem.name}
+                                                    href={subItem.href}
+                                                    className={cn(
+                                                        'group flex items-center px-2 py-2 text-sm font-medium rounded-md',
+                                                        isSubActive
+                                                            ? 'bg-gray-100 text-gray-900'
+                                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                                    )}
+                                                >
+                                                    {subItem.name === 'Payments' && (
+                                                        <DollarSign className="mr-3 h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-gray-500" />
+                                                    )}
+                                                    <span className={subItem.name === 'Payments' ? '' : 'ml-7'}>
+                                                        {subItem.name}
+                                                    </span>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </nav>
                     </div>
                 </div>

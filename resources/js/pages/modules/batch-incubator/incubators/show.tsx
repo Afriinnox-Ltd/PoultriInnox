@@ -281,8 +281,8 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'running': return 'bg-green-100 text-green-800 border-green-200';
-            case 'idle': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'running': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            case 'idle': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
             case 'maintenance': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
             case 'error': return 'bg-red-100 text-red-800 border-red-200';
             default: return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -291,14 +291,14 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
 
     const getTemperatureStatus = () => {
         const variance = Math.abs(incubator.temperature_variance);
-        if (variance <= 0.5) return { icon: CheckCircle, color: 'text-green-600', status: 'Optimal' };
+        if (variance <= 0.5) return { icon: CheckCircle, color: 'text-emerald-600', status: 'Optimal' };
         if (variance <= 1.0) return { icon: AlertTriangle, color: 'text-yellow-600', status: 'Acceptable' };
         return { icon: AlertTriangle, color: 'text-red-600', status: 'Critical' };
     };
 
     const getHumidityStatus = () => {
         const variance = Math.abs(incubator.humidity_variance);
-        if (variance <= 2) return { icon: CheckCircle, color: 'text-green-600', status: 'Optimal' };
+        if (variance <= 2) return { icon: CheckCircle, color: 'text-emerald-600', status: 'Optimal' };
         if (variance <= 5) return { icon: AlertTriangle, color: 'text-yellow-600', status: 'Acceptable' };
         return { icon: AlertTriangle, color: 'text-red-600', status: 'Critical' };
     };
@@ -410,7 +410,7 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-muted-foreground">Variance</span>
-                                        <span className={`font-medium ${Math.abs(incubator.temperature_variance) > 1 ? 'text-red-600' : 'text-green-600'}`}>
+                                        <span className={`font-medium ${Math.abs(incubator.temperature_variance) > 1 ? 'text-red-600' : 'text-emerald-600'}`}>
                                             {incubator.temperature_variance > 0 ? '+' : ''}{incubator.temperature_variance}°C
                                         </span>
                                     </div>
@@ -423,7 +423,7 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
-                                        <Droplets className="h-5 w-5 text-blue-500" />
+                                        <Droplets className="h-5 w-5 text-emerald-500" />
                                         Humidity Monitoring
                                     </CardTitle>
                                 </CardHeader>
@@ -441,7 +441,7 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-muted-foreground">Variance</span>
-                                        <span className={`font-medium ${Math.abs(incubator.humidity_variance) > 5 ? 'text-red-600' : 'text-green-600'}`}>
+                                        <span className={`font-medium ${Math.abs(incubator.humidity_variance) > 5 ? 'text-red-600' : 'text-emerald-600'}`}>
                                             {incubator.humidity_variance > 0 ? '+' : ''}{incubator.humidity_variance}%
                                         </span>
                                     </div>
@@ -470,7 +470,7 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-2">
                                             <div
-                                                className="bg-green-600 h-2 rounded-full"
+                                                className="bg-emerald-600 h-2 rounded-full"
                                                 style={{ width: `${incubator.utilization_rate}%` }}
                                             ></div>
                                         </div>
@@ -508,7 +508,7 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
                                 <CardContent>
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <Activity className="h-4 w-4 text-green-600" />
+                                            <Activity className="h-4 w-4 text-emerald-600" />
                                             <span className="text-sm">Sensors Active</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
@@ -768,29 +768,29 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
                                         <Label className="text-sm font-medium">User Access Management</Label>
                                         <div className="space-y-2">
                                             {/* Owner */}
-                                            <div className="flex items-center justify-between p-2 bg-green-50 rounded border border-green-200">
+                                            <div className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-200">
                                                 <div className="flex items-center gap-2">
-                                                    <Shield className="h-4 w-4 text-green-600" />
+                                                    <Shield className="h-4 w-4 text-emerald-600" />
                                                     <div>
                                                         <span className="text-sm font-medium">{incubator.owner.name}</span>
-                                                        <Badge variant="outline" className="ml-2 text-xs bg-green-100 text-green-700 border-green-300">Owner</Badge>
+                                                        <Badge variant="outline" className="ml-2 text-xs bg-emerald-100 text-emerald-700 border-emerald-300">Owner</Badge>
                                                     </div>
                                                 </div>
-                                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                                <CheckCircle className="h-4 w-4 text-emerald-600" />
                                             </div>
 
                                             {/* Currently Authorized Users */}
                                             {incubator.authorized_users_details?.map(user => (
-                                                <div key={user.id} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                                                <div key={user.id} className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-200">
                                                     <div className="flex items-center gap-2">
-                                                        <Users className="h-4 w-4 text-blue-600" />
+                                                        <Users className="h-4 w-4 text-emerald-600" />
                                                         <div>
                                                             <span className="text-sm font-medium">{user.name}</span>
                                                             <p className="text-xs text-muted-foreground">{user.email}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">Authorized</Badge>
+                                                        <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-300">Authorized</Badge>
                                                         {isOwner && (
                                                             <Button
                                                                 variant="outline"
@@ -825,7 +825,7 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
                                                             variant="default"
                                                             onClick={handleGrantAccessByEmail}
                                                             disabled={searchForm.processing || !searchForm.data.email.trim()}
-                                                            className="bg-green-600 hover:bg-green-700"
+                                                            className="bg-emerald-600 hover:bg-emerald-700"
                                                         >
                                                             {searchForm.processing ? (
                                                                 <RotateCcw className="h-4 w-4 animate-spin" />

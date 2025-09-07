@@ -164,13 +164,13 @@ export default function Index({
             title: 'Feed Types',
             count: feedTypesCount,
             icon: Utensils,
-            color: 'bg-blue-500'
+            color: 'bg-emerald-500'
         },
         {
             title: 'Feed Programs',
             count: feedProgramsCount,
             icon: FileSpreadsheet,
-            color: 'bg-green-500'
+            color: 'bg-emerald-500'
         },
         {
             title: 'Suppliers',

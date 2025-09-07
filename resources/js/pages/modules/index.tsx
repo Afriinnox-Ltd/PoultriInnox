@@ -26,7 +26,8 @@ import {
   Users,
   BarChart3,
   Activity,
-  Eye
+  Eye,
+  Store
 } from 'lucide-react';
 import { Link, Head, useForm } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
@@ -68,6 +69,7 @@ const getIcon = (iconName: string) => {
     const icons = {
         'package': Package,
         'shopping-cart': ShoppingCart,
+        'store': Store,
         'heart': Heart,
         'dollar-sign': DollarSign,
         'trending-up': TrendingUp,
@@ -124,20 +126,20 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Active Modules</CardTitle>
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-emerald-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{enabledModules.length}</div>
+                            <div className="text-2xl font-bold text-emerald-600">{enabledModules.length}</div>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Available Modules</CardTitle>
-                            <Circle className="h-4 w-4 text-green-600" />
+                            <Circle className="h-4 w-4 text-emerald-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{availableModules.length}</div>
+                            <div className="text-2xl font-bold text-emerald-600">{availableModules.length}</div>
                         </CardContent>
                     </Card>
 
@@ -171,12 +173,12 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                 const IconComponent = getIcon(module.icon);
 
                                 return (
-                                    <Card key={module.id} className="border-green-200 bg-white">
+                                    <Card key={module.id} className="border-emerald-200 bg-white">
                                         <CardHeader>
                                             <CardTitle className="flex items-center gap-2">
-                                                <IconComponent className="h-5 w-5 text-green-600" />
+                                                <IconComponent className="h-5 w-5 text-emerald-600" />
                                                 {module.name}
-                                                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                                                <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-300">
                                                     Active
                                                 </Badge>
                                             </CardTitle>
@@ -198,7 +200,7 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => handleViewDetails(module)}
-                                                        className="border-green-300 text-green-700 hover:bg-green-50"
+                                                        className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                                                     >
                                                         <Info className="h-3 w-3 mr-1" />
                                                         Details
@@ -231,12 +233,12 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                 const IconComponent = getIcon(module.icon);
 
                                 return (
-                                    <Card key={module.id} className="border-green-200 bg-white">
+                                    <Card key={module.id} className="border-emerald-200 bg-white">
                                         <CardHeader>
                                             <CardTitle className="flex items-center gap-2">
-                                                <IconComponent className="h-5 w-5 text-green-600" />
+                                                <IconComponent className="h-5 w-5 text-emerald-600" />
                                                 {module.name}
-                                                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                                                <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-300">
                                                     Available
                                                 </Badge>
                                             </CardTitle>
@@ -252,7 +254,7 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => handleViewDetails(module)}
-                                                        className="border-green-300 text-green-700 hover:bg-green-50"
+                                                        className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                                                     >
                                                         <Info className="h-3 w-3 mr-1" />
                                                         Details
@@ -261,7 +263,7 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                                         size="sm"
                                                         onClick={() => handleToggleModule(module)}
                                                         disabled={processing}
-                                                        className="bg-green-600 hover:bg-green-700"
+                                                        className="bg-emerald-600 hover:bg-emerald-700"
                                                     >
                                                         Activate
                                                     </Button>
@@ -321,7 +323,7 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                                         size="sm"
                                                         onClick={() => handleToggleModule(module)}
                                                         disabled={processing}
-                                                        className="border-green-300 text-green-700 hover:bg-green-50"
+                                                        className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                                                     >
                                                         Reactivate
                                                     </Button>
@@ -344,11 +346,11 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                     <div className="flex items-center gap-3">
                                         {(() => {
                                             const IconComponent = getIcon(selectedModule.icon);
-                                            return <IconComponent className="h-6 w-6 text-green-600" />;
+                                            return <IconComponent className="h-6 w-6 text-emerald-600" />;
                                         })()}
                                         <div>
                                             <DialogTitle className="text-2xl font-bold">{selectedModule.name}</DialogTitle>
-                                            <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 mt-2">
+                                            <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-300 mt-2">
                                                 {selectedModule.is_enabled ? 'Active' : 'Available'}
                                             </Badge>
                                         </div>
@@ -366,7 +368,7 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                                 {selectedModule.config.features.map((feature: string, index: number) => (
                                                     <div key={index} className="flex items-center gap-2 text-sm">
-                                                        <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                                                        <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
                                                         <span>{feature}</span>
                                                     </div>
                                                 ))}
@@ -381,7 +383,7 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                             <div className="space-y-2">
                                                 {selectedModule.config.benefits.map((benefit: string, index: number) => (
                                                     <div key={index} className="flex items-start gap-2 text-sm">
-                                                        <ArrowRight className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                                        <ArrowRight className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                                                         <span>{benefit}</span>
                                                     </div>
                                                 ))}
@@ -406,7 +408,7 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                                                 handleCloseDetails();
                                             }}
                                             disabled={processing}
-                                            className="flex-1 bg-green-600 hover:bg-green-700"
+                                            className="flex-1 bg-emerald-600 hover:bg-emerald-700"
                                         >
                                             Activate Module
                                         </Button>

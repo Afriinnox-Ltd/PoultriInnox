@@ -7,6 +7,7 @@ use App\Modules\BatchIncubator\Models\Batch;
 use App\Modules\BatchIncubator\Models\Incubator;
 use App\Modules\BatchIncubator\Enums\BatchStatus;
 use App\Modules\BatchIncubator\Enums\EventType;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -16,63 +17,110 @@ class BatchController extends Controller
     /**
      * Display a listing of batches
      */
-    public function index()
+    public function index(Request $request)
     {
-        $batches = Batch::with(['incubator', 'manager'])
-            ->latest()
-            ->get()
-            ->map(function ($batch) {
-                return [
-                    'id' => $batch->id,
-                    'batch_code' => $batch->batch_code,
-                    'name' => $batch->name,
-                    'breed' => $batch->breed,
-                    'status' => [
-                        'value' => $batch->status->value,
-                        'label' => $batch->status->label(),
-                        'color' => $batch->status->color(),
-                    ],
-                    'current_count' => $batch->current_count,
-                    'initial_count' => $batch->initial_count,
-                    'mortality_rate' => $batch->mortality_rate,
-                    'avg_daily_production' => $batch->avg_daily_production,
-                    'incubator' => $batch->incubator ? [
-                        'id' => $batch->incubator->id,
-                        'name' => $batch->incubator->name,
-                        'status' => $batch->incubator->status->label(),
-                    ] : null,
-                    'manager' => [
-                        'id' => $batch->manager->id,
-                        'name' => $batch->manager->name,
-                    ],
-                    'start_date' => $batch->start_date?->format('Y-m-d'),
-                    'hatch_date' => $batch->hatch_date?->format('Y-m-d'),
-                    'expected_completion_date' => $batch->expected_completion_date?->format('Y-m-d'),
-                    'age_days' => $batch->age_days,
-                    'survival_rate' => $batch->survival_rate,
-                    'total_cost' => $batch->total_cost,
-                    'profit_loss' => $batch->profit_loss,
-                ];
-            });
+        $user = Auth::user();
+        $perPage = $request->get('per_page', 15); // Default 15 items per page
+        $search = $request->get('search');
+        $status = $request->get('status');
 
+        $query = Batch::with(['incubator', 'manager'])
+            ->accessibleBy($user); // Apply access control
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('batch_code', 'like', "%{$search}%")
+                  ->orWhere('name', 'like', "%{$search}%")
+                  ->orWhere('breed', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply status filter
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $batches = $query->latest()
+            ->paginate($perPage);
+
+        // Transform the paginated data
+        $batches->getCollection()->transform(function ($batch) use ($user) {
+            return [
+                'id' => $batch->id,
+                'batch_code' => $batch->batch_code,
+                'name' => $batch->name,
+                'breed' => $batch->breed,
+                'status' => [
+                    'value' => $batch->status->value,
+                    'label' => $batch->status->label(),
+                    'color' => $batch->status->color(),
+                ],
+                'current_count' => $batch->current_count,
+                'initial_count' => $batch->initial_count,
+                'mortality_rate' => $batch->mortality_rate,
+                'avg_daily_production' => $batch->avg_daily_production,
+                'incubator' => $batch->incubator ? [
+                    'id' => $batch->incubator->id,
+                    'name' => $batch->incubator->name,
+                    'status' => $batch->incubator->status->label(),
+                ] : null,
+                'manager' => [
+                    'id' => $batch->manager->id,
+                    'name' => $batch->manager->name,
+                ],
+                'start_date' => $batch->start_date?->format('Y-m-d'),
+                'hatch_date' => $batch->hatch_date?->format('Y-m-d'),
+                'expected_completion_date' => $batch->expected_completion_date?->format('Y-m-d'),
+                'age_days' => $batch->age_days,
+                'survival_rate' => $batch->survival_rate,
+                'total_cost' => $batch->total_cost,
+                'profit_loss' => $batch->profit_loss,
+
+                // Basic feed statistics
+                'total_feed_consumed' => $batch->getTotalFeedConsumed(),
+                'average_fcr' => $batch->getAverageFCR(),
+                'actual_feed_cost' => $batch->calculateActualFeedCost(),
+                'feed_consumption_count' => $batch->feedConsumptions()->count(),
+
+                // User access info
+                'can_edit' => $batch->userHasAccess($user) || $user->isAdmin(),
+                'is_owner' => $batch->manager_id === $user->id,
+            ];
+        });
+
+        // Calculate stats only for accessible batches
+        $accessibleBatchesQuery = Batch::accessibleBy($user);
+        
         $stats = [
-            'total_batches' => Batch::count(),
-            'active_batches' => Batch::whereIn('status', [
+            'total_batches' => $accessibleBatchesQuery->count(),
+            'active_batches' => $accessibleBatchesQuery->whereIn('status', [
                 BatchStatus::INCUBATING,
                 BatchStatus::GROWING,
                 BatchStatus::LAYING
             ])->count(),
-            'total_birds' => Batch::whereIn('status', [
+            'total_birds' => $accessibleBatchesQuery->whereIn('status', [
                 BatchStatus::GROWING,
                 BatchStatus::LAYING
             ])->sum('current_count'),
-            'daily_production' => Batch::where('status', BatchStatus::LAYING)
+            'daily_production' => $accessibleBatchesQuery->where('status', BatchStatus::LAYING)
                 ->sum('avg_daily_production'),
         ];
 
         return Inertia::render('modules/batch-incubator/batches/index', [
             'batches' => $batches,
             'stats' => $stats,
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'per_page' => $perPage,
+            ],
+            'statuses' => array_map(function ($status) {
+                return [
+                    'value' => $status->value,
+                    'label' => $status->label(),
+                ];
+            }, BatchStatus::cases()),
         ]);
     }
 
@@ -81,7 +129,12 @@ class BatchController extends Controller
      */
     public function create()
     {
-        $incubators = Incubator::whereIn('status', ['idle', 'running'])->get(['id', 'name', 'capacity', 'current_load', 'status']);
+        $user = Auth::user();
+        
+        // Only show incubators that the user has access to
+        $incubators = Incubator::whereIn('status', ['idle', 'running'])
+            ->accessibleBy($user)
+            ->get(['id', 'name', 'capacity', 'current_load', 'status']);
 
         return Inertia::render('modules/batch-incubator/batches/create', [
             'incubators' => $incubators,
@@ -133,7 +186,19 @@ class BatchController extends Controller
      */
     public function show(Batch $batch)
     {
-        $batch->load(['incubator', 'manager', 'events.user', 'schedules.assignedUser']);
+        $user = Auth::user();
+
+        // Check if user has access to this batch
+        if (!$batch->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to view this batch.');
+        }
+
+        $batch->load(['incubator', 'manager', 'events.user', 'schedules.assignedUser', 'feedConsumptions.feedType']);
+
+        // Get comprehensive statistics including feed consumption data
+        $comprehensiveStats = $batch->getComprehensiveStats();
+        $feedStats = $batch->getFeedConsumptionStats();
+        $feedVariance = $batch->getFeedVarianceAnalysis();
 
         return Inertia::render('modules/batch-incubator/batches/show', [
             'batch' => [
@@ -242,6 +307,36 @@ class BatchController extends Controller
                         ] : null,
                     ];
                 }),
+
+                // Feed consumption statistics
+                'feed_statistics' => $feedStats,
+                'feed_variance' => $feedVariance,
+                'comprehensive_stats' => $comprehensiveStats,
+
+                // Recent feed consumption records (last 10)
+                'recent_feed_consumptions' => $batch->feedConsumptions()
+                    ->with(['feedType', 'feedInventory'])
+                    ->latest('consumption_date')
+                    ->take(10)
+                    ->get()
+                    ->map(function ($consumption) {
+                        return [
+                            'id' => $consumption->id,
+                            'consumption_date' => $consumption->consumption_date->format('Y-m-d'),
+                            'feed_type' => $consumption->feedType->name ?? 'N/A',
+                            'planned_amount' => $consumption->planned_amount,
+                            'actual_amount' => $consumption->actual_amount,
+                            'variance_percentage' => $consumption->variance_percentage,
+                            'fcr' => $consumption->fcr,
+                            'total_feed_cost' => $consumption->total_feed_cost,
+                            'bird_count' => $consumption->bird_count,
+                        ];
+                    }),
+
+                // User permissions
+                'can_edit' => $batch->userHasAccess($user) || $user->isAdmin(),
+                'is_owner' => $batch->manager_id === $user->id,
+                'can_delete' => ($batch->manager_id === $user->id) || $user->isAdmin(),
             ],
         ]);
     }
@@ -251,6 +346,13 @@ class BatchController extends Controller
      */
     public function update(Request $request, Batch $batch)
     {
+        $user = Auth::user();
+
+        // Check if user has access to this batch
+        if (!$batch->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to update this batch.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -263,6 +365,8 @@ class BatchController extends Controller
             'other_costs' => 'nullable|numeric|min:0',
             'revenue' => 'nullable|numeric|min:0',
             'avg_daily_production' => 'nullable|numeric|min:0',
+            'authorized_users' => 'nullable|array',
+            'authorized_users.*' => 'exists:users,id',
         ]);
 
         // Calculate mortality rate
@@ -282,6 +386,13 @@ class BatchController extends Controller
      */
     public function updateStatus(Request $request, Batch $batch)
     {
+        $user = Auth::user();
+
+        // Check if user has access to this batch
+        if (!$batch->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to update this batch status.');
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:' . implode(',', array_map(fn($s) => $s->value, BatchStatus::cases())),
         ]);
@@ -313,6 +424,13 @@ class BatchController extends Controller
      */
     public function addEvent(Request $request, Batch $batch)
     {
+        $user = Auth::user();
+
+        // Check if user has access to this batch
+        if (!$batch->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to add events to this batch.');
+        }
+
         $validated = $request->validate([
             'event_type' => 'required|string',
             'title' => 'required|string|max:255',
@@ -374,8 +492,16 @@ class BatchController extends Controller
 
         return back()->with('success', 'Event recorded successfully! Batch costs have been updated.');
     }
+
     public function destroy(Batch $batch)
     {
+        $user = Auth::user();
+
+        // Check if user has access to delete this batch (only owner or admin)
+        if (!$user->isAdmin() && $batch->manager_id !== $user->id) {
+            abort(403, 'You do not have permission to delete this batch.');
+        }
+
         // Check if batch has related data that would prevent deletion
         $hasEvents = $batch->events()->count() > 0;
         $hasCurrentCount = $batch->current_count > 0;
@@ -400,5 +526,97 @@ class BatchController extends Controller
 
         return redirect()->route('batch-incubator.batches.index')
             ->with('success', "Batch '{$batchName}' deleted successfully!");
+    }
+
+    /**
+     * Update user access for the batch
+     */
+    public function updateAccess(Request $request, Batch $batch)
+    {
+        $user = Auth::user();
+
+        // Only owner or admin can modify access
+        if (!$user->isAdmin() && $batch->manager_id !== $user->id) {
+            abort(403, 'You do not have permission to modify access settings for this batch.');
+        }
+
+        $validated = $request->validate([
+            'authorized_users' => 'nullable|array',
+            'authorized_users.*' => 'integer|exists:users,id',
+        ]);
+
+        if (isset($validated['authorized_users'])) {
+            // Always include owner in authorized users
+            $authorizedUsers = array_unique(array_merge([$batch->manager_id], $validated['authorized_users']));
+            $batch->update(['authorized_users' => $authorizedUsers]);
+        }
+
+        return back()->with('success', 'Access settings updated successfully!');
+    }
+
+    /**
+     * Grant access to a user via email
+     */
+    public function grantAccess(Request $request, Batch $batch)
+    {
+        $user = Auth::user();
+
+        // Only owner or admin can grant access
+        if (!$user->isAdmin() && $batch->manager_id !== $user->id) {
+            abort(403, 'You do not have permission to grant access to this batch.');
+        }
+
+        $validated = $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $targetUser = User::where('email', $validated['email'])
+            ->where('id', '!=', $batch->manager_id)
+            ->first();
+
+        if (!$targetUser) {
+            return back()->withErrors(['email' => 'User not found with this email address.']);
+        }
+
+        $currentAuthorizedUsers = $batch->authorized_users ?? [];
+        if (in_array($targetUser->id, $currentAuthorizedUsers)) {
+            return back()->withErrors(['email' => 'User already has access to this batch.']);
+        }
+
+        $newAuthorizedUsers = array_unique(array_merge($currentAuthorizedUsers, [$targetUser->id]));
+        $batch->update(['authorized_users' => $newAuthorizedUsers]);
+
+        return back()->with('success', "Access granted to {$targetUser->name} ({$targetUser->email}) successfully!");
+    }
+
+    /**
+     * Revoke access from a user
+     */
+    public function revokeAccess(Request $request, Batch $batch, User $targetUser)
+    {
+        $user = Auth::user();
+
+        // Only owner or admin can revoke access
+        if (!$user->isAdmin() && $batch->manager_id !== $user->id) {
+            abort(403, 'You do not have permission to revoke access from this batch.');
+        }
+
+        // Cannot revoke access from owner
+        if ($targetUser->id === $batch->manager_id) {
+            return back()->withErrors(['error' => 'Cannot revoke access from the batch owner.']);
+        }
+
+        $currentAuthorizedUsers = $batch->authorized_users ?? [];
+        if (!in_array($targetUser->id, $currentAuthorizedUsers)) {
+            return back()->withErrors(['error' => 'User does not have access to this batch.']);
+        }
+
+        $newAuthorizedUsers = array_filter($currentAuthorizedUsers, function($userId) use ($targetUser) {
+            return $userId !== $targetUser->id;
+        });
+
+        $batch->update(['authorized_users' => array_values($newAuthorizedUsers)]);
+
+        return back()->with('success', "Access revoked from {$targetUser->name} ({$targetUser->email}) successfully!");
     }
 }

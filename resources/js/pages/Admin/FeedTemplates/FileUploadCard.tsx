@@ -122,7 +122,7 @@ export default function FileUploadCard({
                     <div className="text-center">
                         {selectedFile ? (
                             <div className="space-y-2">
-                                <FileText className="h-8 w-8 mx-auto text-green-500" />
+                                <FileText className="h-8 w-8 mx-auto text-emerald-500" />
                                 <p className="text-sm font-medium">{selectedFile.name}</p>
                                 <p className="text-xs text-muted-foreground">
                                     {(selectedFile.size / 1024).toFixed(2)} KB

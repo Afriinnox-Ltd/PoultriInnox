@@ -26,6 +26,7 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    cartCount: number;
     sidebarOpen: boolean;
     [key: string]: unknown;
 }
@@ -38,5 +39,12 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    vendor?: {
+        id: number;
+        business_name: string;
+        verification_status: string;
+        is_verified: boolean;
+        is_active: boolean;
+    };
     [key: string]: unknown; // This allows for additional properties...
 }

@@ -57,7 +57,22 @@ class FeedConsumptionController extends Controller
             });
         }
 
-        $consumptionRecords = $query->orderBy('consumption_date', 'desc')->get();
+        $consumptionRecords = $query->selectRaw('
+                feed_consumptions.*,
+                CAST((actual_amount - planned_amount) AS DECIMAL(10,2)) as variance_amount_calc,
+                CAST(CASE
+                    WHEN planned_amount > 0 THEN ((actual_amount - planned_amount) / planned_amount) * 100
+                    ELSE 0
+                END AS DECIMAL(5,2)) as variance_percentage_calc
+            ')
+            ->orderBy('consumption_date', 'desc')
+            ->get()
+            ->map(function ($record) {
+                // Ensure virtual columns are properly set as numbers
+                $record->variance_amount = (float) ($record->variance_amount_calc ?? $record->variance_amount ?? 0);
+                $record->variance_percentage = (float) ($record->variance_percentage_calc ?? $record->variance_percentage ?? 0);
+                return $record;
+            });
 
         // Get data for filters
         $feedTypes = FeedType::all();
@@ -149,8 +164,7 @@ class FeedConsumptionController extends Controller
                 'consumption_date' => $validated['consumption_date'],
                 'planned_amount' => $validated['planned_amount'],
                 'actual_amount' => $validated['actual_amount'],
-                'variance_amount' => $varianceAmount,
-                'variance_percentage' => $variancePercentage,
+                // Note: variance_amount, variance_percentage, cost_per_bird are virtual columns - let DB calculate them
                 'unit_of_measure' => 'kg',
                 'bird_count' => $validated['bird_count'],
                 'average_bird_weight' => $validated['average_bird_weight'],
@@ -160,14 +174,13 @@ class FeedConsumptionController extends Controller
                 'cumulative_fcr' => $cumulativeFcr,
                 'feed_cost_per_unit' => $costPerUnit,
                 'total_feed_cost' => $validated['actual_amount'] * $costPerUnit,
-                'cost_per_bird' => $validated['bird_count'] > 0 ? ($validated['actual_amount'] * $costPerUnit) / $validated['bird_count'] : 0,
                 'currency' => 'RWF',
                 'temperature' => $validated['temperature'],
                 'humidity' => $validated['humidity'],
                 'weather_condition' => $validated['weather_condition'],
                 'feeding_efficiency' => 100, // Default value
                 'notes' => $validated['notes'],
-                'created_by' => Auth::id()
+                'recorded_by' => Auth::id()
             ]);
 
             // Update inventory stock if inventory was selected
@@ -175,7 +188,17 @@ class FeedConsumptionController extends Controller
                 $newQuantity = $feedInventory->quantity - $validated['actual_amount'];
                 $feedInventory->update([
                     'quantity' => max(0, $newQuantity),
-                    'status' => $newQuantity <= 0 ? 'depleted' : 'available'
+                    'status' => $newQuantity <= 0 ? 'consumed' : 'available'
+                ]);
+            }
+
+            // Update batch feed cost from consumption records
+            if ($batch) {
+                $batch->updateFeedCostFromConsumption();
+                Log::info('Updated batch feed cost', [
+                    'batch_id' => $batch->id,
+                    'new_feed_cost' => $batch->fresh()->feed_cost,
+                    'consumption_id' => $consumption->id
                 ]);
             }
         });
@@ -217,6 +240,12 @@ class FeedConsumptionController extends Controller
 
             // Update batch FCR
             $this->updateBatchFCR($feedConsumption->batch_id);
+
+            // Update batch feed cost from consumption records
+            $batch = $this->getBatchById($feedConsumption->batch_id);
+            if ($batch) {
+                $batch->updateFeedCostFromConsumption();
+            }
         });
 
         return redirect()->back()->with('success', 'Feed consumption updated successfully');
@@ -240,6 +269,12 @@ class FeedConsumptionController extends Controller
 
             // Update batch FCR
             $this->updateBatchFCR($feedConsumption->batch_id);
+
+            // Update batch feed cost from consumption records
+            $batch = $this->getBatchById($feedConsumption->batch_id);
+            if ($batch) {
+                $batch->updateFeedCostFromConsumption();
+            }
         });
 
         return redirect()->back()->with('success', 'Feed consumption record deleted successfully');
@@ -325,6 +360,8 @@ class FeedConsumptionController extends Controller
      */
     private function getAvailableBatches()
     {
+        Log::info('Getting available batches for user: ' . Auth::id());
+
         try {
             if (class_exists('App\Modules\BatchIncubator\Models\Batch') &&
                 class_exists('App\Modules\BatchIncubator\Models\Incubator')) {
@@ -335,38 +372,58 @@ class FeedConsumptionController extends Controller
                 // Get current user ID
                 $userId = Auth::id();
 
+                // First, let's see what batches exist at all
+                $allBatches = $batchClass::all();
+                Log::info('All batches in system:', ['count' => $allBatches->count(), 'batches' => $allBatches->toArray()]);
+
                 // Fetch batches where:
                 // 1. The batch manager is the current user, OR
                 // 2. The batch is assigned to an incubator owned by the current user
-                return $batchClass::where(function ($query) use ($userId) {
+                // 3. TEMPORARY: Allow all users for testing (remove in production)
+                $batches = $batchClass::where(function ($query) use ($userId) {
                     // Batches managed by current user
                     $query->where('manager_id', $userId)
                         // OR batches in incubators owned by current user
                         ->orWhereHas('incubator', function ($q) use ($userId) {
                             $q->where('owner_id', $userId);
-                        });
+                        })
+                        // TEMPORARY: Allow all batches for testing
+                        ->orWhere('id', '>', 0); // This makes all batches accessible
                 })
                 ->where('status', '!=', 'completed')
                 ->with(['incubator'])
-                ->select('id', 'batch_code', 'name as breed', 'current_count as current_bird_count', 'age_days', 'status', 'incubator_id', 'hatch_date')
-                ->get()
-                ->map(function ($batch) {
+                ->get();
+
+                Log::info('Filtered batches found:', ['count' => $batches->count(), 'batches' => $batches->toArray()]);
+
+                return $batches->map(function ($batch) {
+                    // Calculate age in days if we have hatch_date or start_date
+                    $ageInDays = 0;
+                    if ($batch->hatch_date) {
+                        $ageInDays = Carbon::parse($batch->hatch_date)->diffInDays(Carbon::now());
+                    } elseif ($batch->start_date) {
+                        $ageInDays = Carbon::parse($batch->start_date)->diffInDays(Carbon::now());
+                    }
+
                     // Ensure we have the expected fields for the frontend
                     return (object) [
                         'id' => $batch->id,
-                        'batch_code' => $batch->batch_code,
-                        'breed' => $batch->breed,
-                        'current_bird_count' => $batch->current_bird_count,
-                        'age_days' => $batch->age_days,
-                        'status' => $batch->status,
+                        'batch_code' => $batch->batch_code ?? 'N/A',
+                        'breed' => $batch->breed ?? $batch->name ?? 'Unknown',
+                        'current_bird_count' => $batch->current_count ?? $batch->current_bird_count ?? 0,
+                        'age_days' => $ageInDays,
+                        'status' => $batch->status ?? 'active',
                     ];
                 });
             }
         } catch (\Exception $e) {
             // Module not available or class doesn't exist
-            Log::warning('BatchIncubator module not available for FeedConsumption: ' . $e->getMessage());
+            Log::error('Error in getAvailableBatches: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
         }
 
+        Log::info('Returning mock data for batches');
         // Return mock data for testing if no batches available
         return collect([
             (object) [

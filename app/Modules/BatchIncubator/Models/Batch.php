@@ -154,6 +154,52 @@ class Batch extends Model
     }
 
     /**
+     * Get all feed consumption records for this batch
+     */
+    public function feedConsumptions(): HasMany
+    {
+        return $this->hasMany(\App\Modules\FeedManagement\Models\FeedConsumption::class, 'batch_id');
+    }
+
+    /**
+     * Get all applied medications for this batch
+     */
+    public function appliedMedications(): HasMany
+    {
+        return $this->hasMany(AppliedMedication::class);
+    }
+
+    /**
+     * Get all applied vaccinations for this batch
+     */
+    public function appliedVaccinations(): HasMany
+    {
+        return $this->hasMany(AppliedVaccination::class);
+    }
+
+    /**
+     * Dismissed recommendations for this batch
+     */
+    public function dismissedRecommendations(): HasMany
+    {
+        return $this->hasMany(DismissedRecommendation::class);
+    }
+
+    /**
+     * Scope to get only active batches
+     */
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', [
+            BatchStatus::INCUBATING,
+            BatchStatus::HATCHING,
+            BatchStatus::BROODING,
+            BatchStatus::GROWING,
+            BatchStatus::LAYING
+        ]);
+    }
+
+    /**
      * Generate unique batch code
      */
     public static function generateBatchCode(): string
@@ -226,7 +272,7 @@ class Batch extends Model
             return 0;
         }
 
-        return now()->diffInDays($this->start_date);
+        return $this->start_date->diffInDays(now());
     }
 
     /**
@@ -377,5 +423,202 @@ class Batch extends Model
         $score = ($survivalRate * 0.4) + ($weightGain * 0.3) + ($roi * 0.3);
 
         return round(min(100, $score), 2);
+    }
+
+    /**
+     * Calculate total feed cost from actual consumption records
+     */
+    public function calculateActualFeedCost(): float
+    {
+        return $this->feedConsumptions()->sum('total_feed_cost') ?? 0;
+    }
+
+    /**
+     * Calculate total feed consumed in kg
+     */
+    public function getTotalFeedConsumed(): float
+    {
+        return $this->feedConsumptions()->sum('actual_amount') ?? 0;
+    }
+
+    /**
+     * Calculate average Feed Conversion Ratio (FCR)
+     */
+    public function getAverageFCR(): float
+    {
+        $avgFCR = $this->feedConsumptions()
+            ->whereNotNull('fcr')
+            ->avg('fcr');
+
+        return round($avgFCR ?? 0, 3);
+    }
+
+    /**
+     * Calculate cumulative Feed Conversion Ratio
+     */
+    public function getCumulativeFCR(): float
+    {
+        $totalFeedKg = $this->getTotalFeedConsumed();
+        $weightGain = $this->getWeightGain();
+
+        if ($weightGain <= 0) {
+            return 0;
+        }
+
+        return round($totalFeedKg / $weightGain, 3);
+    }
+
+    /**
+     * Get feed consumption statistics
+     */
+    public function getFeedConsumptionStats(): array
+    {
+        $consumptions = $this->feedConsumptions;
+
+        if ($consumptions->isEmpty()) {
+            return [
+                'total_feed_consumed_kg' => 0,
+                'total_feed_cost' => 0,
+                'average_fcr' => 0,
+                'cumulative_fcr' => 0,
+                'feed_cost_per_bird' => 0,
+                'consumption_records_count' => 0,
+                'last_feeding_date' => null,
+                'feed_efficiency_rating' => 'no_data'
+            ];
+        }
+
+        $totalCost = $consumptions->sum('total_feed_cost');
+        $feedCostPerBird = $this->current_count > 0 ? $totalCost / $this->current_count : 0;
+        $avgFCR = $this->getAverageFCR();
+
+        // Determine efficiency rating based on FCR
+        $efficiencyRating = match(true) {
+            $avgFCR <= 1.6 => 'excellent',
+            $avgFCR <= 1.9 => 'very_good',
+            $avgFCR <= 2.2 => 'good',
+            $avgFCR <= 2.8 => 'acceptable',
+            default => 'poor'
+        };
+
+        return [
+            'total_feed_consumed_kg' => $this->getTotalFeedConsumed(),
+            'total_feed_cost' => $totalCost,
+            'average_fcr' => $avgFCR,
+            'cumulative_fcr' => $this->getCumulativeFCR(),
+            'feed_cost_per_bird' => round($feedCostPerBird, 2),
+            'consumption_records_count' => $consumptions->count(),
+            'last_feeding_date' => $consumptions->max('consumption_date'),
+            'feed_efficiency_rating' => $efficiencyRating
+        ];
+    }
+
+    /**
+     * Get feed consumption variance analysis
+     */
+    public function getFeedVarianceAnalysis(): array
+    {
+        $consumptions = $this->feedConsumptions()
+            ->whereNotNull('variance_percentage')
+            ->get();
+
+        if ($consumptions->isEmpty()) {
+            return [
+                'average_variance_percentage' => 0,
+                'over_consumption_days' => 0,
+                'under_consumption_days' => 0,
+                'perfect_consumption_days' => 0,
+                'variance_trend' => 'no_data'
+            ];
+        }
+
+        $avgVariance = $consumptions->avg('variance_percentage');
+        $overDays = $consumptions->where('variance_percentage', '>', 5)->count();
+        $underDays = $consumptions->where('variance_percentage', '<', -5)->count();
+        $perfectDays = $consumptions->whereBetween('variance_percentage', [-5, 5])->count();
+
+        // Determine trend
+        $recent = $consumptions->sortByDesc('consumption_date')->take(7);
+        $older = $consumptions->sortByDesc('consumption_date')->slice(7, 7);
+
+        $recentAvg = $recent->avg('variance_percentage');
+        $olderAvg = $older->avg('variance_percentage');
+
+        $trend = 'stable';
+        if ($recent->count() >= 3 && $older->count() >= 3) {
+            if ($recentAvg > $olderAvg + 2) {
+                $trend = 'increasing_variance';
+            } elseif ($recentAvg < $olderAvg - 2) {
+                $trend = 'decreasing_variance';
+            }
+        }
+
+        return [
+            'average_variance_percentage' => round($avgVariance, 2),
+            'over_consumption_days' => $overDays,
+            'under_consumption_days' => $underDays,
+            'perfect_consumption_days' => $perfectDays,
+            'variance_trend' => $trend
+        ];
+    }
+
+    /**
+     * Update feed cost from actual consumption records
+     */
+    public function updateFeedCostFromConsumption(): void
+    {
+        $actualFeedCost = $this->calculateActualFeedCost();
+        $this->update(['feed_cost' => $actualFeedCost]);
+    }
+
+    /**
+     * Get comprehensive batch statistics including feed data
+     */
+    public function getComprehensiveStats(): array
+    {
+        $basicStats = [
+            'batch_info' => [
+                'id' => $this->id,
+                'batch_code' => $this->batch_code,
+                'name' => $this->name,
+                'breed' => $this->breed,
+                'status' => $this->status->value,
+                'age_days' => $this->age_days,
+                'start_date' => $this->start_date,
+            ],
+            'population' => [
+                'initial_count' => $this->initial_count,
+                'current_count' => $this->current_count,
+                'mortality_count' => $this->mortality_count,
+                'survival_rate' => $this->survival_rate,
+                'mortality_rate' => $this->mortality_rate,
+            ],
+            'growth' => [
+                'initial_weight' => $this->initial_weight,
+                'current_weight' => $this->current_weight,
+                'weight_gain' => $this->getWeightGain(),
+                'daily_weight_gain' => $this->getDailyWeightGain(),
+                'average_weight_per_bird' => $this->getAverageWeightPerBird(),
+            ],
+            'financial' => [
+                'initial_cost' => $this->initial_cost,
+                'feed_cost' => $this->feed_cost,
+                'medication_cost' => $this->medication_cost,
+                'other_costs' => $this->other_costs,
+                'total_costs' => $this->total_cost,
+                'revenue' => $this->revenue,
+                'profit_loss' => $this->profit_loss,
+                'roi_percentage' => $this->getROI(),
+            ],
+            'performance' => [
+                'performance_score' => $this->getPerformanceScore(),
+            ]
+        ];
+
+        // Add feed consumption statistics
+        $basicStats['feed_consumption'] = $this->getFeedConsumptionStats();
+        $basicStats['feed_variance'] = $this->getFeedVarianceAnalysis();
+
+        return $basicStats;
     }
 }

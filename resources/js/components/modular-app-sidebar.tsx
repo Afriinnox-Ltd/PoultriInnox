@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { dashboard } from '@/routes';
-import { type NavItem } from '@/types';
+import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
@@ -36,7 +36,8 @@ import {
     Heart,
     DollarSign,
     TrendingUp,
-    HelpCircle
+    HelpCircle,
+    Store
 } from 'lucide-react';
 import AppLogo from './app-logo';
 import { useMemo } from 'react';
@@ -73,6 +74,7 @@ const iconMap = {
     'calendar': Calendar,
     'bar-chart-3': BarChart3,
     'settings': Settings,
+    'store': Store,
 };
 
 const footerNavItems: NavItem[] = [
@@ -85,7 +87,8 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function ModularAppSidebar({ enabledModules = [] }: ModularAppSidebarProps) {
-    const page = usePage();
+    const page = usePage<SharedData>();
+    const user = page.props.auth?.user;
 
     const moduleNavigation = useMemo(() => {
         return enabledModules.map((module) => {
@@ -209,6 +212,54 @@ export function ModularAppSidebar({ enabledModules = [] }: ModularAppSidebarProp
                             icon: BarChart3,
                         },
                     ];
+                    break;
+                case 'marketplace':
+                    subItems = [];
+
+                    // If user is a vendor, show vendor-specific menu items
+                    if (user?.vendor) {
+                        subItems = [
+                            {
+                                title: 'Vendor Dashboard',
+                                href: '/marketplace/vendor/dashboard',
+                                icon: BarChart3,
+                            },
+                            {
+                                title: 'My Products',
+                                href: '/marketplace/vendor/products',
+                                icon: Package,
+                            },
+                            {
+                                title: 'My Orders',
+                                href: '/marketplace/vendor/orders',
+                                icon: ShoppingCart,
+                            },
+                            {
+                                title: 'Payments & Earnings',
+                                href: '/marketplace/vendor/payments',
+                                icon: DollarSign,
+                            },
+                            {
+                                title: 'Profile',
+                                href: '/marketplace/vendor/profile',
+                                icon: Settings,
+                            },
+                        ];
+                    } else {
+                        // If user is not a vendor, show option to become one
+                        subItems = [
+                            {
+                                title: 'Browse Marketplace',
+                                href: '/marketplace',
+                                icon: Store,
+                            },
+                            {
+                                title: 'Become a Vendor',
+                                href: '/marketplace/vendor/register',
+                                icon: Plus,
+                            },
+                        ];
+                    }
                     break;
                 default:
                     subItems = [

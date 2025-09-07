@@ -73,9 +73,9 @@ export default function ScheduleCalendar({
 
     const getStatusColor = (status: string) => {
         const colors = {
-            pending: 'bg-blue-100 text-blue-800 border-blue-200',
+            pending: 'bg-emerald-100 text-emerald-800 border-emerald-200',
             in_progress: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-            completed: 'bg-green-100 text-green-800 border-green-200',
+            completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
             overdue: 'bg-red-100 text-red-800 border-red-200',
             cancelled: 'bg-gray-100 text-gray-800 border-gray-200',
             postponed: 'bg-orange-100 text-orange-800 border-orange-200',
@@ -216,7 +216,7 @@ export default function ScheduleCalendar({
                                         className={`
                                             min-h-[120px] p-1 border rounded-lg
                                             ${date ? 'bg-white hover:bg-muted/50' : 'bg-muted/20'}
-                                            ${isToday(date) ? 'ring-2 ring-blue-500' : ''}
+                                            ${isToday(date) ? 'ring-2 ring-emerald-500' : ''}
                                             ${hasOverdue ? 'border-red-300' : ''}
                                             ${hasCritical && !hasOverdue ? 'border-orange-300' : ''}
                                         `}
@@ -225,7 +225,7 @@ export default function ScheduleCalendar({
                                             <>
                                                 <div className={`
                                                     text-sm font-medium mb-1 p-1 rounded
-                                                    ${isToday(date) ? 'bg-blue-100 text-blue-800' : ''}
+                                                    ${isToday(date) ? 'bg-emerald-100 text-emerald-800' : ''}
                                                 `}>
                                                     {date.getDate()}
                                                 </div>
@@ -284,7 +284,7 @@ export default function ScheduleCalendar({
                     <CardContent>
                         <div className="flex flex-wrap gap-4">
                             <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded bg-blue-100 border border-blue-200"></div>
+                                <div className="w-4 h-4 rounded bg-emerald-100 border border-emerald-200"></div>
                                 <span className="text-sm">Pending</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -292,7 +292,7 @@ export default function ScheduleCalendar({
                                 <span className="text-sm">In Progress</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded bg-green-100 border border-green-200"></div>
+                                <div className="w-4 h-4 rounded bg-emerald-100 border border-emerald-200"></div>
                                 <span className="text-sm">Completed</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -304,7 +304,7 @@ export default function ScheduleCalendar({
                                 <span className="text-sm">Critical Task</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-blue-600" />
+                                <Clock className="h-4 w-4 text-emerald-600" />
                                 <span className="text-sm">Scheduled Time</span>
                             </div>
                         </div>

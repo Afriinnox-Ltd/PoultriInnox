@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { Link, Head, router } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
+import { NavigationHelper, navigateToBatch, navigateToFeedConsumption } from '@/utils/navigation';
+import { NavigationLink, QuickNavigation, EntityLink } from '@/components/navigation/NavigationComponents';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -121,9 +123,9 @@ export default function SchedulesIndex({
 
     const getStatusColor = (status: string) => {
         const colors = {
-            pending: 'bg-blue-100 text-blue-800',
+            pending: 'bg-emerald-100 text-emerald-800',
             in_progress: 'bg-yellow-100 text-yellow-800',
-            completed: 'bg-green-100 text-green-800',
+            completed: 'bg-emerald-100 text-emerald-800',
             overdue: 'bg-red-100 text-red-800',
             cancelled: 'bg-gray-100 text-gray-800',
             postponed: 'bg-orange-100 text-orange-800',
@@ -134,7 +136,7 @@ export default function SchedulesIndex({
     const getPriorityColor = (priority: number) => {
         if (priority <= 2) return 'text-red-600';
         if (priority <= 3) return 'text-yellow-600';
-        return 'text-green-600';
+        return 'text-emerald-600';
     };
 
     const formatDateTime = (date: string, time?: string) => {
@@ -157,16 +159,8 @@ export default function SchedulesIndex({
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <QuickNav
-                            currentPage="schedules"
-                            createActionLabel="Calendar View"
-                            createActionHref="/batch-incubator/schedules-calendar"
-                        />
-                        <Button asChild size="sm">
-                            <Link href="/batch-incubator/schedules/create">
-                                <Plus className="h-4 w-4 mr-2" />
-                                New Schedule
-                            </Link>
-                        </Button>
+                            currentPage="schedules" 
+                        /> 
                     </div>
                 </div>
 
@@ -185,10 +179,10 @@ export default function SchedulesIndex({
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                            <Clock className="h-4 w-4 text-blue-600" />
+                            <Clock className="h-4 w-4 text-emerald-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">{stats.pending}</div>
+                            <div className="text-2xl font-bold text-emerald-600">{stats.pending}</div>
                         </CardContent>
                     </Card>
 
@@ -205,10 +199,10 @@ export default function SchedulesIndex({
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Today</CardTitle>
-                            <Calendar className="h-4 w-4 text-green-600" />
+                            <Calendar className="h-4 w-4 text-emerald-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{stats.today}</div>
+                            <div className="text-2xl font-bold text-emerald-600">{stats.today}</div>
                         </CardContent>
                     </Card>
 
@@ -343,7 +337,7 @@ export default function SchedulesIndex({
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Link
                                                         href={`/batch-incubator/schedules/${schedule.id}`}
-                                                        className="font-medium hover:text-blue-600"
+                                                        className="font-medium hover:text-emerald-600"
                                                     >
                                                         {schedule.title}
                                                     </Link>
@@ -365,12 +359,12 @@ export default function SchedulesIndex({
                                                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                                     <div className="flex items-center gap-1">
                                                         <Package className="h-4 w-4" />
-                                                        <Link
-                                                            href={`/batch-incubator/batches/${schedule.batch.id}`}
-                                                            className="hover:text-blue-600"
-                                                        >
-                                                            {schedule.batch.name}
-                                                        </Link>
+                                                        <EntityLink
+                                                            id={schedule.batch.id}
+                                                            label={schedule.batch.name}
+                                                            onClick={(id) => navigateToBatch(id)}
+                                                            className="text-emerald-600 hover:text-emerald-800"
+                                                        />
                                                     </div>
                                                     <div className="flex items-center gap-1">
                                                         <Calendar className="h-4 w-4" />
@@ -391,12 +385,24 @@ export default function SchedulesIndex({
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-col items-end gap-2">
                                                 <Button variant="outline" size="sm" asChild>
                                                     <Link href={`/batch-incubator/schedules/${schedule.id}`}>
                                                         View
                                                     </Link>
                                                 </Button>
+
+                                                {/* Quick Navigation */}
+                                                <div className="flex gap-1">
+                                                    <NavigationLink
+                                                        onClick={() => navigateToFeedConsumption(schedule.batch.id)}
+                                                        size="sm"
+                                                        variant="button"
+                                                        className="text-xs"
+                                                    >
+                                                        Feed Records
+                                                    </NavigationLink>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

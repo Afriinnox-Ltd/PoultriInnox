@@ -61,10 +61,24 @@ class DatabaseSeeder extends Seeder
 
         // Seed BatchIncubator module in proper order
         $this->call([
+            AdminUserSeeder::class,
+            ModuleSeeder::class,
+            MarketplaceSeeder::class,
+
+            // Feed Management Seeders
+            FeedTypesSeeder::class,
+            FeedSuppliersSeeder::class,
+            FeedProgramsSeeder::class,
+
+            // Health Management Seeders
+            MedicationProtocolsSeeder::class,
+            VaccinationProtocolsSeeder::class,
+
             IncubatorSeeder::class,
             BatchSeeder::class,
             BatchEventSeeder::class,
             BatchScheduleSeeder::class,
+            // SmartSchedulingSeeder::class,
         ]);
     }
 }

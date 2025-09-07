@@ -34,8 +34,8 @@ class CheckModuleDependencies
 
         // Get the module with additional validation
         $module = Module::where('slug', $moduleSlug)
-                       ->where('is_active', true)
-                       ->first();
+                        ->where('is_active', true)
+                        ->first();
 
         if (!$module) {
             abort(404, 'Module not found or inactive');

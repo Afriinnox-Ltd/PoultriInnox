@@ -25,7 +25,13 @@ import {
   Calendar,
   Scale,
   DollarSign,
-  BarChart3
+  BarChart3,
+  Loader2,
+  ExternalLink,
+  Info,
+  HelpCircle,
+  Calculator,
+  Clock
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { toast } from 'sonner';
@@ -34,6 +40,123 @@ import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency, formatWeight, formatDate } from '@/utils/formatters';
+import { NavigationHelper, navigateToBatch, navigateToFeedType, navigateToInventory } from '@/utils/navigation';
+import { NavigationLink, QuickNavigation, EntityLink } from '@/components/navigation/NavigationComponents';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Helper component for informative table headers with tooltips
+const InfoTableHead = ({ children, tooltip }: { children: React.ReactNode; tooltip: string }) => (
+  <TableHead>
+    <div className="flex items-center gap-1">
+      {children}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <HelpCircle className="h-3 w-3 text-gray-400 hover:text-gray-600 cursor-help" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="max-w-xs">{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  </TableHead>
+);
+
+// Helper component for complex data fields with explanations
+const InfoField = ({
+  value,
+  tooltip,
+  icon: Icon,
+  className = ""
+}: {
+  value: React.ReactNode;
+  tooltip: string;
+  icon?: any;
+  className?: string;
+}) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <div className={`flex items-center gap-1 cursor-help ${className}`}>
+        {Icon && <Icon className="h-3 w-3 text-gray-400" />}
+        {value}
+      </div>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p className="max-w-xs">{tooltip}</p>
+    </TooltipContent>
+  </Tooltip>
+);
+
+// Quick explanation panel component
+const ExplanationPanel = ({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) => (
+  <Card className={`mb-4 transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-95'}`}>
+    <CardHeader className="pb-2">
+      <div className="flex items-center justify-between">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Info className="h-4 w-4" />
+          Feed Consumption Records Guide
+        </CardTitle>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="h-6 w-6 p-0"
+        >
+          {isOpen ? '−' : '+'}
+        </Button>
+      </div>
+    </CardHeader>
+    {isOpen && (
+      <CardContent className="pt-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+          <div className="space-y-2">
+            <h4 className="font-semibold text-emerald-600 flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              Basic Information
+            </h4>
+            <ul className="space-y-1 text-gray-600">
+              <li><strong>Date:</strong> When the feed was consumed</li>
+              <li><strong>Batch:</strong> Group of birds being fed (clickable)</li>
+              <li><strong>Feed Type:</strong> Type of feed used (clickable)</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-emerald-600 flex items-center gap-1">
+              <Scale className="h-3 w-3" />
+              Quantities & Performance
+            </h4>
+            <ul className="space-y-1 text-gray-600">
+              <li><strong>Planned vs Actual:</strong> Expected vs actual feed amounts</li>
+              <li><strong>Variance:</strong> Difference from planned amounts</li>
+              <li><strong>FCR:</strong> Feed Conversion Ratio (efficiency metric)</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-purple-600 flex items-center gap-1">
+              <DollarSign className="h-3 w-3" />
+              Financial & Context
+            </h4>
+            <ul className="space-y-1 text-gray-600">
+              <li><strong>Cost:</strong> Total cost of feed consumed</li>
+              <li><strong>Birds:</strong> Number of birds fed</li>
+              <li><strong>Inventory:</strong> Source feed batch (clickable)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-emerald-50 rounded-lg">
+          <p className="text-xs text-emerald-700 flex items-center gap-1">
+            <Info className="h-3 w-3" />
+            <strong>Tip:</strong> Click on batch codes, feed types, or inventory items to view detailed information.
+            Hover over any data field to see explanations.
+          </p>
+        </div>
+      </CardContent>
+    )}
+  </Card>
+);
 
 interface FeedConsumption {
   id: number;
@@ -58,19 +181,19 @@ interface FeedConsumption {
   consumption_date: string;
   planned_amount: number;
   actual_amount: number;
-  variance_amount: number;
-  variance_percentage: number;
+  variance_amount: number | null;
+  variance_percentage: number | null;
   unit_of_measure: string;
   bird_count: number;
   average_bird_weight?: number;
   bird_age_days: number;
   mortality_count: number;
   weight_gain?: number;
-  fcr?: number;
-  cumulative_fcr?: number;
-  feed_cost_per_unit: number;
-  total_feed_cost: number;
-  cost_per_bird: number;
+  fcr?: number | null;
+  cumulative_fcr?: number | null;
+  feed_cost_per_unit: number | null;
+  total_feed_cost: number | null;
+  cost_per_bird: number | null;
   currency: string;
   temperature?: number;
   humidity?: number;
@@ -117,6 +240,19 @@ interface Props {
   };
 }
 
+const safeToFixed = (value: any, decimals: number = 2): string => {
+  const num = Number(value || 0);
+  return isNaN(num) ? '0.00' : num.toFixed(decimals);
+};
+
+// Currency formatting for RWF (Rwandan Franc)
+
+
+// Navigation helpers using the new navigation utility
+const navigateToSchedule = (scheduleId: number) => {
+  router.visit(`/batch-incubator/schedules/${scheduleId}`);
+};
+
 const breadcrumbs: BreadcrumbItem[] = [
   {
     title: 'Feed Management',
@@ -141,6 +277,8 @@ export default function FeedConsumptionIndex({
   const [dateFromFilter, setDateFromFilter] = useState(filters?.date_from || '');
   const [dateToFilter, setDateToFilter] = useState(filters?.date_to || '');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [isLoadingBatchData, setIsLoadingBatchData] = useState(false);
+  const [showExplanationPanel, setShowExplanationPanel] = useState(false);
 
   // Form state for adding consumption record
   const [newConsumption, setNewConsumption] = useState({
@@ -166,7 +304,7 @@ export default function FeedConsumptionIndex({
   };
 
   const getVarianceColor = (percentage: number) => {
-    if (Math.abs(percentage) <= 5) return 'text-green-600';
+    if (Math.abs(percentage) <= 5) return 'text-emerald-600';
     if (percentage > 5) return 'text-orange-600';
     return 'text-red-600';
   };
@@ -183,6 +321,71 @@ export default function FeedConsumptionIndex({
       preserveState: true,
       preserveScroll: true,
     });
+  };
+
+  // Handler for auto-filling data when batch is selected
+  const handleBatchChange = async (batchId: string) => {
+    if (!batchId) {
+      // If no batch selected, just clear the batch field
+      setNewConsumption({...newConsumption, batch_id: ''});
+      return;
+    }
+
+    // Update batch_id immediately
+    setNewConsumption(prev => ({...prev, batch_id: batchId}));
+    setIsLoadingBatchData(true);
+
+    try {
+      // Use fetch for API endpoints that return JSON
+      const response = await fetch(`/feed-management/api/batch-details/${batchId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          // Include CSRF token from meta tag
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        },
+        credentials: 'same-origin', // Include cookies for authentication
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const batchData = await response.json();
+
+      // Auto-fill form fields with batch data
+      setNewConsumption(prev => ({
+        ...prev,
+        batch_id: batchId,
+        bird_count: batchData.current_bird_count?.toString() || prev.bird_count,
+        average_bird_weight: batchData.average_weight?.toString() || prev.average_bird_weight,
+        mortality_count: batchData.mortality_count?.toString() || prev.mortality_count,
+        temperature: batchData.temperature?.toString() || prev.temperature,
+        humidity: batchData.humidity?.toString() || prev.humidity,
+      }));
+
+      // Show success notification with auto-filled data
+      const autoFilledFields = [];
+      if (batchData.current_bird_count) autoFilledFields.push(`Bird count: ${batchData.current_bird_count}`);
+      if (batchData.average_weight) autoFilledFields.push(`Avg weight: ${batchData.average_weight}g`);
+      if (batchData.temperature) autoFilledFields.push(`Temperature: ${batchData.temperature}°C`);
+      if (batchData.humidity) autoFilledFields.push(`Humidity: ${batchData.humidity}%`);
+
+      if (autoFilledFields.length > 0) {
+        toast.success(
+          `Auto-filled from batch ${batchData.batch_code}: ${autoFilledFields.join(', ')}`,
+          { duration: 4000 }
+        );
+      } else {
+        toast.info(`Selected batch: ${batchData.batch_code} (${batchData.breed})`);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch batch details:', error);
+      toast.warning('Could not auto-fill batch data. Please enter manually.');
+    } finally {
+      setIsLoadingBatchData(false);
+    }
   };
 
   // Handler for auto-selecting related data when feed inventory is selected
@@ -244,7 +447,7 @@ export default function FeedConsumptionIndex({
       if (suggestedAmount) {
         message += ` • Suggested amount: ${suggestedAmount}kg`;
       }
-      message += ` • Available: ${selectedInventory.quantity}kg @ ${selectedInventory.cost_per_unit}/kg`;
+      message += ` • Available: ${selectedInventory.quantity}kg @ ${formatCurrency(selectedInventory.cost_per_unit)}/kg`;
 
       toast.success(message);
     } else {
@@ -315,13 +518,13 @@ export default function FeedConsumptionIndex({
   });
 
   // Calculate summary statistics
-  const totalConsumption = filteredConsumption.reduce((sum, record) => sum + record.actual_amount, 0);
-  const totalCost = filteredConsumption.reduce((sum, record) => sum + record.total_feed_cost, 0);
+  const totalConsumption = filteredConsumption.reduce((sum, record) => sum + Number(record.actual_amount || 0), 0);
+  const totalCost = filteredConsumption.reduce((sum, record) => sum + Number(record.total_feed_cost || 0), 0);
   const averageFCR = filteredConsumption.length > 0
-    ? filteredConsumption.filter(r => r.fcr).reduce((sum, record) => sum + (record.fcr || 0), 0) / filteredConsumption.filter(r => r.fcr).length
+    ? filteredConsumption.filter(r => r.fcr).reduce((sum, record) => sum + Number(record.fcr || 0), 0) / filteredConsumption.filter(r => r.fcr).length
     : 0;
   const averageVariance = filteredConsumption.length > 0
-    ? filteredConsumption.reduce((sum, record) => sum + Math.abs(record.variance_percentage), 0) / filteredConsumption.length
+    ? filteredConsumption.reduce((sum, record) => sum + Math.abs(Number(record.variance_percentage || 0)), 0) / filteredConsumption.length
     : 0;
 
   return (
@@ -334,8 +537,40 @@ export default function FeedConsumptionIndex({
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Feed Consumption</h1>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                Feed Consumption
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowExplanationPanel(!showExplanationPanel)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <HelpCircle className="h-4 w-4 text-emerald-500 hover:text-emerald-700" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Click to {showExplanationPanel ? 'hide' : 'show'} the consumption records guide</p>
+                  </TooltipContent>
+                </Tooltip>
+              </h1>
               <p className="text-gray-600">Track and analyze feed consumption patterns</p>
+
+              {/* Quick Navigation Links */}
+              <QuickNavigation
+                links={[
+                  {
+                    label: "View Batches",
+                    action: () => router.visit('/batch-incubator/batches')
+                  },
+                  {
+                    label: "Feed Inventory",
+                    action: () => router.visit('/feed-management/inventory')
+                  }
+                ]}
+                className="mt-2"
+              />
             </div>
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
@@ -376,7 +611,7 @@ export default function FeedConsumptionIndex({
                                   <div className="flex flex-col">
                                     <span className="font-medium">{inv.batch_number}</span>
                                     <span className="text-sm text-gray-500">
-                                      {feedType?.name} • {inv.quantity}kg @ RWF {inv.cost_per_unit}/kg
+                                      {feedType?.name} • {inv.quantity}kg @ {formatCurrency(inv.cost_per_unit)}/kg
                                     </span>
                                   </div>
                                 </SelectItem>
@@ -387,10 +622,16 @@ export default function FeedConsumptionIndex({
                     </div>
 
                     <div>
-                      <Label htmlFor="batch_id">Batch</Label>
-                      <Select value={newConsumption.batch_id} onValueChange={(value) => setNewConsumption({...newConsumption, batch_id: value})}>
+                      <Label htmlFor="batch_id">
+                        Batch (Auto-fills bird count, weight, temperature, humidity)
+                        <span className="text-sm text-gray-500 ml-2">• Select to auto-populate data</span>
+                      </Label>
+                      <Select value={newConsumption.batch_id} onValueChange={handleBatchChange} disabled={isLoadingBatchData}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select batch" />
+                          <div className="flex items-center">
+                            {isLoadingBatchData && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                            <SelectValue placeholder={isLoadingBatchData ? "Loading batch data..." : "Select batch to auto-fill data"} />
+                          </div>
                         </SelectTrigger>
                         <SelectContent>
                           {batches.length > 0 ? (
@@ -467,63 +708,118 @@ export default function FeedConsumptionIndex({
                     </div>
 
                     <div>
-                      <Label htmlFor="bird_count">Bird Count</Label>
-                      <Input
-                        id="bird_count"
-                        type="number"
-                        value={newConsumption.bird_count}
-                        onChange={(e) => setNewConsumption({...newConsumption, bird_count: e.target.value})}
-                        placeholder="Number of birds"
-                        required
-                      />
+                      <Label htmlFor="bird_count">
+                        Bird Count
+                        <span className="text-xs text-emerald-600 ml-2">• Auto-filled from batch</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="bird_count"
+                          type="number"
+                          value={newConsumption.bird_count}
+                          onChange={(e) => setNewConsumption({...newConsumption, bird_count: e.target.value})}
+                          placeholder="Number of birds"
+                          disabled={isLoadingBatchData}
+                          required
+                        />
+                        {isLoadingBatchData && (
+                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="average_bird_weight">Average Bird Weight (g)</Label>
-                      <Input
-                        id="average_bird_weight"
-                        type="number"
-                        step="0.1"
-                        value={newConsumption.average_bird_weight}
-                        onChange={(e) => setNewConsumption({...newConsumption, average_bird_weight: e.target.value})}
-                        placeholder="Average weight in grams"
-                      />
+                      <Label htmlFor="average_bird_weight">
+                        Average Bird Weight (g)
+                        <span className="text-xs text-emerald-600 ml-2">• Auto-filled from batch</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="average_bird_weight"
+                          type="number"
+                          step="0.1"
+                          value={newConsumption.average_bird_weight}
+                          onChange={(e) => setNewConsumption({...newConsumption, average_bird_weight: e.target.value})}
+                          placeholder="Average weight in grams"
+                          disabled={isLoadingBatchData}
+                        />
+                        {isLoadingBatchData && (
+                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="mortality_count">Mortality Count</Label>
-                      <Input
-                        id="mortality_count"
-                        type="number"
-                        step="0.1"
-                        value={newConsumption.mortality_count}
-                        onChange={(e) => setNewConsumption({...newConsumption, mortality_count: e.target.value})}
-                        placeholder="Birds lost since last feeding"
-                      />
+                      <Label htmlFor="mortality_count">
+                        Mortality Count
+                        <span className="text-xs text-emerald-600 ml-2">• Auto-filled from batch</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="mortality_count"
+                          type="number"
+                          step="0.1"
+                          value={newConsumption.mortality_count}
+                          onChange={(e) => setNewConsumption({...newConsumption, mortality_count: e.target.value})}
+                          placeholder="Birds lost since last feeding"
+                          disabled={isLoadingBatchData}
+                        />
+                        {isLoadingBatchData && (
+                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="temperature">Temperature (°C)</Label>
-                      <Input
-                        id="temperature"
-                        type="number"
-                        step="0.1"
-                        value={newConsumption.temperature}
-                        onChange={(e) => setNewConsumption({...newConsumption, temperature: e.target.value})}
-                        placeholder="Average temperature"
-                      />
+                      <Label htmlFor="temperature">
+                        Temperature (°C)
+                        <span className="text-xs text-emerald-600 ml-2">• Auto-filled from incubator</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="temperature"
+                          type="number"
+                          step="0.1"
+                          value={newConsumption.temperature}
+                          onChange={(e) => setNewConsumption({...newConsumption, temperature: e.target.value})}
+                          placeholder="Average temperature"
+                          disabled={isLoadingBatchData}
+                        />
+                        {isLoadingBatchData && (
+                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="humidity">Humidity (%)</Label>
-                      <Input
-                        id="humidity"
-                        type="number"
-                        step="0.1"
-                        value={newConsumption.humidity}
-                        onChange={(e) => setNewConsumption({...newConsumption, humidity: e.target.value})}
-                        placeholder="Average humidity"
-                      />
+                      <Label htmlFor="humidity">
+                        Humidity (%)
+                        <span className="text-xs text-emerald-600 ml-2">• Auto-filled from incubator</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="humidity"
+                          type="number"
+                          step="0.1"
+                          value={newConsumption.humidity}
+                          onChange={(e) => setNewConsumption({...newConsumption, humidity: e.target.value})}
+                          placeholder="Average humidity"
+                          disabled={isLoadingBatchData}
+                        />
+                        {isLoadingBatchData && (
+                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div>
@@ -573,7 +869,7 @@ export default function FeedConsumptionIndex({
                 <Scale className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalConsumption.toLocaleString()} kg</div>
+                <div className="text-2xl font-bold">{Number(totalConsumption || 0).toLocaleString()} kg</div>
                 <p className="text-xs text-muted-foreground">For selected period</p>
               </CardContent>
             </Card>
@@ -584,8 +880,8 @@ export default function FeedConsumptionIndex({
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${totalCost.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">Feed costs</p>
+                <div className="text-2xl font-bold">{formatCurrency(totalCost)}</div>
+                <p className="text-xs text-muted-foreground">Feed costs (RWF)</p>
               </CardContent>
             </Card>
 
@@ -595,7 +891,7 @@ export default function FeedConsumptionIndex({
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{averageFCR.toFixed(2)}</div>
+                <div className="text-2xl font-bold">{safeToFixed(averageFCR, 2)}</div>
                 <p className="text-xs text-muted-foreground">Feed conversion ratio</p>
               </CardContent>
             </Card>
@@ -606,7 +902,7 @@ export default function FeedConsumptionIndex({
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{averageVariance.toFixed(1)}%</div>
+                <div className="text-2xl font-bold">{safeToFixed(averageVariance, 1)}%</div>
                 <p className="text-xs text-muted-foreground">From planned amounts</p>
               </CardContent>
             </Card>
@@ -694,6 +990,12 @@ export default function FeedConsumptionIndex({
             </CardContent>
           </Card>
 
+          {/* Feed Consumption Guide */}
+          <ExplanationPanel
+            isOpen={showExplanationPanel}
+            onToggle={() => setShowExplanationPanel(!showExplanationPanel)}
+          />
+
           {/* Consumption Records Table */}
           <Card>
             <CardHeader>
@@ -707,14 +1009,30 @@ export default function FeedConsumptionIndex({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Batch</TableHead>
-                      <TableHead>Feed Type</TableHead>
-                      <TableHead>Planned vs Actual</TableHead>
-                      <TableHead>Variance</TableHead>
-                      <TableHead>Birds</TableHead>
-                      <TableHead>FCR</TableHead>
-                      <TableHead>Cost</TableHead>
+                      <InfoTableHead tooltip="Date when the feed was consumed by the birds">
+                        Date
+                      </InfoTableHead>
+                      <InfoTableHead tooltip="The specific batch of birds that consumed the feed. Click to view batch details.">
+                        Batch
+                      </InfoTableHead>
+                      <InfoTableHead tooltip="Type of feed used. Click to view feed type information and nutritional details.">
+                        Feed Type
+                      </InfoTableHead>
+                      <InfoTableHead tooltip="Compares the planned feed amount vs actual amount consumed. Helps track feeding accuracy.">
+                        Planned vs Actual
+                      </InfoTableHead>
+                      <InfoTableHead tooltip="Difference between planned and actual consumption. Positive means over-consumption, negative means under-consumption.">
+                        Variance
+                      </InfoTableHead>
+                      <InfoTableHead tooltip="Number of birds present in the batch during feeding">
+                        Birds
+                      </InfoTableHead>
+                      <InfoTableHead tooltip="Feed Conversion Ratio - measures how efficiently birds convert feed to body weight. Lower is better.">
+                        FCR
+                      </InfoTableHead>
+                      <InfoTableHead tooltip="Total cost of feed consumed, calculated from quantity and unit price">
+                        Cost
+                      </InfoTableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -722,79 +1040,123 @@ export default function FeedConsumptionIndex({
                     {filteredConsumption.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell>
-                          <div className="font-medium">{record.consumption_date}</div>
-                          {record.weather_condition && (
-                            <div className="text-sm text-gray-500 capitalize">{record.weather_condition}</div>
+                          <InfoField
+                            value={
+                              <div>
+                                <div className="font-medium">{formatDate(record.consumption_date)}</div>
+                                {record.weather_condition && (
+                                  <div className="text-sm text-gray-500 capitalize">{record.weather_condition}</div>
+                                )}
+                              </div>
+                            }
+                            tooltip={`Feed consumption date: ${formatDate(record.consumption_date)}. ${record.weather_condition ? `Weather: ${record.weather_condition}. Weather conditions can affect bird feeding behavior and consumption patterns.` : 'No weather data recorded for this feeding.'}`}
+                            // icon={Calendar}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <EntityLink
+                            id={record.batch.id}
+                            label={record.batch.batch_code}
+                            onClick={(id) => navigateToBatch(id)}
+                            className="font-medium text-emerald-600 text-start hover:text-emerald-800"
+                            description={record.batch.breed}
+                          />
+                        </TableCell>
+                        <TableCell>
+                            {record.feed_type.category}
+                          {record.feed_inventory && (
+                            <NavigationLink
+                                        onClick={() => navigateToInventory(record.feed_inventory!.batch_number)}
+                              className="text-xs text-purple-600 hover:text-purple-800 mt-1"
+                              size="sm"
+                            >
+                              Batch: {record.feed_inventory.batch_number}
+                            </NavigationLink>
                           )}
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">{record.batch.batch_code}</div>
-                            <div className="text-sm text-gray-500">{record.batch.breed}</div>
-                          </div>
+                          <InfoField
+                            value={
+                              <div>
+                                <div className="font-medium">
+                                  {record.planned_amount} → {record.actual_amount} {record.unit_of_measure}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  Diff: {Number(record.variance_amount || 0) > 0 ? '+' : ''}{safeToFixed(record.variance_amount, 1)} {record.unit_of_measure}
+                                </div>
+                              </div>
+                            }
+                            tooltip={`Planned: ${record.planned_amount} ${record.unit_of_measure} of feed was expected. Actual: ${record.actual_amount} ${record.unit_of_measure} was consumed. Difference shows feeding accuracy and potential issues.`}
+                            // icon={Scale}
+                          />
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">{record.feed_type.name}</div>
-                            <div className="text-sm text-gray-500">{record.feed_type.category}</div>
-                            {record.feed_inventory && (
-                              <div className="text-xs text-gray-400">Batch: {record.feed_inventory.batch_number}</div>
-                            )}
-                          </div>
+                          <InfoField
+                            value={
+                              <Badge variant={getVarianceBadgeVariant(Number(record.variance_percentage || 0))}>
+                                <span className={getVarianceColor(Number(record.variance_percentage || 0))}>
+                                  {Number(record.variance_percentage || 0) > 0 ? '+' : ''}{safeToFixed(record.variance_percentage, 1)}%
+                                </span>
+                              </Badge>
+                            }
+                            tooltip={`${Number(record.variance_percentage || 0) > 0 ? 'Over-consumption' : Number(record.variance_percentage || 0) < 0 ? 'Under-consumption' : 'Perfect consumption'}: ${Math.abs(Number(record.variance_percentage || 0))}% variance from planned amount. Green = good, yellow = caution, red = attention needed.`}
+                            icon={Number(record.variance_percentage || 0) > 0 ? TrendingUp : TrendingDown}
+                          />
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {record.planned_amount} → {record.actual_amount} {record.unit_of_measure}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Diff: {record.variance_amount > 0 ? '+' : ''}{record.variance_amount.toFixed(1)} {record.unit_of_measure}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getVarianceBadgeVariant(record.variance_percentage)}>
-                            <span className={getVarianceColor(record.variance_percentage)}>
-                              {record.variance_percentage > 0 ? '+' : ''}{record.variance_percentage.toFixed(1)}%
-                            </span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{record.bird_count} birds</div>
-                            <div className="text-sm text-gray-500">{record.bird_age_days} days old</div>
-                            {record.average_bird_weight && (
-                              <div className="text-sm text-gray-500">{record.average_bird_weight}g avg</div>
-                            )}
-                            {record.mortality_count > 0 && (
-                              <div className="text-sm text-red-600">-{record.mortality_count} mortality</div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            {record.fcr && (
-                              <>
-                                <div className="font-medium">{record.fcr.toFixed(3)}</div>
-                                {record.cumulative_fcr && (
-                                  <div className="text-sm text-gray-500">Cum: {record.cumulative_fcr.toFixed(3)}</div>
+                          <InfoField
+                            value={
+                              <div>
+                                <div className="font-medium">{record.bird_count} birds</div>
+                                <div className="text-sm text-gray-500">{record.bird_age_days} days old</div>
+                                {record.average_bird_weight && (
+                                  <div className="text-sm text-gray-500">{record.average_bird_weight}g avg</div>
                                 )}
-                              </>
-                            )}
-                          </div>
+                                {record.mortality_count > 0 && (
+                                  <div className="text-sm text-red-600">-{record.mortality_count} mortality</div>
+                                )}
+                              </div>
+                            }
+                            tooltip={`${record.bird_count} birds were present during feeding, aged ${record.bird_age_days} days. ${record.average_bird_weight ? `Average weight per bird: ${record.average_bird_weight}g. ` : ''}${record.mortality_count > 0 ? `${record.mortality_count} birds died recently, affecting feeding calculations.` : 'No recent mortality reported.'}`}
+                            // icon={Calculator}
+                          />
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {record.currency} {record.total_feed_cost.toFixed(2)}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {record.currency} {record.cost_per_bird.toFixed(2)}/bird
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              @ {record.currency} {record.feed_cost_per_unit.toFixed(2)}/{record.unit_of_measure}
-                            </div>
-                          </div>
+                          <InfoField
+                            value={
+                              <div>
+                                {record.fcr && (
+                                  <>
+                                    <div className="font-medium">{safeToFixed(record.fcr, 3)}</div>
+                                    {record.cumulative_fcr && (
+                                      <div className="text-sm text-gray-500">Cum: {safeToFixed(record.cumulative_fcr, 3)}</div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            }
+                            tooltip={`Feed Conversion Ratio (FCR): ${safeToFixed(record.fcr, 3)} means it takes ${safeToFixed(record.fcr, 3)}kg of feed to produce 1kg of bird weight. Lower FCR = better efficiency. ${record.cumulative_fcr ? `Cumulative FCR (${safeToFixed(record.cumulative_fcr, 3)}) shows overall batch efficiency since start.` : ''} Industry standard is usually 1.5-2.2.`}
+                            icon={BarChart3}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <InfoField
+                            value={
+                              <div>
+                                <div className="font-medium">
+                                  {formatCurrency(record.total_feed_cost)}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {formatCurrency(record.cost_per_bird)}/bird
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  @ {formatCurrency(record.feed_cost_per_unit)}/{record.unit_of_measure}
+                                </div>
+                              </div>
+                            }
+                            tooltip={`Total cost: ${formatCurrency(record.total_feed_cost)} for ${record.actual_amount} ${record.unit_of_measure} of feed. Cost per bird: ${formatCurrency(record.cost_per_bird)}. Unit price: ${formatCurrency(record.feed_cost_per_unit)} per ${record.unit_of_measure}. Helps track feed expenses and budget planning.`}
+                            // icon={DollarSign}
+                          />
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
