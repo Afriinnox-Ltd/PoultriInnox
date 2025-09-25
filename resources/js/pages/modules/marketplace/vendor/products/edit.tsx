@@ -11,14 +11,19 @@ import {
     ArrowLeft,
     Plus,
     Package,
+    DollarSign,
     Camera,
     Save,
     AlertCircle,
     Info,
     X,
-    Upload
+    Upload,
+    Truck
 } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import VendorLayout from '@/layouts/vendor-layout';
 import { toast } from 'sonner';
 
 interface Category {
@@ -53,14 +58,35 @@ interface Product {
     meta_description?: string;
     tags?: string[] | string | null;
     images: ProductImage[];
+    payment_methods?: string[] | string | null;
+    shipping_option?: string;
+    extra_fee?: number;
+    delivery_time?: string;
+    return_policy?: string;
+    additional_info?: string;
+}
+
+interface Vendor {
+    id: number;
+    business_name: string;
+    status: string;
+    subscription?: {
+        plan_name: string;
+        is_active: boolean;
+    };
 }
 
 interface EditProductProps {
     product: Product;
     categories: Category[];
+    vendor: Vendor;
+    currentSubscription: any;
+    subscriptionUsage: any;
+    needsUpgrade: boolean;
+    upgradeReason?: string;
 }
 
-export default function EditProduct({ product, categories }: EditProductProps) {
+export default function EditProduct({ product, categories, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason }: EditProductProps) {
     // Ensure tags is always an array
     const parsedTags: string[] = (() => {
         if (Array.isArray(product.tags)) {
@@ -69,6 +95,21 @@ export default function EditProduct({ product, categories }: EditProductProps) {
         if (typeof product.tags === 'string' && product.tags.trim().length > 0) {
             try {
                 return JSON.parse(product.tags);
+            } catch {
+                return [];
+            }
+        }
+        return [];
+    })();
+
+    // Ensure payment_methods is always an array
+    const parsedPaymentMethods: string[] = (() => {
+        if (Array.isArray(product.payment_methods)) {
+            return product.payment_methods;
+        }
+        if (typeof product.payment_methods === 'string' && product.payment_methods.trim().length > 0) {
+            try {
+                return JSON.parse(product.payment_methods);
             } catch {
                 return [];
             }
@@ -90,12 +131,44 @@ export default function EditProduct({ product, categories }: EditProductProps) {
         images: [] as File[],
         meta_description: product.meta_description || '',
         tags: parsedTags,
+        payment_methods: parsedPaymentMethods,
+        shipping_option: product.shipping_option || '',
+        extra_fee: product.extra_fee?.toString() || '',
+        delivery_time: product.delivery_time || '',
+        return_policy: product.return_policy || '',
+        additional_info: product.additional_info || '',
         remove_images: [] as number[],
     });
 
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [currentTag, setCurrentTag] = useState('');
     const [existingImages, setExistingImages] = useState<ProductImage[]>(product.images || []);
+    const [currentTab, setCurrentTab] = useState('basic');
+
+    const tabs = [
+        { value: 'basic', label: 'Basic Info' },
+        { value: 'details', label: 'Details' },
+        { value: 'images', label: 'Images' },
+        { value: 'seo', label: 'SEO' },
+        { value: 'payment', label: 'Payment' },
+        { value: 'shipping', label: 'Shipping' }
+    ];
+
+    const currentTabIndex = tabs.findIndex(tab => tab.value === currentTab);
+    const isFirstTab = currentTabIndex === 0;
+    const isLastTab = currentTabIndex === tabs.length - 1;
+
+    const goToNextTab = () => {
+        if (!isLastTab) {
+            setCurrentTab(tabs[currentTabIndex + 1].value);
+        }
+    };
+
+    const goToPreviousTab = () => {
+        if (!isFirstTab) {
+            setCurrentTab(tabs[currentTabIndex - 1].value);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -155,21 +228,39 @@ export default function EditProduct({ product, categories }: EditProductProps) {
         setData('tags', data.tags.filter((_: string, i: number) => i !== index));
     };
 
+    // Handle shipping selection
+    const handleShippingMethodChange = (value: string) => {
+        setData("shipping_option", value);
+    };
+
     return (
-        <AppLayout>
+        <VendorLayout
+            title={`Edit ${product.name}`}
+            breadcrumbItems={[
+                { title: 'Products', href: '/marketplace/vendor/products' },
+                { title: product.name, href: `/marketplace/vendor/products/${product.id}` },
+                { title: 'Edit' }
+            ]}
+            vendor={vendor}
+            currentSubscription={currentSubscription}
+            subscriptionUsage={subscriptionUsage}
+            needsUpgrade={needsUpgrade}
+            upgradeReason={upgradeReason}
+        >
             <Head title={`Edit ${product.name}`} />
 
-            <div className="flex justify-between items-center mb-6 p-6 pb-0">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 p-4 sm:p-6 pb-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
                     <Button
                         onClick={() => window.history.back()}
                         variant="outline"
                         size="sm"
+                        className="w-full sm:w-auto"
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back
                     </Button>
-                    <div>
+                    <div className="w-full sm:w-auto">
                         <h2 className="font-semibold text-xl text-gray-800 leading-tight">
                             Edit Product
                         </h2>
@@ -180,15 +271,17 @@ export default function EditProduct({ product, categories }: EditProductProps) {
                 </div>
             </div>
 
-            <div className="py-6">
-                <div className="max-w-4xl mx-auto">
+            <div className="py-2 sm:py-6">
+                <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-6">
                     <form onSubmit={handleSubmit}>
-                        <Tabs defaultValue="basic" className="space-y-6">
-                            <TabsList className="grid w-full grid-cols-4">
-                                <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                                <TabsTrigger value="details">Details</TabsTrigger>
-                                <TabsTrigger value="images">Images</TabsTrigger>
-                                <TabsTrigger value="seo">SEO & Tags</TabsTrigger>
+                        <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
+                            <TabsList className="w-full inline-flex lg:grid lg:grid-cols-6 h-auto flex-wrap lg:flex-nowrap gap-1 p-1">
+                                <TabsTrigger value="basic" className="text-xs sm:text-sm flex-1 min-w-[90px]">Basic Info</TabsTrigger>
+                                <TabsTrigger value="details" className="text-xs sm:text-sm flex-1 min-w-[90px]">Details</TabsTrigger>
+                                <TabsTrigger value="images" className="text-xs sm:text-sm flex-1 min-w-[90px]">Images</TabsTrigger>
+                                <TabsTrigger value="seo" className="text-xs sm:text-sm flex-1 min-w-[90px]">SEO</TabsTrigger>
+                                <TabsTrigger value="payment" className="text-xs sm:text-sm flex-1 min-w-[90px]">Payment</TabsTrigger>
+                                <TabsTrigger value="shipping" className="text-xs sm:text-sm flex-1 min-w-[90px]">Shipping</TabsTrigger>
                             </TabsList>
 
                             {/* Basic Information */}
@@ -548,31 +641,228 @@ export default function EditProduct({ product, categories }: EditProductProps) {
                                     </CardContent>
                                 </Card>
                             </TabsContent>
+                            
+                            {/* Payment Tab */}
+                            <TabsContent value="payment">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center">
+                                            <DollarSign className="h-5 w-5 mr-2" />
+                                            Payment Information
+                                        </CardTitle>
+                                    </CardHeader>
+
+                                    <CardContent className="space-y-4">
+                                        <Alert className="mb-4">
+                                            <Info className="h-4 w-4 mr-2" />
+                                            <AlertDescription>
+                                                Select how customers can pay for your product.
+                                            </AlertDescription>
+                                        </Alert>
+
+                                        <div>
+                                            <Label>Supported Payment Methods</Label>
+
+                                            <div className="mt-2 space-y-3">
+                                                {/* Online Payment */}
+                                                <div className="flex items-center">
+                                                    <Checkbox
+                                                        id="online"
+                                                        checked={data.payment_methods.includes("online")}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                setData("payment_methods", [...data.payment_methods, "online"]);
+                                                            } else {
+                                                                setData(
+                                                                    "payment_methods",
+                                                                    data.payment_methods.filter((m) => m !== "online")
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Label htmlFor="online" className="ml-2">
+                                                        Online Payment
+                                                    </Label>
+                                                </div>
+
+                                                {/* Cash on Delivery (Premium only) */}
+                                                <div className="flex items-center">
+                                                    <Checkbox
+                                                        id="cod"
+                                                        checked={data.payment_methods.includes("cod")}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                // ✅ Restrict to plans that allow COD
+                                                                if (!subscriptionUsage?.allows_cod) {
+                                                                    toast.warning(
+                                                                        "Cash on Delivery is not available for your current subscription plan. Please upgrade your plan."
+                                                                    );
+                                                                    return; // stop here, do not allow check
+                                                                }
+
+                                                                setData("payment_methods", [...data.payment_methods, "cod"]);
+                                                            } else {
+                                                                setData(
+                                                                    "payment_methods",
+                                                                    data.payment_methods.filter((m) => m !== "cod")
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Label htmlFor="cod" className="ml-2">
+                                                        Cash on Delivery (COD)
+                                                        {!subscriptionUsage?.allows_cod && (
+                                                            <span className="text-xs text-red-500 ml-2">
+                                                                (Not available for your plan)
+                                                            </span>
+                                                        )}
+                                                    </Label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+
+                            {/* Shipping & Delivery Tab */}
+                            <TabsContent value="shipping">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center">
+                                            <Truck className="h-5 w-5 mr-2" />
+                                            Shipping & Delivery
+                                        </CardTitle>
+                                    </CardHeader>
+
+                                    <CardContent className="space-y-4">
+                                        <Alert className="mb-4">
+                                            <Info className="h-4 w-4 mr-2" />
+                                            <AlertDescription>
+                                                Configure your shipping options for this product.
+                                            </AlertDescription>
+                                        </Alert>
+
+                                        {/* Shipping Methods */}
+                                        <div>
+                                            <Label>Shipping Methods</Label>
+
+                                            <RadioGroup
+                                                value={data.shipping_option}
+                                                onValueChange={handleShippingMethodChange}
+                                                className="mt-2 space-y-2"
+                                            >
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="free" id="free" />
+                                                    <Label htmlFor="free">Free Shipping</Label>
+                                                </div>
+
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="paid" id="paid" />
+                                                    <Label htmlFor="paid">Paid Shipping</Label>
+                                                </div>
+                                            </RadioGroup>
+
+                                            {/* Extra Fee when Paid Shipping selected */}
+                                            {data.shipping_option === "paid" && (
+                                                <div className="mt-4 space-y-2">
+                                                    <Label htmlFor="extra-fee">Extra Fee for Shipping</Label>
+                                                    <Input
+                                                        type="number"
+                                                        id="extra-fee"
+                                                        placeholder="Enter extra fee (e.g. 1500)"
+                                                        value={data.extra_fee}
+                                                        onChange={(e) => setData("extra_fee", e.target.value)}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Delivery Time */}
+                                            <div className="mt-4 space-y-2">
+                                                <Label htmlFor="delivery-time">Estimated Delivery Time</Label>
+                                                <Input
+                                                    id="delivery-time"
+                                                    placeholder="e.g. 2–5 business days"
+                                                    value={data.delivery_time}
+                                                    onChange={(e) => setData("delivery_time", e.target.value)}
+                                                />
+                                            </div>
+
+                                            {/* Return Policy */}
+                                            <div className="mt-4 space-y-2">
+                                                <Label htmlFor="return-policy">Return Policy</Label>
+                                                <Textarea
+                                                    id="return-policy"
+                                                    placeholder="e.g. Returns accepted within 7 days of delivery"
+                                                    value={data.return_policy}
+                                                    onChange={(e) => setData("return_policy", e.target.value)}
+                                                />
+                                            </div>
+
+                                            {/* Additional Info */}
+                                            <div className="mt-4 space-y-2">
+                                                <Label htmlFor="additional-info">Additional Information</Label>
+                                                <Textarea
+                                                    id="additional-info"
+                                                    placeholder="Any additional information about the product"
+                                                    value={data.additional_info}
+                                                    onChange={(e) => setData("additional_info", e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
                         </Tabs>
 
-                        {/* Submit Button */}
-                        <div className="flex justify-end pt-6">
+                        {/* Navigation and Submit Buttons */}
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-6">
                             <Button
-                                type="submit"
-                                disabled={processing}
-                                className="min-w-[120px]"
+                                type="button"
+                                onClick={goToPreviousTab}
+                                disabled={isFirstTab}
+                                variant="outline"
+                                className="w-full sm:w-auto order-2 sm:order-1"
                             >
-                                {processing ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                        Updating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4 mr-2" />
-                                        Update Product
-                                    </>
-                                )}
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                                Previous
                             </Button>
+
+                            <div className="flex gap-3 order-1 sm:order-2">
+                                {!isLastTab ? (
+                                    <Button
+                                        type="button"
+                                        onClick={goToNextTab}
+                                        className="w-full sm:w-auto min-w-[120px]"
+                                    >
+                                        Next
+                                        <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="w-full sm:w-auto min-w-[120px]"
+                                    >
+                                        {processing ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                Updating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save className="h-4 w-4 mr-2" />
+                                                Update Product
+                                            </>
+                                        )}
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </form>
                 </div>
             </div>
-        </AppLayout>
+        </VendorLayout>
     );
 }

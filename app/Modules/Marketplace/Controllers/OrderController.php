@@ -25,7 +25,7 @@ class OrderController extends Controller
             return redirect()->route('login');
         }
 
-        $query = Order::with(['user', 'vendor.user', 'items.product.images', 'payments', 'shipping'])
+        $query = Order::with(['user', 'vendor.user', 'items.product.images', 'payments', 'shipping', 'deliveryConfirmation'])
             ->where('user_id', $user->id);
 
         // Apply filters
@@ -84,7 +84,8 @@ class OrderController extends Controller
             'vendor.user',
             'items.product.images',
             'payments',
-            'shipping'
+            'shipping',
+            'deliveryConfirmation'
         ]);
 
         return Inertia::render('Marketplace/Orders/Show', [
@@ -182,7 +183,7 @@ class OrderController extends Controller
                 ->with('error', 'You need to be a registered vendor.');
         }
 
-        $query = Order::with(['user', 'items.product.images', 'payments', 'shipping'])
+        $query = Order::with(['user', 'items.product.images', 'payments', 'shipping', 'deliveryConfirmation'])
             ->where('vendor_id', $vendor->id);
 
         // Apply filters
@@ -297,5 +298,108 @@ class OrderController extends Controller
         }
 
         return redirect()->back()->with('success', 'Order status updated successfully.');
+    }
+
+    /**
+     * Confirm an order (vendor self-confirmation).
+     */
+    public function confirmOrder(Order $order)
+    {
+        $user = Auth::user();
+        
+        // Verify this user is the vendor for this order
+        if (!$user->vendor || $user->vendor->id !== $order->vendor_id) {
+            abort(403, 'Unauthorized to confirm this order.');
+        }
+
+        // Check if order is in a state that can be confirmed
+        if ($order->admin_confirmed) {
+            return redirect()->back()->with('error', 'Order is already confirmed.');
+        }
+
+        if (!in_array($order->status, ['pending', 'confirmed'])) {
+            return redirect()->back()->with('error', 'Order cannot be confirmed in its current state.');
+        }
+
+        // Confirm the order
+        $order->markAsAdminConfirmed($user->id);
+        
+
+        return redirect()->back()->with('success', 'Order confirmed successfully. You can now manage this order.');
+    }
+
+    /**
+     * Show delivery confirmation page for buyer
+     */
+    public function showDeliveryConfirmation(Order $order)
+    {
+        $user = Auth::user();
+
+        // Check if user owns this order
+        if (!$user || $order->user_id !== $user->id) {
+            abort(403, 'Unauthorized access to order');
+        }
+
+        // Check if order is eligible for delivery confirmation
+        if (!$order->isDeliveryConfirmationPending()) {
+            return redirect()->route('orders.index')
+                ->with('error', 'This order is not pending delivery confirmation.');
+        }
+
+        $order->load(['vendor.user', 'items.product.images', 'deliveryConfirmation']);
+
+        return Inertia::render('Public/Marketplace/orders/confirm-delivery', [
+            'order' => $order
+        ]);
+    }
+
+    /**
+     * Confirm delivery by buyer
+     */
+    public function confirmDelivery(Request $request, Order $order)
+    {
+        $user = Auth::user();
+
+        // Check if user owns this order
+        if (!$user || $order->user_id !== $user->id) {
+            abort(403, 'Unauthorized access to order');
+        }
+
+        // Check if order is eligible for delivery confirmation
+        if (!$order->isDeliveryConfirmationPending()) {
+            return response()->json([
+                'error' => 'This order is not pending delivery confirmation.'
+            ], 400);
+        }
+
+        $validated = $request->validate([
+            'proof_images' => 'required|array|min:1|max:5',
+            'proof_images.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'confirmation_notes' => 'nullable|string|max:500'
+        ]);
+
+        try {
+            // Handle image uploads
+            $proofImages = [];
+            if ($request->hasFile('proof_images')) {
+                foreach ($request->file('proof_images') as $image) {
+                    $path = $image->store('delivery-confirmations/' . $order->id, 'public');
+                    $proofImages[] = $path;
+                }
+            }
+
+            // Confirm delivery
+            $order->confirmDeliveryByBuyer($proofImages, $validated['confirmation_notes'] ?? null);
+
+            return response()->json([
+                'message' => 'Delivery confirmed successfully! Payment has been released to the vendor.',
+                'redirect' => route('orders.show', $order->id)
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to confirm delivery. Please try again.'
+            ], 500);
+        }
     }
 }

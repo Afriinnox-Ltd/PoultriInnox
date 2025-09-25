@@ -191,6 +191,30 @@ Route::prefix('admin')->middleware(['auth', 'admin.access'])->name('admin.')->gr
             Route::get('/analytics', [App\Modules\Marketplace\Controllers\Admin\PaymentController::class, 'analytics'])->name('analytics');
             Route::get('/export', [App\Modules\Marketplace\Controllers\Admin\PaymentController::class, 'export'])->name('export');
         });
+
+        // Subscription Management Dashboard
+        Route::get('/subscriptions', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'dashboard'])->name('subscriptions.dashboard');
+
+        // Subscription Plan Management
+        Route::prefix('subscription-plans')->name('subscription-plans.')->group(function () {
+            Route::get('/', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'index'])->name('index');
+            Route::get('/create', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'create'])->name('create');
+            Route::post('/', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'store'])->name('store');
+            Route::get('/{subscriptionPlan}/edit', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'edit'])->name('edit');
+            Route::put('/{subscriptionPlan}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'update'])->name('update');
+            Route::delete('/{subscriptionPlan}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'destroy'])->name('destroy');
+            Route::patch('/{subscriptionPlan}/toggle-status', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'toggleStatus'])->name('toggle-status');
+            
+            // User subscription management
+            Route::get('/user-subscriptions', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'userSubscriptions'])->name('user-subscriptions');
+            Route::post('/assign-plan', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'assignPlan'])->name('assign-plan');
+            Route::delete('/subscriptions/{subscription}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'removeUserSubscription'])->name('remove-subscription');
+            
+            // Analytics
+            Route::get('/analytics', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'analytics'])->name('analytics');
+        });
     });
+
+
 
 });

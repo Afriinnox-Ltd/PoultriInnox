@@ -53,6 +53,10 @@ interface CartItem {
                 name: string;
             };
         };
+        payment_methods?: string[];
+        shipping_option?: string;
+        extra_fee?: number;
+        delivery_time?: string;
     };
 }
 
@@ -229,6 +233,31 @@ export default function CartIndex({ cartItems, cartByVendor, subtotal, totalItem
                                                     {item.product.min_order_quantity && (
                                                         <Badge variant="secondary" className="text-xs">
                                                             Min: {item.product.min_order_quantity}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+
+                                                {/* Payment & Shipping Info */}
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    {item.product.payment_methods?.includes('cod') && (
+                                                        <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                                            <Truck className="h-3 w-3" />
+                                                            COD Available
+                                                        </Badge>
+                                                    )}
+                                                    {item.product.shipping_option === 'free' ? (
+                                                        <Badge variant="outline" className="text-xs text-green-600">
+                                                            Free Shipping
+                                                        </Badge>
+                                                    ) : item.product.extra_fee && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            Shipping: {formatCurrency(item.product.extra_fee)}
+                                                        </Badge>
+                                                    )}
+                                                    {item.product.delivery_time && (
+                                                        <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                                            <Clock className="h-3 w-3" />
+                                                            {item.product.delivery_time}
                                                         </Badge>
                                                     )}
                                                 </div>

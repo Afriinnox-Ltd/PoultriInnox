@@ -150,14 +150,13 @@ export default function Welcome() {
                             </p>
                             {/* Hero Image */}
                             <div className="relative mx-auto max-w-5xl">
-                                <div className="bg-white overflow-hidden border border-gray-200 transform perspective-1000 hover:scale-105 transition-transform duration-700">
+                                <div className="bg-white overflow-hidden border border-gray-200 transform perspective-1000 hover:scale-101 rounded-2xl transition-transform duration-700">
 
                                     <video
-                                        className="w-full h-auto" autoPlay loop muted playsInline>
+                                        className="w-full h-auto rounded-2xl" autoPlay loop muted playsInline>
                                         <source src="/assets/4124024-uhd_4096_2160_25fps.mp4" type="video/mp4" />
                                         Your browser does not support the video tag.
-                                    </video>
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                                    </video> 
                                 </div>
                             </div>
 

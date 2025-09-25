@@ -2,12 +2,13 @@
 
 namespace App\Modules\Marketplace\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
-use App\Models\User;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Vendor extends Model
 {
@@ -38,6 +39,7 @@ class Vendor extends Model
         'verification_notes',
         'verified_at',
         'verified_by',
+        'is_verified',
         'is_active',
         'rating',
         'total_reviews',
@@ -60,12 +62,16 @@ class Vendor extends Model
         'specializations',
         'slug',
         'rejection_reason',
+        'social_media',
+        'banner_image',
+        'additional_info',
     ];
 
     protected $casts = [
         'business_documents' => 'array',
         'payment_details' => 'array',
         'is_active' => 'boolean',
+        'is_verified' => 'boolean',
         'commission_rate' => 'decimal:2',
         'rating' => 'decimal:2',
         'total_sales' => 'integer',
@@ -172,11 +178,21 @@ class Vendor extends Model
     {
         $address = [];
 
-        if ($this->address) $address[] = $this->address;
-        if ($this->city) $address[] = $this->city;
-        if ($this->state) $address[] = $this->state;
-        if ($this->country) $address[] = $this->country;
-        if ($this->postal_code) $address[] = $this->postal_code;
+        if ($this->address) {
+            $address[] = $this->address;
+        }
+        if ($this->city) {
+            $address[] = $this->city;
+        }
+        if ($this->state) {
+            $address[] = $this->state;
+        }
+        if ($this->country) {
+            $address[] = $this->country;
+        }
+        if ($this->postal_code) {
+            $address[] = $this->postal_code;
+        }
 
         return implode(', ', $address);
     }
@@ -215,4 +231,39 @@ class Vendor extends Model
     {
         return $this->products()->where('status', 'active')->count();
     }
+
+    /**
+     * Get vendor's current subscription
+     */
+    public function subscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class)->latestOfMany();
+    }
+
+    /**
+     * Get all subscriptions for this vendor
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * Check if vendor has an active premium subscription
+     */
+    public function hasPremiumSubscription(): bool
+    {
+        return $this->subscription && $this->subscription->plan_name === 'Premium' && $this->subscription->isActive();
+    }
+
+    public function activeSubscription()
+{
+    return $this->hasOne(Subscription::class)->where('is_active', true)->latestOfMany();
+}
+
+public function hasActivePlan($planName)
+{
+    return $this->activeSubscription && $this->activeSubscription->plan->name === $planName;
+}
+
 }

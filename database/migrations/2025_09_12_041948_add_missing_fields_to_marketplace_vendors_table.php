@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('marketplace_vendors', function (Blueprint $table) {
-            // Add missing business fields
+            // Add missing business fields 
             $table->string('business_registration_number')->nullable()->after('business_name');
             $table->text('business_description')->nullable()->after('business_type');
             $table->string('business_address')->nullable()->after('business_description');

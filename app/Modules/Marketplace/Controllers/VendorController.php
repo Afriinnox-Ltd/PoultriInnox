@@ -7,6 +7,9 @@ use App\Modules\Marketplace\Models\Vendor;
 use App\Modules\Marketplace\Models\Product;
 use App\Models\User;
 use App\Modules\Marketplace\Models\Order;
+use App\Modules\Marketplace\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Notifications\NewVendorRegistrationNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -60,7 +63,7 @@ class VendorController extends Controller
 
         $vendors = $query->paginate(12)->withQueryString();
 
-        return Inertia::render('Marketplace/Vendors/Index', [
+        return Inertia::render('modules/marketplace/vendor/dashboard', [
             'vendors' => $vendors,
             'filters' => $request->only(['search', 'location', 'rating_min']),
             'sort' => ['sort_by' => $sortBy, 'sort_direction' => $sortDirection]
@@ -130,7 +133,7 @@ class VendorController extends Controller
             // Business details
             'business_name' => 'required|string|max:255',
             'business_registration_number' => 'required|string|max:100|unique:marketplace_vendors',
-            'business_type' => 'required|in:individual,company,cooperative',
+            'business_type' => 'required',
             'business_description' => 'required|string',
             'business_address' => 'required|string',
             'business_phone' => 'required|string|max:20',
@@ -143,17 +146,28 @@ class VendorController extends Controller
             'bank_account_name' => 'required|string|max:255',
             'bank_branch' => 'nullable|string|max:255',
 
+            'business_documents'=> 'required|array|min:1',
+            'business_documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
             // Additional info
             'tax_number' => 'nullable|string|max:100',
             'years_in_business' => 'nullable|integer|min:0',
             'specializations' => 'nullable|string'
         ]);
 
-        // Create vendor profile
+                // Create vendor profile
         $vendorData = collect($validated)->except(['name', 'email', 'password', 'password_confirmation', 'phone'])->toArray();
         $vendorData['user_id'] = Auth::id();
         $vendorData['status'] = 'pending'; // Requires admin approval
         $vendorData['slug'] = Str::slug($validated['business_name']);
+
+        if ($request->hasFile('business_documents')) {
+            $documentPaths = [];
+            foreach ($request->file('business_documents') as $document) {
+                $path = $document->store('marketplace/vendor-documents/', 'public');
+                $documentPaths[] = asset(Storage::url($path));
+            }
+            $vendorData['business_documents'] = $documentPaths;
+        }
 
         // Ensure slug is unique
         $originalSlug = $vendorData['slug'];
@@ -163,7 +177,28 @@ class VendorController extends Controller
             $counter++;
         }
 
-        Vendor::create($vendorData);
+        $vendor = Vendor::create($vendorData);
+
+        // Auto-assign free subscription plan if available
+        $freePlan = SubscriptionPlan::where('price', 0)
+            ->where('is_active', 1)
+            ->first();
+
+        if ($freePlan) {
+            Subscription::create([
+                'vendor_id' => $vendor->id,
+                'plan_id' => $freePlan->id,
+                'start_date' => now(),
+                'end_date' => null, // Free plan has no expiration
+                'is_active' => true,
+            ]);
+        }
+
+        // Notify admin about new vendor registration
+        $admins = User::where('is_admin', true)->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new \App\Notifications\NewVendorRegistrationNotification($vendor));
+        }
 
         return redirect()->route('marketplace.vendor.pending')
             ->with('success', 'Vendor registration submitted successfully! Your application is pending review.');
@@ -178,7 +213,7 @@ class VendorController extends Controller
             $query->where('status', 'active')->with(['images', 'category']);
         }]);
 
-        return Inertia::render('Marketplace/Vendors/Show', [
+        return Inertia::render('modules/marketplace/vendor/show', [
             'vendor' => $vendor,
             'products' => $vendor->products()->where('status', 'active')
                 ->with(['images', 'category'])
@@ -363,6 +398,48 @@ class VendorController extends Controller
             'rating' => $vendor->rating ?? 0,
         ];
 
+        // Get subscription information
+        $currentSubscription = $vendor->subscriptions()->where('is_active', true)->first();
+        $subscriptionUsage = null;
+        $needsUpgrade = false;
+        
+        if ($currentSubscription) {
+            $subscriptionUsage = [
+                'plan_name' => $currentSubscription->plan_name,
+                'price' => $currentSubscription->price,
+                'billing_cycle' => $currentSubscription->billing_cycle,
+                'start_date' => $currentSubscription->start_date,
+                'end_date' => $currentSubscription->end_date,
+                'days_remaining' => $currentSubscription->daysRemaining(),
+                'is_active' => $currentSubscription->isActive(),
+                'auto_renew' => $currentSubscription->auto_renew,
+                'allows_cod' => $currentSubscription->allow_cod,
+                'products_used' => $vendor->products()->count(),
+                'products_limit' => $currentSubscription->product_limit,
+                'orders_this_month' => $vendorOrdersThisMonth->count(),
+                'order_limit' => $currentSubscription->order_limit,
+                'can_create_products' => $currentSubscription->product_limit ? 
+                    ($vendor->products()->count() < $currentSubscription->product_limit) : true,
+                'usage_percentage' => [
+                    'products' => $currentSubscription->product_limit ? 
+                        min(100, ($vendor->products()->count() / $currentSubscription->product_limit) * 100) : 0,
+                    'orders' => $currentSubscription->order_limit ? 
+                        min(100, ($vendorOrdersThisMonth->count() / $currentSubscription->order_limit) * 100) : 0,
+                ],
+            ];
+        }
+
+        // Check if upgrade is needed
+        if ($currentSubscription) {
+            $needsUpgrade = ($currentSubscription->product_limit && 
+                           $vendor->products()->count() >= $currentSubscription->product_limit * 0.9) ||
+                           ($currentSubscription->order_limit && 
+                           $vendorOrdersThisMonth->count() >= $currentSubscription->order_limit * 0.9) ||
+                           ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
+        } else {
+            $needsUpgrade = true;
+        }
+
         return Inertia::render('modules/marketplace/vendor/dashboard', [
             'vendor' => $vendorProfile,
             'stats' => $stats,
@@ -373,6 +450,10 @@ class VendorController extends Controller
             'monthlySales' => $monthlySales,
             'orderStatusDistribution' => $orderStatusDistribution,
             'products' => $vendor->products()->with(['category', 'images'])->latest()->get(),
+            'currentSubscription' => $currentSubscription,
+            'subscriptionUsage' => $subscriptionUsage,
+            'needsUpgrade' => $needsUpgrade,
+            'upgradeReason' => !$currentSubscription ? 'no_subscription' : 'approaching_limits',
         ]);
     }
 
@@ -476,6 +557,9 @@ class VendorController extends Controller
             'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
 
+        try {
+
+
         // Handle image uploads
         $updateData = collect($validated)->except(['logo', 'banner_image', 'facebook', 'twitter', 'instagram', 'linkedin', 'description', 'email', 'phone', 'address', 'website', 'tax_identification_number'])->toArray();
 
@@ -500,11 +584,13 @@ class VendorController extends Controller
         if ($request->hasFile('logo')) {
             // Delete old logo if exists
             if ($vendor->logo) {
+
                 Storage::delete(str_replace('/storage/', '', $vendor->logo));
+
             }
 
             $logoPath = $request->file('logo')->store('vendor-logos', 'public');
-            $updateData['logo'] = '/storage/' . $logoPath;
+            $updateData['logo'] = asset(Storage::url($logoPath));
         }
 
         if ($request->hasFile('banner_image')) {
@@ -514,13 +600,17 @@ class VendorController extends Controller
             }
 
             $bannerPath = $request->file('banner_image')->store('vendor-banners', 'public');
-            $updateData['banner_image'] = '/storage/' . $bannerPath;
+            $updateData['banner_image'] = asset(Storage::url($bannerPath));
         }
 
         // Update vendor record
         $vendor->update($updateData);
 
         return redirect()->back()->with('success', 'Vendor profile updated successfully!');
+        } catch (\Throwable $th) {
+          dd($th);
+            return redirect()->back()->with('error', 'Failed to update vendor profile.');
+        }
     }
 
     /**
@@ -534,42 +624,11 @@ class VendorController extends Controller
             return redirect()->route('marketplace.vendor.register');
         }
 
-        return Inertia::render('Marketplace/Vendors/Pending', [
+        return Inertia::render('modules/marketplace/vendor/pending', [
             'vendor' => $vendor
         ]);
     }
 
-    /**
-     * Admin: List all vendor applications.
-     */
-    public function adminIndex(Request $request)
-    {
-        $this->authorize('viewAny', Vendor::class);
-
-        $query = Vendor::with('user');
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('business_name', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        $vendors = $query->latest()->paginate(15)->withQueryString();
-
-        return Inertia::render('Admin/Vendors/Index', [
-            'vendors' => $vendors,
-            'filters' => $request->only(['status', 'search'])
-        ]);
-    }
 
     /**
      * Admin: Approve vendor application.
@@ -602,5 +661,152 @@ class VendorController extends Controller
 
         return redirect()->back()
             ->with('success', 'Vendor application rejected.');
+    }
+
+    /**
+     * Display vendor analytics dashboard
+     */
+    public function analytics()
+    {
+        $vendor = Auth::user()->vendor;
+
+        if (!$vendor) {
+            return redirect()->route('marketplace.vendor.register');
+        }
+
+        // Get products statistics
+        $totalProducts = $vendor->products()->count();
+        $activeProducts = $vendor->products()->where('status', 'active')->count();
+        // Check for low stock (less than 10 items) and out of stock
+        $lowStockProducts = $vendor->products()->where('stock_quantity', '>', 0)->where('stock_quantity', '<=', 10)->count();
+        $outOfStockProducts = $vendor->products()->where('stock_quantity', 0)->count();
+
+        // Get sales statistics
+        $totalOrders = Order::where('vendor_id', $vendor->id)->count();
+        $completedOrders = Order::where('vendor_id', $vendor->id)->where('status', 'delivered')->count();
+        $pendingOrders = Order::where('vendor_id', $vendor->id)
+            ->whereNotIn('status', ['delivered', 'cancelled', 'refunded'])
+            ->count();
+
+        // Calculate total revenue
+        $totalRevenue = Order::where('vendor_id', $vendor->id)
+            ->where('status', 'delivered')
+            ->sum('total_amount');
+
+        // Get top selling products
+        $topSellingProducts = DB::table('marketplace_order_items')
+            ->join('marketplace_orders', 'marketplace_order_items.order_id', '=', 'marketplace_orders.id')
+            ->join('marketplace_products', 'marketplace_order_items.product_id', '=', 'marketplace_products.id')
+            ->where('marketplace_orders.vendor_id', $vendor->id)
+            ->where('marketplace_orders.status', 'delivered')
+            ->select(
+                'marketplace_products.id',
+                'marketplace_products.name',
+                'marketplace_products.slug',
+                DB::raw('SUM(marketplace_order_items.quantity) as total_sold'),
+                DB::raw('SUM(marketplace_order_items.quantity * marketplace_order_items.unit_price) as total_revenue')
+            )
+            ->groupBy('marketplace_products.id', 'marketplace_products.name', 'marketplace_products.slug')
+            ->orderByDesc('total_sold')
+            ->limit(10)
+            ->get();
+
+        // Get low stock products (less than 10 items)
+        $lowStockItems = $vendor->products()
+            ->where('stock_quantity', '>', 0)
+            ->where('stock_quantity', '<=', 10)
+            ->orderBy('stock_quantity', 'asc')
+            ->limit(10)
+            ->get();
+
+        // Get recent products
+        $recentProducts = $vendor->products()
+            ->with('category')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Monthly sales trend (last 6 months)
+        $monthlySales = DB::table('marketplace_orders')
+            ->where('vendor_id', $vendor->id)
+            ->where('status', 'delivered')
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->select(
+                DB::raw('strftime("%Y-%m", created_at) as month'),
+                DB::raw('COUNT(*) as total_orders'),
+                DB::raw('SUM(total_amount) as total_revenue')
+            )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        // Category performance
+        $categoryPerformance = DB::table('marketplace_order_items')
+            ->join('marketplace_orders', 'marketplace_order_items.order_id', '=', 'marketplace_orders.id')
+            ->join('marketplace_products', 'marketplace_order_items.product_id', '=', 'marketplace_products.id')
+            ->join('marketplace_categories', 'marketplace_products.category_id', '=', 'marketplace_categories.id')
+            ->where('marketplace_orders.vendor_id', $vendor->id)
+            ->where('marketplace_orders.status', 'delivered')
+            ->select(
+                'marketplace_categories.name as category_name',
+                DB::raw('COUNT(DISTINCT marketplace_products.id) as product_count'),
+                DB::raw('SUM(marketplace_order_items.quantity) as total_sold'),
+                DB::raw('SUM(marketplace_order_items.quantity * marketplace_order_items.unit_price) as total_revenue')
+            )
+            ->groupBy('marketplace_categories.id', 'marketplace_categories.name')
+            ->orderByDesc('total_revenue')
+            ->get();
+
+        return Inertia::render('modules/marketplace/vendor/analytics', [
+            'stats' => [
+                'totalProducts' => $totalProducts,
+                'activeProducts' => $activeProducts,
+                'lowStockProducts' => $lowStockProducts,
+                'outOfStockProducts' => $outOfStockProducts,
+                'totalOrders' => $totalOrders,
+                'completedOrders' => $completedOrders,
+                'pendingOrders' => $pendingOrders,
+                'totalRevenue' => $totalRevenue,
+            ],
+            'topSellingProducts' => $topSellingProducts,
+            'lowStockItems' => $lowStockItems,
+            'recentProducts' => $recentProducts,
+            'monthlySales' => $monthlySales,
+            'categoryPerformance' => $categoryPerformance,
+        ]);
+    }
+
+    /**
+     * Delete vendor store profile
+     */
+    public function destroy()
+    {
+        $vendor = Auth::user()->vendor;
+
+        if (!$vendor) {
+            return redirect()->route('marketplace.index')
+                ->with('error', 'Vendor profile not found.');
+        }
+
+        // Check if vendor has active orders
+        $activeOrders = $vendor->orders()
+            ->whereNotIn('status', ['delivered', 'cancelled', 'refunded'])
+            ->count();
+
+        if ($activeOrders > 0) {
+            return back()->with('error', 'Cannot delete store with active orders. Please complete or cancel all pending orders first.');
+        }
+
+        // Delete all vendor products
+        $vendor->products()->delete();
+
+        // Delete vendor subscriptions
+        $vendor->subscriptions()->delete();
+
+        // Delete vendor
+        $vendor->delete();
+
+        return redirect()->route('marketplace.index')
+            ->with('success', 'Your vendor store has been permanently deleted.');
     }
 }

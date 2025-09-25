@@ -12,6 +12,7 @@ import {
     Calendar,
     CreditCard
 } from 'lucide-react';
+import { formatCurrency } from '@/utils/formatters';
 
 interface MonthlyEarning {
     month: string;
@@ -63,7 +64,7 @@ export default function VendorPaymentAnalytics({
 
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between p-6 items-center">
                     <div className="flex items-center gap-4">
                         <Button variant="outline" size="sm" asChild>
                             <Link href="/marketplace/vendor/payments">
@@ -88,7 +89,7 @@ export default function VendorPaymentAnalytics({
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+                            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
                             <p className="text-xs text-muted-foreground">
                                 From {totalPayments} payments
                             </p>
@@ -101,7 +102,7 @@ export default function VendorPaymentAnalytics({
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${averageMonthly.toFixed(2)}</div>
+                            <div className="text-2xl font-bold">{formatCurrency(averageMonthly)}</div>
                             <p className="text-xs text-muted-foreground">
                                 Monthly average earnings
                             </p>
@@ -144,7 +145,7 @@ export default function VendorPaymentAnalytics({
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="font-bold">${earning.total_amount.toFixed(2)}</p>
+                                                <p className="font-bold">{formatCurrency(earning.total_amount)}</p>
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-20 bg-gray-200 rounded-full h-2">
                                                         <div
@@ -196,7 +197,7 @@ export default function VendorPaymentAnalytics({
                                                     </p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-bold">${method.total_amount.toFixed(2)}</p>
+                                                    <p className="font-bold">{formatCurrency(method.total_amount)}</p>
                                                     <p className="text-xs text-muted-foreground">
                                                         {percentage.toFixed(1)}%
                                                     </p>

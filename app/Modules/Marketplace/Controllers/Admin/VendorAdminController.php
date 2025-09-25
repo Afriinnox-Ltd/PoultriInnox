@@ -113,6 +113,7 @@ class VendorAdminController extends Controller
         $vendor->update([
             'status' => 'approved',
             'is_verified' => true,
+            'is_active' => true,
             'verification_notes' => $request->notes,
             'approved_at' => now(),
             'admin_notes' => $request->notes,

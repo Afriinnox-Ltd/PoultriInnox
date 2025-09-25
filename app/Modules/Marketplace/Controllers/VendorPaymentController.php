@@ -63,7 +63,7 @@ class VendorPaymentController extends Controller
             $q->where('vendor_id', $vendor->id);
         })->with(['order.user'])->latest()->take(10)->get();
 
-        return Inertia::render('Marketplace/Vendor/Payments/Index', [
+        return Inertia::render('modules/marketplace/vendor/payments/Index', [
             'orders' => $orders,
             'stats' => $stats,
             'recentPayments' => $recentPayments,
@@ -131,7 +131,7 @@ class VendorPaymentController extends Controller
             ->take(10)
             ->values();
 
-        return Inertia::render('Marketplace/Vendor/Payments/Analytics', [
+        return Inertia::render('modules/marketplace/vendor/payments/Analytics', [
             'monthlyEarnings' => $monthlyEarnings,
             'paymentMethods' => $paymentMethods,
             'topProducts' => $topProducts,

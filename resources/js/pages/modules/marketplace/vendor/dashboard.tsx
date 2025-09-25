@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import {
     Star,
     BarChart3
 } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import VendorLayout from '@/layouts/vendor-layout';
 
 interface VendorDashboardProps {
     vendor: {
@@ -46,9 +46,56 @@ interface VendorDashboardProps {
         total_sales: number;
         total_revenue: number;
     }>;
+    currentSubscription?: {
+        plan_name: string;
+        price: number;
+        billing_cycle: string;
+        start_date: string;
+        end_date: string;
+        days_remaining: number | null;
+        is_active: boolean;
+        auto_renew: boolean;
+        product_limit: number | null;
+        order_limit: number | null;
+        allow_cod: boolean;
+    } | null;
+    subscriptionUsage?: {
+        products_used: number;
+        products_limit: number | null;
+        orders_this_month: number;
+        order_limit: number | null;
+        usage_percentage: {
+            products: number;
+            orders: number;
+        };
+    } | null;
+    needsUpgrade?: boolean;
+    upgradeReason?: string;
+    availablePlans?: Array<{
+        id: number;
+        name: string;
+        price: number;
+        billing_cycle: 'monthly' | 'yearly';
+        product_limit: number | null;
+        order_limit: number | null;
+        allow_cod: boolean;
+        features: string[];
+        is_popular?: boolean;
+        is_premium?: boolean;
+    }>;
 }
 
-export default function VendorDashboard({ vendor, stats, recent_orders, products }: VendorDashboardProps) {
+export default function VendorDashboard({ 
+    vendor, 
+    stats, 
+    recent_orders, 
+    products, 
+    currentSubscription,
+    subscriptionUsage,
+    needsUpgrade = false,
+    upgradeReason,
+    availablePlans = []
+}: VendorDashboardProps) {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -76,87 +123,45 @@ export default function VendorDashboard({ vendor, stats, recent_orders, products
         });
     };
 
-    if (vendor.status !== 'approved') {
-        return (
-            <AppLayout
-            >
-                <Head title="Vendor Dashboard" />
-                <div className="py-12">
-                    <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
-                        <Card>
-                            <CardContent className="p-8 text-center">
-                                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <AlertCircle className="h-8 w-8 text-yellow-600" />
-                                </div>
-                                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                                    {vendor.status === 'pending' ? 'Account Under Review' : vendor.status === 'rejected' ? 'Application Rejected' : 'Account Suspended'}
-                                </h3>
-                                <p className="text-gray-600 mb-6">
-                                    {vendor.status === 'pending'
-                                        ? "Your vendor account is currently being reviewed. You'll be able to access your dashboard and start selling once your account is approved."
-                                        : vendor.status === 'rejected'
-                                        ? "Your vendor application was rejected. Please contact support or submit a new application."
-                                        : "Your vendor account has been suspended. Please contact support for assistance."
-                                    }
-                                </p>
-                                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                                    <div className="text-left space-y-2">
-                                        <p><strong>Business Name:</strong> {vendor.business_name}</p>
-                                        <p><strong>Application Date:</strong> {formatDate(vendor.created_at)}</p>
-                                        <p><strong>Status:</strong>
-                                            <Badge className="ml-2" variant={vendor.status === 'pending' ? 'secondary' : vendor.status === 'rejected' ? 'destructive' : 'outline'}>
-                                                {vendor?.status?.charAt(0)?.toUpperCase() + vendor?.status?.slice(1)}
-                                            </Badge>
-                                        </p>
-                                        <p><strong>Verification:</strong>
-                                            <Badge className="ml-2" variant={vendor.is_verified ? 'default' : 'secondary'}>
-                                                {vendor.is_verified ? 'Verified' : 'Unverified'}
-                                            </Badge>
-                                        </p>
-                                    </div>
-                                </div>
-                                <Button onClick={() => window.location.href = '/marketplace'}>
-                                    Browse Marketplace
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
-            </AppLayout>
-        );
-    }
+
 
     return (
-        <AppLayout
+        <VendorLayout
+            title="Vendor Dashboard"
+            vendor={vendor}
+            currentSubscription={currentSubscription}
+            subscriptionUsage={subscriptionUsage}
+            needsUpgrade={needsUpgrade}
+            upgradeReason={upgradeReason}
+            breadcrumbItems={[]}
         >
-            <Head title="Vendor Dashboard" />
-                <div className="flex justify-between items-center p-6 pb-0">
-                    <div>
-                        <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                            Vendor Dashboard
-                        </h2>
-                        <p className="text-sm text-gray-600 mt-1">
-                            Welcome back, {vendor.business_name}
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={() => window.location.href = '/marketplace/vendor/products/create'}
-                            size="sm"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Product
-                        </Button>
-                        <Button
-                            onClick={() => window.location.href = '/marketplace/vendor/profile'}
-                            variant="outline"
-                            size="sm"
-                        >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Profile
-                        </Button>
-                    </div>
+            <div className="flex justify-between lg:flex-row flex-col gap-4 lg:items-center lg:flex-row flex-c mb-6">
+                <div>
+                    <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                        Welcome back, {vendor.business_name}
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                        Here's what's happening with your store today.
+                    </p>
                 </div>
+                <div className="flex gap-2">
+                    <Button
+                        onClick={() => window.location.href = '/marketplace/vendor/products/create'}
+                        size="sm"
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Product
+                    </Button>
+                    <Button
+                        onClick={() => window.location.href = '/marketplace/vendor/profile'}
+                        variant="outline"
+                        size="sm"
+                    >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Profile
+                    </Button>
+                </div>
+            </div>
 
             <div className="py-6">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -395,21 +400,15 @@ export default function VendorDashboard({ vendor, stats, recent_orders, products
                                                     </div>
 
                                                     <div className="flex gap-2 mt-3">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => window.location.href = `/marketplace/products/${product.slug}`}
-                                                        >
-                                                            <Eye className="h-4 w-4 mr-1" />
-                                                            View
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => window.location.href = `/marketplace/vendor/products/${product.id}/edit`}
-                                                        >
-                                                            <Edit className="h-4 w-4 mr-1" />
-                                                            Edit
-                                                        </Button>
+                                                        <Link href={`/marketplace/vendor/products/${product.id}/edit`}>
+                                                            <Button
+                                                                size="sm"
+                                                            >
+                                                                <Edit className="h-4 w-4 mr-1" />
+                                                                Edit
+                                                            </Button>
+                                                        </Link>
+
                                                     </div>
                                                 </div>
                                             ))}
@@ -427,9 +426,9 @@ export default function VendorDashboard({ vendor, stats, recent_orders, products
                                         <CardTitle>Top Performing Products</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        {stats.top_products && stats.top_products.length > 0 ? (
+                                        {products && products.length > 0 ? (
                                             <div className="space-y-3">
-                                                {stats.top_products.map((product, index) => (
+                                                {products.slice(0, 5).map((product, index) => (
                                                     <div key={product.id} className="flex items-center gap-3">
                                                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-bold text-blue-600">
                                                             {index + 1}
@@ -570,6 +569,6 @@ export default function VendorDashboard({ vendor, stats, recent_orders, products
                     </Tabs>
                 </div>
             </div>
-        </AppLayout>
+        </VendorLayout>
     );
 }

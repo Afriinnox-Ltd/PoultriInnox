@@ -15,6 +15,7 @@ import {
     AlertCircle,
     Calendar
 } from 'lucide-react';
+import { formatCurrency } from '@/utils/formatters';
 
 interface Payment {
     id: number;
@@ -71,8 +72,8 @@ interface Stats {
 interface VendorPaymentsProps {
     orders: {
         data: Order[];
-        links: any[];
-        meta: any;
+        links?: any[];
+        meta?: any;
     };
     stats: Stats;
     recentPayments: Payment[];
@@ -82,13 +83,24 @@ interface VendorPaymentsProps {
 }
 
 export default function VendorPayments({ orders, stats, recentPayments, filters }: VendorPaymentsProps) {
+    // Provide default values to prevent undefined errors
+    const safeOrders = orders || { data: [], links: [], meta: {} };
+    const safeStats = stats || {
+        total_earnings: 0,
+        pending_payouts: 0,
+        completed_payouts: 0,
+        total_orders: 0,
+        paid_orders: 0
+    };
+    const safeFilters = filters || {};
+
     return (
         <AppLayout>
             <Head title="Payments & Earnings" />
 
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between p-6 items-center">
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight">Payments & Earnings</h2>
                         <p className="text-muted-foreground">
@@ -113,9 +125,9 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${stats.total_earnings.toFixed(2)}</div>
+                            <div className="text-2xl font-bold">{formatCurrency(safeStats.total_earnings)}</div>
                             <p className="text-xs text-muted-foreground">
-                                From {stats.paid_orders} paid orders
+                                From {safeStats.paid_orders} paid orders
                             </p>
                         </CardContent>
                     </Card>
@@ -126,7 +138,7 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                             <Clock className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${stats.pending_payouts.toFixed(2)}</div>
+                            <div className="text-2xl font-bold">{formatCurrency(safeStats.pending_payouts)}</div>
                             <p className="text-xs text-muted-foreground">
                                 Awaiting payout processing
                             </p>
@@ -139,7 +151,7 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                             <CheckCircle className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${stats.completed_payouts.toFixed(2)}</div>
+                            <div className="text-2xl font-bold">{formatCurrency(safeStats.completed_payouts)}</div>
                             <p className="text-xs text-muted-foreground">
                                 Successfully paid out
                             </p>
@@ -152,7 +164,7 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{stats.total_orders}</div>
+                            <div className="text-2xl font-bold">{safeStats.total_orders}</div>
                             <p className="text-xs text-muted-foreground">
                                 All time orders
                             </p>
@@ -166,7 +178,7 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
-                                {stats.total_orders > 0 ? Math.round((stats.paid_orders / stats.total_orders) * 100) : 0}%
+                                {safeStats.total_orders > 0 ? Math.round((safeStats.paid_orders / safeStats.total_orders) * 100) : 0}%
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 Orders with payment
@@ -178,21 +190,21 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                 {/* Filter Actions */}
                 <div className="flex gap-2">
                     <Button
-                        variant={!filters.payment_status ? 'default' : 'outline'}
+                        variant={!safeFilters.payment_status ? 'default' : 'outline'}
                         size="sm"
                         asChild
                     >
                         <Link href="/marketplace/vendor/payments">All Orders</Link>
                     </Button>
                     <Button
-                        variant={filters.payment_status === 'paid' ? 'default' : 'outline'}
+                        variant={safeFilters.payment_status === 'paid' ? 'default' : 'outline'}
                         size="sm"
                         asChild
                     >
                         <Link href="/marketplace/vendor/payments?payment_status=paid">Paid Orders</Link>
                     </Button>
                     <Button
-                        variant={filters.payment_status === 'unpaid' ? 'default' : 'outline'}
+                        variant={safeFilters.payment_status === 'unpaid' ? 'default' : 'outline'}
                         size="sm"
                         asChild
                     >
@@ -210,8 +222,8 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {orders.data.length > 0 ? (
-                                orders.data.map((order) => (
+                            {safeOrders?.data && safeOrders.data.length > 0 ? (
+                                safeOrders.data.map((order) => (
                                     <div key={order.id} className="border rounded-lg p-4">
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-1">
@@ -234,14 +246,14 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                                                     Customer: {order.user.name} • {new Date(order.created_at).toLocaleDateString()}
                                                 </p>
                                                 <p className="text-sm">
-                                                    {order.items.length} item(s) • Total: ${order.total_amount}
+                                                    {order.items.length} item(s) • Total: {formatCurrency(order.total_amount)}
                                                 </p>
                                             </div>
                                             <div className="text-right space-y-1">
                                                 {order.payment ? (
                                                     <div>
                                                         <p className="font-medium text-green-600">
-                                                            ${order.payment.vendor_amount.toFixed(2)}
+                                                            {formatCurrency(order.payment.vendor_amount)}
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
                                                             Your earnings
@@ -261,7 +273,7 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                                                 ) : (
                                                     <div>
                                                         <p className="text-muted-foreground">
-                                                            ${(order.total_amount * 0.9).toFixed(2)}
+                                                            {formatCurrency((order.total_amount * 0.9))}
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
                                                             Expected earnings
@@ -288,7 +300,7 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                                                     </div>
                                                     <div>
                                                         <p className="text-muted-foreground">Platform Commission</p>
-                                                        <p>${order.payment.platform_commission.toFixed(2)}</p>
+                                                        <p>{formatCurrency(order.payment.platform_commission)}</p>
                                                     </div>
                                                     <div>
                                                         <p className="text-muted-foreground">Payment Date</p>
@@ -304,8 +316,8 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                                     <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                                     <h3 className="font-semibold mb-2">No orders found</h3>
                                     <p className="text-muted-foreground">
-                                        {filters.payment_status ?
-                                            `No ${filters.payment_status} orders to display.` :
+                                        {safeFilters.payment_status ?
+                                            `No ${safeFilters.payment_status} orders to display.` :
                                             'You haven\'t received any orders yet.'
                                         }
                                     </p>
@@ -314,10 +326,10 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                         </div>
 
                         {/* Pagination */}
-                        {orders.meta.last_page > 1 && (
+                        {safeOrders?.meta?.last_page && safeOrders.meta.last_page > 1 && (
                             <div className="mt-6 flex justify-center">
                                 <div className="flex gap-2">
-                                    {orders.links.map((link, index) => (
+                                    {safeOrders.links?.map((link, index) => (
                                         <Button
                                             key={index}
                                             variant={link.active ? 'default' : 'outline'}

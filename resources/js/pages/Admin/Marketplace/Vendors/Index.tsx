@@ -20,7 +20,8 @@ import {
     Mail,
     Calendar,
     Filter,
-    MoreHorizontal
+    MoreHorizontal,
+    Download
 } from 'lucide-react';
 import {
     Dialog,
@@ -46,6 +47,7 @@ import {
 import { toast } from 'sonner';
 
 interface Vendor {
+    business_documents(business_documents: any): unknown;
     business_phone: ReactNode;
     business_type: ReactNode;
     business_address: ReactNode;
@@ -206,6 +208,8 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
         if (confirm(`Are you sure you want to ${message} ${vendor.business_name}?`)) {
             router.patch(`/admin/marketplace/vendors/${vendor.id}/toggle-verification`, {},
                 {
+                    preserveState: false,
+                    preserveScroll: true,
                     onSuccess: () => {
                         toast.success(`Vendor ${message}ed successfully`);
                     },
@@ -400,7 +404,6 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                             <TableBody>
                                 {vendors?.data?.length > 0 ? (
                                     vendors?.data.map((vendor) => (
-                                        console.log(vendor),
                                         <TableRow key={vendor.id}>
                                             <TableCell>
                                                 <div>
@@ -545,8 +548,9 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
 
                 {/* Vendor Details Dialog */}
                 {selectedVendor && (
+                    console.log(selectedVendor),
                     <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogContent className="max-w-6xl lg:min-w-6xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>Vendor Details - {selectedVendor.business_name}</DialogTitle>
                                 <DialogDescription>
@@ -557,7 +561,7 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                 {/* Business Information */}
                                 <div>
                                     <h4 className="font-semibold mb-3">Business Information</h4>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid lg:grid-cols-2  gap-4">
                                         <div>
                                             <Label>Business Name</Label>
                                             <p className="text-sm">{selectedVendor.business_name}</p>
@@ -614,9 +618,17 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                 <div>
                                     <h4 className="font-semibold mb-3">Business Documents</h4>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Business License</Label>
-                                            <p className="text-sm">{selectedVendor.business_license || 'Not provided'}</p>
+                                        <div className=''>
+                                            {
+                                                    selectedVendor.business_documents ? (
+                                                        <a href={selectedVendor.business_documents} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex items-center">
+                                                            <Download className="h-4 w-4 mr-1" />
+                                                            View Document
+                                                        </a>
+                                                    ) : (
+                                                        <p className="text-sm">No document provided</p>
+                                                    )
+                                            }
                                         </div>
                                         <div>
                                             <Label>Tax ID</Label>
@@ -628,6 +640,7 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                         </div>
                                     </div>
                                 </div>
+
 
                                 {/* Status Information */}
                                 <div>
@@ -677,29 +690,6 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                         </p>
                                     </div>
                                 )}
-
-                                {/* Performance Metrics */}
-                                <div>
-                                    <h4 className="font-semibold mb-3">Performance Metrics</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <Label>Products</Label>
-                                            <p className="text-sm font-medium">{selectedVendor.products_count}</p>
-                                        </div>
-                                        <div>
-                                            <Label>Total Orders</Label>
-                                            <p className="text-sm font-medium">{selectedVendor?.orders_count}</p>
-                                        </div>
-                                        <div>
-                                            <Label>Total Sales</Label>
-                                            {/* <p className="text-sm font-medium">${selectedVendor?.total_sales?.toFixed(2)}</p> */}
-                                        </div>
-                                        <div>
-                                            <Label>Rating</Label>
-                                            {/* <p className="text-sm font-medium">{selectedVendor?.rating?.toFixed(1)} ⭐</p> */}
-                                        </div>
-                                    </div>
-                                </div>
 
                                 {/* Action Buttons */}
                                 {selectedVendor.status === 'pending' && (

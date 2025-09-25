@@ -58,6 +58,13 @@ interface OrdersPageProps {
                 shipped_at?: string;
                 delivered_at?: string;
             };
+            delivery_confirmation?: {
+                id: number;
+                confirmed: boolean;
+                confirmed_at?: string;
+                delivery_requested_at: string;
+            };
+            payment_status: string;
         }>;
         current_page: number;
         last_page: number;
@@ -96,10 +103,20 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
     const getPaymentStatusColor = (status: string) => {
         switch (status) {
             case 'pending': return 'bg-yellow-100 text-yellow-800';
+            case 'pending_confirmation': return 'bg-orange-100 text-orange-800';
+            case 'completed': return 'bg-emerald-100 text-emerald-800';
             case 'paid': return 'bg-emerald-100 text-emerald-800';
             case 'failed': return 'bg-red-100 text-red-800';
             case 'refunded': return 'bg-gray-100 text-gray-800';
             default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const formatPaymentStatus = (status: string) => {
+        switch (status) {
+            case 'pending_confirmation': return 'Awaiting Delivery Confirmation';
+            case 'completed': return 'Completed';
+            default: return status.charAt(0).toUpperCase() + status.slice(1);
         }
     };
 
@@ -606,13 +623,9 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                         {order.status}
                                                     </Badge>
                                                     <Badge className={getPaymentStatusColor(order.payment_status)}>
-                                                        {order.payment_status}
+                                                        {formatPaymentStatus(order.payment_status)}
                                                     </Badge>
-                                                    {(user_type === 'vendor' || user_type === 'admin') && (
-                                                        <Badge className={order.admin_confirmed ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                                                            {order.admin_confirmed ? 'Admin Confirmed' : 'Awaiting Admin Confirmation'}
-                                                        </Badge>
-                                                    )}
+                                                    
                                                 </div>
                                                 <p className="text-xl font-bold">
                                                     {formatCurrency(order.total_amount)}
@@ -697,14 +710,14 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
 
                                         {/* Order Actions */}
                                         <div className="flex gap-2 flex-wrap">
-                                            <Button
+                                            {/* <Button
                                                 size="sm"
                                                 variant="outline"
                                                 onClick={() => window.location.href = `/marketplace/orders/${order.id}`}
                                             >
                                                 <Eye className="h-4 w-4 mr-1" />
                                                 View Details
-                                            </Button>
+                                            </Button> */}
 
                                             {user_type === 'vendor' && order.admin_confirmed && order.status === 'confirmed' && (
                                                 <Button
@@ -757,8 +770,29 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                             )}
 
                                             {user_type === 'vendor' && !order.admin_confirmed && (
-                                                <div className="text-sm text-gray-500 italic px-2 py-1 bg-gray-50 rounded">
-                                                    Awaiting admin confirmation to manage order
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            if (confirm('Confirm this order to start processing?')) {
+                                                                router.post(`/marketplace/vendor/orders/${order.id}/confirm`, {}, {
+                                                                    onSuccess: () => {
+                                                                        toast.success('Order confirmed successfully!');
+                                                                    },
+                                                                    onError: (error) => {
+                                                                        toast.error('Failed to confirm order. Please try again.');
+                                                                        console.error('Error confirming order:', error);
+                                                                    }
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                                        Confirm Order
+                                                    </Button>
+                                                    <div className="text-sm text-gray-500 italic px-2 py-1 bg-gray-50 rounded">
+                                                        Awaiting confirmation to manage order
+                                                    </div>
                                                 </div>
                                             )}
 
@@ -771,6 +805,28 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                     <MessageSquare className="h-4 w-4 mr-1" />
                                                     Write Review
                                                 </Button>
+                                            )}
+
+                                            {/* Customer Delivery Confirmation */}
+                                            {user_type === 'customer' && order.status === 'delivered' && order.payment_status === 'pending_confirmation' && !order.delivery_confirmation?.confirmed && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        router.visit(`/orders/${order.id}/confirm-delivery`);
+                                                    }}
+                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                >
+                                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                                    Confirm Delivery
+                                                </Button>
+                                            )}
+
+                                            {/* Show delivery confirmation status */}
+                                            {order.delivery_confirmation?.confirmed && (
+                                                <div className="flex items-center gap-2 text-sm text-green-600">
+                                                    <CheckCircle className="h-4 w-4" />
+                                                    <span>Delivery Confirmed {order.delivery_confirmation.confirmed_at && `on ${formatDate(order.delivery_confirmation.confirmed_at)}`}</span>
+                                                </div>
                                             )}
 
                                             {(order.status === 'pending' || order.status === 'confirmed') && (

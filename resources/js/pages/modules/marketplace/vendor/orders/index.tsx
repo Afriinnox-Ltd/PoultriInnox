@@ -21,7 +21,8 @@ import {
     DollarSign,
     Users,
     TrendingUp,
-    MapPin
+    MapPin,
+    CreditCard
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 
@@ -41,6 +42,11 @@ interface VendorOrdersPageProps {
                     slug: string;
                     images?: ProductImage[];
                 };
+                product_payment_methods?: string[];
+                product_shipping_option?: string;
+                product_extra_fee?: number;
+                product_delivery_time?: string;
+                product_return_policy?: string;
             }>;
             shipping?: {
                 id: number;
@@ -655,6 +661,12 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
                                                         <Users className="h-4 w-4 mr-1" />
                                                         {order.user.name}
                                                     </div>
+                                                    {order.payment_method && (
+                                                        <div className="flex items-center">
+                                                            <CreditCard className="h-4 w-4 mr-1" />
+                                                            {order.payment_method === 'cash_on_delivery' ? 'COD' : 'Online'}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right">
@@ -716,6 +728,29 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
                                                         <p className="text-sm text-gray-600">
                                                             SKU: {item.product_sku || 'N/A'} • Quantity: {item.quantity} × {formatCurrency(item.unit_price)}
                                                         </p>
+                                                        {/* Product shipping & payment info for vendor reference */}
+                                                        <div className="flex gap-2 mt-1">
+                                                            {item.product_payment_methods?.includes('cod') && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    COD Enabled
+                                                                </Badge>
+                                                            )}
+                                                            {item.product_shipping_option === 'free' ? (
+                                                                <Badge variant="outline" className="text-xs text-green-600">
+                                                                    Free Shipping
+                                                                </Badge>
+                                                            ) : item.product_extra_fee && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    Shipping: {formatCurrency(item.product_extra_fee)}
+                                                                </Badge>
+                                                            )}
+                                                            {item.product_delivery_time && (
+                                                                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                                                    <Clock className="h-3 w-3" />
+                                                                    {item.product_delivery_time}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div className="text-right">
                                                         <p className="font-semibold">
