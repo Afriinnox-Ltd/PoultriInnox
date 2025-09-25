@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 declare global {
     function route(name: string, params?: any): string;
@@ -29,7 +30,7 @@ import {
     MoreHorizontal,
     ExternalLink
 } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import VendorLayout from '@/layouts/vendor-layout';
 
 interface Product {
     id: number;
@@ -99,17 +100,49 @@ interface VendorProductsProps {
         sort?: string;
         direction?: string;
     };
+    vendor: any;
+    currentSubscription: any;
+    subscriptionUsage: any;
+    needsUpgrade: boolean;
+    upgradeReason?: string;
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+        };
+        tax: {
+            tax_rate: number;
+            tax_enabled: boolean;
+            tax_inclusive: boolean;
+        };
+        general: {
+            currency: string;
+            currency_symbol: string;
+            auto_approve_products: boolean;
+        };
+    };
 }
 
-export default function VendorProducts({ products, categories, stats, filters }: VendorProductsProps) {
+export default function VendorProducts({ products, categories, stats, filters, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason, marketplaceSettings }: VendorProductsProps) {
     const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('rw-RW', {
-            style: 'currency',
-            currency: 'RWF'
-        }).format(amount);
+        const currency = marketplaceSettings?.general?.currency || 'RWF';
+        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+        
+        if (currency === 'RWF') {
+            return new Intl.NumberFormat('rw-RW', {
+                style: 'currency',
+                currency: 'RWF'
+            }).format(amount);
+        }
+        
+        return `${symbol}${amount.toLocaleString()}`;
     };
 
     const formatDate = (dateString: string) => {
@@ -138,7 +171,7 @@ export default function VendorProducts({ products, categories, stats, filters }:
                 );
             case 'pending':
                 return (
-                    <Badge className="bg-yellow-100 text-yellow-800">
+                    <Badge className="bg-emerald-100 text-emerald-800">
                         <Clock className="h-3 w-3 mr-1" />
                         Pending
                     </Badge>
@@ -170,16 +203,7 @@ export default function VendorProducts({ products, categories, stats, filters }:
             page: 1
         }, { preserveState: true });
     };
-
-    const handleSort = (sortBy: string) => {
-        const direction = filters.sort === sortBy && filters.direction === 'asc' ? 'desc' : 'asc';
-        router.get('/marketplace/vendor/products', {
-            ...filters,
-            sort: sortBy,
-            direction: direction
-        }, { preserveState: true });
-    };
-
+ 
     const confirmDelete = (product: Product) => {
         setDeleteProduct(product);
         setShowDeleteDialog(true);
@@ -203,34 +227,101 @@ export default function VendorProducts({ products, categories, stats, filters }:
     };
 
     const duplicateProduct = (product: Product) => {
+        // Check if vendor can create more products
+        if (subscriptionUsage && !subscriptionUsage.can_create_more) {
+            toast.error('Product limit reached', {
+                description: 'You have reached your product limit. Please upgrade your subscription to duplicate products.'
+            });
+            return;
+        }
+
         router.post(`/marketplace/vendor/products/${product.id}/duplicate`);
     };
 
     return (
-        <AppLayout>
-            <Head title="Manage Products" />
-
-            <div className="flex justify-between items-center mb-6 p-6">
+        <VendorLayout
+            title="Manage Products"
+            breadcrumbItems={[
+                { title: 'Products' }
+            ]}
+            vendor={vendor}
+            currentSubscription={currentSubscription}
+            subscriptionUsage={subscriptionUsage}
+            needsUpgrade={needsUpgrade}
+            upgradeReason={upgradeReason}
+        >
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
                     <h2 className="font-semibold text-xl text-gray-800 leading-tight">
                         Product Management
                     </h2>
                     <p className="text-sm text-gray-600 mt-1">
                         Manage your marketplace products
+                        {subscriptionUsage && (
+                            <span className="ml-2">
+                                • <strong>{subscriptionUsage.products_used}/{subscriptionUsage.products_limit === null ? 'Unlimited' : subscriptionUsage.products_limit}</strong> products
+                            </span>
+                        )}
                     </p>
                 </div>
-                <Link href="/marketplace/vendor/products/create">
-                    <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Product
-                    </Button>
-                </Link>
+                {
+                    subscriptionUsage && subscriptionUsage.can_create_more && (
+                         <Link href="/marketplace/vendor/products/create" className="w-full sm:w-auto">
+                            <Button 
+                                className="w-full sm:w-auto" 
+                                disabled={subscriptionUsage && !subscriptionUsage.can_create_more}
+                                title={subscriptionUsage && !subscriptionUsage.can_create_more ? 'Product limit reached. Upgrade your plan.' : 'Add new product'}
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Product
+                            </Button>
+                        </Link>
+                    )
+                }
+               
             </div>
 
             <div className="py-6">
                 <div className="max-w-7xl mx-auto space-y-6">
+                    {/* No Subscription Alert */}
+                    {subscriptionUsage && subscriptionUsage.products_limit === 0 && (
+                        <Alert className="mx-4 sm:mx-6" variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription>
+                                You don't have an active subscription plan. 
+                                <Link href="/marketplace/subscriptions" className="font-semibold underline ml-1">
+                                    Subscribe to a plan
+                                </Link> to start adding products.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    
+                    {/* Product Limit Alert - Only show if plan has a product limit */}
+                    {subscriptionUsage && subscriptionUsage.products_limit !== null && subscriptionUsage.products_limit > 0 && (
+                        subscriptionUsage.products_used >= subscriptionUsage.products_limit * 0.8 && (
+                            <Alert className="mx-4 sm:mx-6" variant={subscriptionUsage.can_create_more ? "default" : "destructive"}>
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                    {subscriptionUsage.can_create_more ? (
+                                        <>
+                                            You're using <strong>{subscriptionUsage.products_used}</strong> of <strong>{subscriptionUsage.products_limit}</strong> products. 
+                                            Consider <Link href="/marketplace/subscriptions" className="font-semibold underline ml-1">upgrading your plan</Link> soon.
+                                        </>
+                                    ) : (
+                                        <>
+                                            You've reached your product limit! 
+                                            <Link href="/marketplace/subscriptions" className="font-semibold underline ml-1">
+                                                Upgrade your plan
+                                            </Link> to add more products.
+                                        </>
+                                    )}
+                                </AlertDescription>
+                            </Alert>
+                        )
+                    )}
+
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4 sm:px-1">
                         <Card>
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
@@ -238,11 +329,10 @@ export default function VendorProducts({ products, categories, stats, filters }:
                                         <p className="text-sm font-medium text-gray-600">Total Products</p>
                                         <p className="text-2xl font-bold text-gray-900">{stats?.total}</p>
                                     </div>
-                                    <Package className="h-8 w-8 text-blue-500" />
+                                    <Package className="h-8 w-8 text-emerald-500" />
                                 </div>
                             </CardContent>
                         </Card>
-
                         <Card>
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
@@ -262,7 +352,7 @@ export default function VendorProducts({ products, categories, stats, filters }:
                                         <p className="text-sm font-medium text-gray-600">Draft</p>
                                         <p className="text-2xl font-bold text-gray-600">{stats?.draft}</p>
                                     </div>
-                                    <Edit className="h-8 w-8 text-gray-500" />
+                                    <Edit className="h-8 w-8 text-emerald-500" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -272,9 +362,9 @@ export default function VendorProducts({ products, categories, stats, filters }:
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm font-medium text-gray-600">Pending</p>
-                                        <p className="text-2xl font-bold text-yellow-600">{stats?.pending}</p>
+                                        <p className="text-2xl font-bold text-emerald-600">{stats?.pending}</p>
                                     </div>
-                                    <Clock className="h-8 w-8 text-yellow-500" />
+                                    <Clock className="h-8 w-8 text-emerald-500" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -291,6 +381,45 @@ export default function VendorProducts({ products, categories, stats, filters }:
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Marketplace Settings Info */}
+                    {marketplaceSettings && (
+                        <Card className="mx-4 sm:mx-1">
+                            <CardHeader>
+                                <CardTitle className="flex items-center">
+                                    <DollarSign className="h-5 w-5 mr-2" />
+                                    Marketplace Settings
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                                        <div className="text-lg font-bold text-emerald-900">
+                                            {marketplaceSettings.commission.commission_type === 'percentage' 
+                                                ? `${marketplaceSettings.commission.default_commission_rate}%`
+                                                : formatCurrency(marketplaceSettings.commission.default_commission_rate)
+                                            }
+                                        </div>
+                                        <div className="text-sm font-medium text-emerald-700">Commission Rate</div>
+                                        <div className="text-xs text-emerald-600 mt-1">
+                                            Per sale commission
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                                        <div className="text-lg font-bold text-emerald-900">
+                                            {marketplaceSettings.general.currency}
+                                        </div>
+                                        <div className="text-sm font-medium text-emerald-700">Currency</div>
+                                        <div className="text-xs text-emerald-600 mt-1">
+                                            Product pricing currency
+                                        </div>
+                                    </div> 
+                                     
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Filters */}
                     <Card>
@@ -415,13 +544,13 @@ export default function VendorProducts({ products, categories, stats, filters }:
                                 <div className="space-y-4 pt-0">
                                     {products.data.map((product) => (
                                         console.log(product.images),
-                                        <div key={product.id} className="border rounded-lg p-6 hover:shadow-sm transition-shadow">
-                                            <div className="flex items-start gap-4">
+                                        <div key={product.id} className="border rounded-lg p-4 sm:p-6 hover:shadow-sm transition-shadow">
+                                            <div className="flex flex-col sm:flex-row items-start gap-4">
                                                 {/* Product Image */}
-                                                <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                                <div className="w-full sm:w-20 h-40 sm:h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                                                     {product.images && product.images.length > 0 ? (
                                                         <img
-                                                                src={product.images.find(img => img.is_primary)?.image_path || product.images[0].image_path}
+                                                            src={product.images.find(img => img.is_primary)?.image_path || product.images[0].image_path}
                                                             alt={product.name}
                                                             className="w-full h-full object-cover"
                                                         />
@@ -433,8 +562,8 @@ export default function VendorProducts({ products, categories, stats, filters }:
                                                 </div>
 
                                                 {/* Product Details */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-start justify-between">
+                                                <div className="flex-1 min-w-0 w-full">
+                                                    <div className="flex flex-col sm:flex-row items-start justify-between gap-2">
                                                         <div className="flex-1">
                                                             <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
                                                                 {product.name}
@@ -451,8 +580,8 @@ export default function VendorProducts({ products, categories, stats, filters }:
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between mt-4">
-                                                        <div className="flex items-center gap-6 text-sm text-gray-600">
+                                                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mt-4">
+                                                        <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-sm text-gray-600">
                                                             <div>
                                                                 <span className="font-medium">Price:</span>
                                                                 <span className="ml-1 text-lg font-bold text-emerald-600">
@@ -476,38 +605,33 @@ export default function VendorProducts({ products, categories, stats, filters }:
                                                         </div>
 
                                                         {/* Action Buttons */}
-                                                        <div className="flex items-center gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => window.open(route('marketplace.products.show', product.slug), '_blank')}
-                                                            >
-                                                                <Eye className="h-4 w-4 mr-1" />
-                                                                View
-                                                            </Button>
-
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => window.location.href = route('marketplace.vendor.products.edit', product.id)}
-                                                            >
-                                                                <Edit className="h-4 w-4 mr-1" />
-                                                                Edit
-                                                            </Button>
+                                                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full lg:w-auto">
+                                                            <Link href={`/marketplace/vendor/products/${product.id}/edit/`}>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                >
+                                                                    <Edit className="h-4 w-4 sm:mr-1" />
+                                                                    <span className="hidden sm:inline">Edit</span>
+                                                                </Button>
+                                                            </Link>
 
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline"
                                                                 onClick={() => duplicateProduct(product)}
+                                                                disabled={subscriptionUsage && !subscriptionUsage.can_create_more}
+                                                                title={subscriptionUsage && !subscriptionUsage.can_create_more ? 'Product limit reached. Upgrade your subscription.' : 'Duplicate this product'}
                                                             >
-                                                                <Copy className="h-4 w-4 mr-1" />
-                                                                Duplicate
+                                                                <Copy className="h-4 w-4 sm:mr-1" />
+                                                                <span className="hidden sm:inline">Duplicate</span>
                                                             </Button>
 
                                                             <Button
                                                                 size="sm"
                                                                 variant={product.status === 'active' ? 'secondary' : 'default'}
                                                                 onClick={() => toggleStatus(product)}
+                                                                className="hidden sm:flex"
                                                             >
                                                                 {product.status === 'active' ? 'Deactivate' : 'Activate'}
                                                             </Button>
@@ -584,6 +708,6 @@ export default function VendorProducts({ products, categories, stats, filters }:
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </AppLayout>
+        </VendorLayout>
     );
 }

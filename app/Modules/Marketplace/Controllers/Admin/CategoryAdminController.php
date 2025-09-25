@@ -16,7 +16,8 @@ class CategoryAdminController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Category::withCount('products');
+        $query = Category::with(['parent', 'children'])
+            ->withCount(['products', 'children']);
 
         // Search
         if ($request->has('search') && $request->search) {
@@ -29,6 +30,15 @@ class CategoryAdminController extends Controller
             $query->where('is_active', $request->status === 'active');
         }
 
+        // Filter by category type (parent/subcategory)
+        if ($request->has('type') && $request->type !== '') {
+            if ($request->type === 'parent') {
+                $query->whereNull('parent_id');
+            } elseif ($request->type === 'subcategory') {
+                $query->whereNotNull('parent_id');
+            }
+        }
+
         // Sort
         $sort_by = $request->get('sort_by', 'sort_order');
         $sort_direction = $request->get('sort_direction', 'asc');
@@ -38,7 +48,8 @@ class CategoryAdminController extends Controller
 
         return Inertia::render('Admin/Marketplace/Categories/Index', [
             'categories' => $categories,
-            'filters' => $request->only(['search', 'status', 'sort_by', 'sort_direction']),
+            'filters' => $request->only(['search', 'status', 'type', 'sort_by', 'sort_direction']),
+            'parent_categories' => Category::whereNull('parent_id')->where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 

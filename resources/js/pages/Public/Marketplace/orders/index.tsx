@@ -19,7 +19,8 @@ import {
     ShoppingBag,
     Clock,
     CheckCircle,
-    DollarSign
+    DollarSign,
+    CreditCard
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import WelcomeNav from '@/components/navigation/WelcomeNav';
@@ -50,6 +51,13 @@ interface OrdersPageProps {
                 shipped_at?: string;
                 delivered_at?: string;
             };
+            delivery_confirmation?: {
+                id: number;
+                confirmed: boolean;
+                confirmed_at?: string;
+                delivery_requested_at: string;
+            };
+            payment_status: string;
         }>;
         current_page: number;
         last_page: number;
@@ -94,10 +102,20 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
     const getPaymentStatusColor = (status: string) => {
         switch (status) {
             case 'pending': return 'bg-yellow-100 text-yellow-800';
+            case 'pending_confirmation': return 'bg-orange-100 text-orange-800';
+            case 'completed': return 'bg-emerald-100 text-emerald-800';
             case 'paid': return 'bg-emerald-100 text-emerald-800';
             case 'failed': return 'bg-red-100 text-red-800';
             case 'refunded': return 'bg-gray-100 text-gray-800';
             default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const formatPaymentStatus = (status: string) => {
+        switch (status) {
+            case 'pending_confirmation': return 'Awaiting Delivery Confirmation';
+            case 'completed': return 'Completed';
+            default: return status.charAt(0).toUpperCase() + status.slice(1);
         }
     };
 
@@ -461,7 +479,7 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
                         <Card>
                             <CardContent className="p-4">
                                 <div className="flex items-center">
-                                    <CheckCircle className="h-8 w-8 text-green-600" />
+                                    <CheckCircle className="h-8 w-8 text-emerald-600" />
                                     <div className="ml-4">
                                         <p className="text-sm font-medium text-gray-600">Completed</p>
                                         <p className="text-2xl font-bold text-gray-900">{stats.completed_orders}</p>
@@ -599,6 +617,12 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
                                                         <Calendar className="h-4 w-4 mr-1" />
                                                         {formatDate(order.created_at)}
                                                     </div>
+                                                    {order.payment_method && (
+                                                        <div className="flex items-center">
+                                                            <CreditCard className="h-4 w-4 mr-1" />
+                                                            {order.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' : 'Online Payment'}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right">
@@ -607,7 +631,7 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
                                                         {order.status}
                                                     </Badge>
                                                     <Badge className={getPaymentStatusColor(order.payment_status)}>
-                                                        {order.payment_status}
+                                                        {formatPaymentStatus(order.payment_status)}
                                                     </Badge>
                                                 </div>
                                                 <p className="text-xl font-bold">
@@ -640,6 +664,12 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
                                                         <p className="text-sm text-gray-600">
                                                             Quantity: {item.quantity} × {formatCurrency(item.unit_price)}
                                                         </p>
+                                                        {item.shipping_cost && item.shipping_cost > 0 && (
+                                                            <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                                                                <Truck className="h-3 w-3" />
+                                                                Shipping: {formatCurrency(item.shipping_cost)}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <div className="text-right">
                                                         <p className="font-semibold">
@@ -688,6 +718,25 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
 
                                         {/* Order Actions */}
                                         <div className="flex gap-2 flex-wrap">
+                                            {/* Customer Delivery Confirmation */}
+                                            {order.status === 'delivered' && order.payment_status === 'pending_confirmation' && !order.delivery_confirmation?.confirmed && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => window.location.href = `/orders/${order.id}/confirm-delivery`}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                >
+                                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                                    Confirm Delivery
+                                                </Button>
+                                            )}
+
+                                            {/* Show delivery confirmation status */}
+                                            {order.delivery_confirmation?.confirmed && (
+                                                <div className="flex items-center gap-2 text-sm text-emerald-600 px-3 py-1 bg-emerald-50 rounded-md">
+                                                    <CheckCircle className="h-4 w-4" />
+                                                    <span>Delivery Confirmed {order.delivery_confirmation.confirmed_at && `on ${formatDate(order.delivery_confirmation.confirmed_at)}`}</span>
+                                                </div>
+                                            )}
 
                                             {order.status === 'delivered' && (
                                                 <Button

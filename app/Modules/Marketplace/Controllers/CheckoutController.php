@@ -30,7 +30,13 @@ class CheckoutController extends Controller
             return redirect()->route('login');
         }
 
-        $cartItems = CartItem::with(['product.images', 'product.vendor.user'])
+        $cartItems = CartItem::with([
+            'product.images', 
+            'product.vendor.user',
+            'product' => function($query) {
+                $query->select('id', 'name', 'price', 'vendor_id', 'payment_methods', 'shipping_option', 'extra_fee', 'delivery_time', 'return_policy', 'stock_quantity', 'status');
+            }
+        ])
             ->where('user_id', $user->id)
             ->get();
 
@@ -99,7 +105,7 @@ class CheckoutController extends Controller
             'billing_address.city' => 'required|string|max:255',
             'billing_address.state' => 'required|string|max:255',
             'billing_address.country' => 'required|string|max:255',
-            'payment_method' => 'required|in:cash_on_delivery',
+            'payment_method' => 'required|in:cash_on_delivery,online',
             'notes' => 'nullable|string|max:500'
         ]);
 
@@ -129,15 +135,23 @@ class CheckoutController extends Controller
                 $orders[] = $order;
             }
 
-            // Clear the cart
-            CartItem::where('user_id', $user->id)->delete();
-
             DB::commit();
 
-            // For Inertia requests, redirect to confirmation page
-            return redirect()->route('orders.confirmation', [
-                'orders' => collect($orders)->pluck('id')->join(',')
-            ])->with('success', 'Orders created successfully');
+            // Handle different payment methods
+            if ($validated['payment_method'] === 'online') {
+                // For online payments, redirect to payment simulation
+                // Don't clear cart yet - will be cleared after successful payment
+                $firstOrder = $orders[0]; // For now, handle first order (can be expanded for multiple)
+                
+                return redirect()->route('payment.simulation', $firstOrder->id);
+            } else {
+                // For COD, clear cart and go to confirmation
+                CartItem::where('user_id', $user->id)->delete();
+                
+                return redirect()->route('orders.confirmation', [
+                    'orders' => collect($orders)->pluck('id')->join(',')
+                ])->with('success', 'Orders created successfully');
+            }
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -186,6 +200,33 @@ class CheckoutController extends Controller
      */
     private function createOrderForVendor($user, $vendorId, $items, $validated)
     {
+        // Get vendor and check subscription limits
+        $vendor = \App\Modules\Marketplace\Models\Vendor::find($vendorId);
+        
+        if ($vendor) {
+            // Get active subscription
+            $subscription = $vendor->subscriptions()
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->first();
+            
+            if ($subscription && $subscription->order_limit !== null) {
+                // Count orders this month for this vendor
+                $ordersThisMonth = Order::where('vendor_id', $vendorId)
+                    ->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year)
+                    ->count();
+                
+                // Check if vendor has reached their monthly order limit
+                if ($ordersThisMonth >= $subscription->order_limit) {
+                    throw new \Exception(
+                        "This vendor has reached their monthly order limit. " .
+                        "Please try again later or contact the vendor."
+                    );
+                }
+            }
+        }
+        
         // Calculate order totals
         $subtotal = $items->sum(function ($item) {
             return $item->quantity * $item->unit_price;
@@ -201,7 +242,7 @@ class CheckoutController extends Controller
             'user_id' => $user->id,
             'vendor_id' => $vendorId,
             'order_number' => $this->generateOrderNumber(),
-            'status' => 'pending',
+            'status' => 'confirmed',
             'subtotal' => $subtotal,
             'tax_amount' => $taxAmount,
             'shipping_amount' => $shippingCost,
@@ -212,6 +253,9 @@ class CheckoutController extends Controller
             'billing_address' => json_encode($validated['billing_address']),
             'notes' => $validated['notes'] ?? null
         ]);
+
+        
+        $order->markAsAdminConfirmed($user->id);
 
         // Create order items
         foreach ($items as $cartItem) {
@@ -347,5 +391,116 @@ class CheckoutController extends Controller
         }
 
         return $orderNumber;
+    }
+
+    /**
+     * Show payment simulation page for online payments.
+     */
+    public function paymentSimulation(Order $order)
+    {
+        // Verify that this order belongs to the authenticated user and is pending payment
+        if ($order->user_id !== auth()->id() || $order->payment_status !== 'pending') {
+            abort(403, 'Unauthorized access to payment page.');
+        }
+
+        // Get order items with products
+        $order->load(['items.product', 'vendor']);
+
+        return inertia('Public/Marketplace/payment/Simulation', [
+            'order' => $order
+        ]);
+    }
+
+    /**
+     * Process payment simulation result.
+     */
+    public function processPayment(Order $order, Request $request)
+    {
+        // Verify that this order belongs to the authenticated user
+        if ($order->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $validated = $request->validate([
+            'payment_method' => 'required|in:card,mobile_money',
+            'success' => 'required|boolean',
+            'transaction_id' => 'required|string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            if ($validated['success']) {
+                // Payment successful - update order and payment status
+                $order->update([
+                    'payment_status' => 'paid',
+                    'status' => 'confirmed'
+                ]);
+
+                // Update payment record
+                $payment = $order->payment;
+                if ($payment) {
+                    $payment->update([
+                        'status' => 'completed',
+                        'transaction_id' => $validated['transaction_id'],
+                        'payment_method' => $validated['payment_method'],
+                        'processed_at' => now()
+                    ]);
+                }
+
+                // Update product stock quantities
+                foreach ($order->items as $orderItem) {
+                    $product = $orderItem->product;
+                    $product->decrement('stock_quantity', $orderItem->quantity);
+                }
+
+                // Clear the user's cart now that payment is successful
+                $cartItemsDeleted = CartItem::where('user_id', auth()->id())->delete();
+                Log::info('Cart items deleted after successful payment', [
+                    'user_id' => auth()->id(),
+                    'items_deleted' => $cartItemsDeleted,
+                    'order_id' => $order->id
+                ]);
+
+                // Send notification to customer
+                $user = $order->user;
+                $user->notify(new \App\Notifications\OrderPaymentSuccessfulNotification($order));
+
+                // Send notification to vendor
+                $vendor = $order->vendor;
+                if ($vendor && $vendor->user) {
+                    $vendor->user->notify(new \App\Notifications\NewOrderReceivedNotification($order));
+                }
+
+                DB::commit();
+
+                return redirect()->route('orders.confirmation', ['orders' => $order->id])
+                    ->with('success', 'Payment processed successfully!');
+
+            } else {
+                // Payment failed - update payment status but keep order as pending
+                $payment = $order->payment;
+                if ($payment) {
+                    $payment->update([
+                        'status' => 'failed',
+                        'transaction_id' => $validated['transaction_id'],
+                        'payment_method' => $validated['payment_method'],
+                        'processed_at' => now()
+                    ]);
+                }
+
+                DB::commit();
+
+                return redirect()->route('checkout.index')
+                    ->with('error', 'Payment failed. Please try again.');
+            }
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Payment processing failed: ' . $e->getMessage());
+
+            return redirect()->route('checkout.index')
+                ->with('error', 'An error occurred while processing payment.');
+        }
     }
 }

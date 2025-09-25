@@ -145,7 +145,7 @@ export default function Dashboard({
       <Head title="Dashboard" />
       <div className="space-y-6 p-6">
         {/* Welcome Section */}
-        <div className="flex items-center justify-between">
+        <div className="flex lg:flex-row flex-col gap-4 lg:items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">PoultriInnox Dashboard</h1>
             <p className="text-muted-foreground">

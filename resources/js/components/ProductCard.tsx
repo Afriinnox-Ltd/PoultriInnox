@@ -45,9 +45,9 @@ function ProductCard({ product, auth, handleAddToCart }: { product: any, auth: a
                               {product.name}
                           </h3>
                           <div className="flex items-center ml-2">
-                              <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                              <Star className={`h-4 w-4 ${product.rating > 0 ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
                               <span className="text-sm text-gray-600 ml-1">
-                                  {typeof product.rating === 'number' ? product.rating.toFixed(1) : 'N/A'}
+                                  {product.rating > 0 ? product.rating.toFixed(1) : '0.0'}
                               </span>
                           </div>
                       </div>

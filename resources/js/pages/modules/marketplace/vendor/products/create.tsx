@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, Link } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,10 +19,12 @@ import {
     AlertCircle,
     Info,
     X,
-    Upload
+    Upload,
+    Truck
 } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import VendorLayout from '@/layouts/vendor-layout';
 import { toast } from 'sonner';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface Category {
     id: number;
@@ -38,14 +40,42 @@ interface Vendor {
     business_name: string;
     verification_status: string;
     status: string;
+    subscription?: {
+        plan_name: string;
+        is_active: boolean;
+    };
 }
 
 interface CreateProductProps {
     categories: Category[];
     vendor: Vendor;
+    currentSubscription: any;
+    subscriptionUsage: any;
+    needsUpgrade: boolean;
+    upgradeReason?: string;
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+        };
+        tax: {
+            tax_rate: number;
+            tax_enabled: boolean;
+            tax_inclusive: boolean;
+        };
+        general: {
+            currency: string;
+            currency_symbol: string;
+        };
+    };
 }
 
-export default function CreateProduct({ categories, vendor }: CreateProductProps) {
+export default function CreateProduct({ categories, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason, marketplaceSettings }: CreateProductProps) {
+    console.log('Subscription Data:', { currentSubscription, subscriptionUsage, allowsCOD: subscriptionUsage?.allows_cod });
     console.log(categories)
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
@@ -61,13 +91,105 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
         images: [] as File[],
         meta_description: '',
         tags: [] as string[],
+        payment_methods: [] as string[],
+        shipping_option: '',
+        extra_fee: '',
+        delivery_time: '',
+        return_policy: '',
+        additional_info: ''
+
     });
 
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [currentTag, setCurrentTag] = useState('');
+    const [currentTab, setCurrentTab] = useState('basic');
+
+    const tabs = [
+        { value: 'basic', label: 'Basic Info' },
+        { value: 'details', label: 'Details' },
+        { value: 'images', label: 'Images' },
+        { value: 'seo', label: 'SEO' },
+        { value: 'payment', label: 'Payment' },
+        { value: 'shipping', label: 'Shipping' }
+    ];
+
+    const currentTabIndex = tabs.findIndex(tab => tab.value === currentTab);
+    const isFirstTab = currentTabIndex === 0;
+    const isLastTab = currentTabIndex === tabs.length - 1;
+
+    const goToNextTab = () => {
+        if (!isLastTab) {
+            setCurrentTab(tabs[currentTabIndex + 1].value);
+        }
+    };
+
+    const goToPreviousTab = () => {
+        if (!isFirstTab) {
+            setCurrentTab(tabs[currentTabIndex - 1].value);
+        }
+    };
+
+    // Format currency based on marketplace settings
+    const formatCurrency = (amount: number) => {
+        const currency = marketplaceSettings?.general?.currency || 'RWF';
+        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+        
+        if (currency === 'RWF') {
+            return new Intl.NumberFormat('rw-RW', {
+                style: 'currency',
+                currency: 'RWF'
+            }).format(amount);
+        }
+        
+        return `${symbol}${amount.toLocaleString()}`;
+    };
+
+    // Calculate vendor earnings from price
+    const calculateVendorEarnings = (price: number) => {
+        if (!marketplaceSettings || !price) return { earnings: 0, breakdown: [] };
+
+        const commission = marketplaceSettings.commission.commission_type === 'percentage' 
+            ? (price * marketplaceSettings.commission.default_commission_rate) / 100
+            : marketplaceSettings.commission.default_commission_rate;
+        
+        const platformFee = (price * marketplaceSettings.fees.platform_fee_rate) / 100;
+        const transactionFee = (price * marketplaceSettings.fees.transaction_fee_rate) / 100;
+        
+        const totalFees = commission + platformFee + transactionFee;
+        const earnings = price - totalFees;
+
+        return {
+            earnings,
+            breakdown: [
+                { label: 'Product Price', amount: price, type: 'positive' },
+                { label: 'Commission', amount: -commission, type: 'negative' },
+                { label: 'Platform Fee', amount: -platformFee, type: 'negative' },
+                { label: 'Transaction Fee', amount: -transactionFee, type: 'negative' },
+                { label: 'Your Earnings', amount: earnings, type: 'positive', isTotal: true }
+            ]
+        };
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Check product limit before submission
+        if (subscriptionUsage && !subscriptionUsage.can_create_more) {
+            toast.error(
+                `You've reached your product limit (${subscriptionUsage.products_limit}). Please upgrade your plan to add more products.`,
+                { duration: 5000 }
+            );
+            return;
+        }
+
+        // Validate COD selection
+        if (data.payment_methods.includes('cod') && !subscriptionUsage?.allows_cod) {
+            toast.error(
+                'Cash on Delivery is not available for your current subscription plan.',
+                { duration: 5000 }
+            );
+            return;
+        }
 
         post('/marketplace/vendor/products/store', {
             onSuccess: () => {
@@ -75,7 +197,7 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
                 setImagePreviews([]);
                 toast.success('Product created successfully!');
             },
-            onError: (errors: any) => {
+            onError: (errors: Record<string, string>) => {
                 console.log(errors);
                 toast.error('Please fix the errors in the form and try again.');
             }
@@ -127,9 +249,17 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
         setData('sku', `${prefix}-${timestamp}-${random}`);
     };
 
+
+
+    // Handle shipping selection
+    const handleShippingMethodChange = (value: string) => {
+        setData("shipping_option", value);
+    };
+
+
     if (vendor.status !== 'approved') {
         return (
-            <AppLayout>
+            <VendorLayout>
                 <Head title="Create Product" />
 
                 <div className="py-12">
@@ -153,25 +283,36 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
                         </Card>
                     </div>
                 </div>
-            </AppLayout>
+            </VendorLayout>
         );
     }
 
     return (
-        <AppLayout>
+        <VendorLayout
+            title="Create Product"
+            breadcrumbItems={[
+                { title: 'Products', href: '/marketplace/vendor/products' },
+                { title: 'Create Product' }
+            ]}
+            vendor={vendor}
+            currentSubscription={currentSubscription}
+            subscriptionUsage={subscriptionUsage}
+            needsUpgrade={needsUpgrade}
+            upgradeReason={upgradeReason}
+        >
             <Head title="Create Product" />
-
-            <div className="flex justify-between items-center mb-6 p-6 pb-0">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 px-2 sm:px-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
                     <Button
                         onClick={() => window.history.back()}
                         variant="outline"
                         size="sm"
+                        className="w-full sm:w-auto"
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back
                     </Button>
-                    <div>
+                    <div className="w-full sm:w-auto">
                         <h2 className="font-semibold text-xl text-gray-800 leading-tight">
                             Create New Product
                         </h2>
@@ -182,27 +323,63 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
                 </div>
             </div>
 
-            <div className="py-6">
-                <div className="max-w-4xl mx-auto">
+            <div className="py-2 sm:py-6">
+                <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-6">
+                    
+                    {subscriptionUsage && subscriptionUsage.products_limit !== undefined && (
+                        <Alert className="mb-6" variant={subscriptionUsage.can_create_more ? "default" : "destructive"}>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription className="ml-2">
+                                {subscriptionUsage.can_create_more ? (
+                                    <div className="space-y-1">
+                                        <p>
+                                            You are using <strong>{subscriptionUsage.products_used}</strong> of{' '}
+                                            <strong>{subscriptionUsage.products_limit}</strong> products allowed in your{' '}
+                                            <strong>{subscriptionUsage.plan_name}</strong> plan.
+                                        </p>
+                                        {subscriptionUsage.products_used >= subscriptionUsage.products_limit * 0.8 && (
+                                            <p className="text-orange-600 font-medium">
+                                                ⚠️ You're approaching your limit!
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p>
+                                        You've reached your product limit (<strong>{subscriptionUsage.products_limit}</strong> products).{' '}
+                                        <Link 
+                                            href="/marketplace/subscriptions/upgrade" 
+                                            className="font-semibold underline hover:no-underline"
+                                        >
+                                            Upgrade your plan
+                                        </Link>{' '}
+                                        to add more products.
+                                    </p>
+                                )}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     <form onSubmit={handleSubmit}>
-                        <Tabs defaultValue="basic" className="space-y-6">
-                            <TabsList className="grid w-full grid-cols-4">
-                                <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                                <TabsTrigger value="details">Details</TabsTrigger>
-                                <TabsTrigger value="images">Images</TabsTrigger>
-                                <TabsTrigger value="seo">SEO & Tags</TabsTrigger>
+                        <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
+                            <TabsList className="w-full inline-flex lg:grid lg:grid-cols-6 h-auto flex-wrap lg:flex-nowrap gap-1 p-1">
+                                <TabsTrigger value="basic" className="text-xs sm:text-sm flex-1 min-w-[90px]">Basic Info</TabsTrigger>
+                                <TabsTrigger value="details" className="text-xs sm:text-sm flex-1 min-w-[90px]">Details</TabsTrigger>
+                                <TabsTrigger value="images" className="text-xs sm:text-sm flex-1 min-w-[90px]">Images</TabsTrigger>
+                                <TabsTrigger value="seo" className="text-xs sm:text-sm flex-1 min-w-[90px]">SEO</TabsTrigger>
+                                <TabsTrigger value="payment" className="text-xs sm:text-sm flex-1 min-w-[90px]">Payment</TabsTrigger>
+                                <TabsTrigger value="shipping" className="text-xs sm:text-sm flex-1 min-w-[90px]">Shipping</TabsTrigger>
                             </TabsList>
 
                             {/* Basic Information */}
                             <TabsContent value="basic">
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center">
+                                    <CardHeader className="p-4 sm:p-6">
+                                        <CardTitle className="flex items-center text-base sm:text-lg">
                                             <Package className="h-5 w-5 mr-2" />
                                             Basic Product Information
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="space-y-4 p-4 sm:p-6">
                                         <div>
                                             <Label htmlFor="name">Product Name *</Label>
                                             <Input
@@ -276,7 +453,7 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <Label htmlFor="price">Price (RWF) *</Label>
+                                                <Label htmlFor="price">Price ({marketplaceSettings?.general?.currency || 'RWF'}) *</Label>
                                                 <Input
                                                     type="number"
                                                     id="price"
@@ -289,6 +466,23 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
                                                 />
                                                 {errors.price && (
                                                     <p className="text-sm text-red-500 mt-1">{errors.price}</p>
+                                                )}
+                                                
+                                                {/* Earnings Calculator */}
+                                                {data.price && marketplaceSettings && parseFloat(data.price) > 0 && (
+                                                    <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                                        <h4 className="font-medium text-emerald-900 text-sm mb-2">Your Earnings Breakdown</h4>
+                                                        {calculateVendorEarnings(parseFloat(data.price)).breakdown.map((item, index) => (
+                                                            <div key={index} className={`flex justify-between text-xs ${item.isTotal ? 'font-bold border-t pt-1 mt-1' : ''}`}>
+                                                                <span className={item.type === 'negative' ? 'text-red-700' : 'text-emerald-700'}>
+                                                                    {item.label}:
+                                                                </span>
+                                                                <span className={item.type === 'negative' ? 'text-red-700' : 'text-emerald-700'}>
+                                                                    {item.amount >= 0 ? formatCurrency(item.amount) : `-${formatCurrency(Math.abs(item.amount))}`}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </div>
 
@@ -323,13 +517,13 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
                             {/* Product Details */}
                             <TabsContent value="details">
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center">
-                                            <Info className="h-5 w-5 mr-2" />
+                                    <CardHeader className="p-4 sm:p-6">
+                                        <CardTitle className="flex items-center text-base sm:text-lg">
+                                            <Package className="h-5 w-5 mr-2" />
                                             Product Details
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="space-y-4 p-4 sm:p-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <Label htmlFor="stock_quantity">Stock Quantity *</Label>
@@ -398,13 +592,13 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
                             {/* Product Images */}
                             <TabsContent value="images">
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center">
+                                    <CardHeader className="p-4 sm:p-6">
+                                        <CardTitle className="flex items-center text-base sm:text-lg">
                                             <Camera className="h-5 w-5 mr-2" />
                                             Product Images
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="space-y-4 p-4 sm:p-6">
                                         <div>
                                             <Label>Upload Images</Label>
                                             <div className="mt-2 space-y-4">
@@ -465,10 +659,13 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
                             {/* SEO & Tags */}
                             <TabsContent value="seo">
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle>SEO & Tags</CardTitle>
+                                    <CardHeader className="p-4 sm:p-6">
+                                        <CardTitle className="flex items-center text-base sm:text-lg">
+                                            <Info className="h-5 w-5 mr-2" />
+                                            SEO & Tags
+                                        </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="space-y-4 p-4 sm:p-6">
                                         <div>
                                             <Label htmlFor="meta_description">Meta Description</Label>
                                             <Textarea
@@ -530,32 +727,213 @@ export default function CreateProduct({ categories, vendor }: CreateProductProps
                                         </div>
                                     </CardContent>
                                 </Card>
+                            </TabsContent> 
+                            {/* Payment Tab */}
+                            <TabsContent value="payment">
+                                <Card>
+                                    <CardHeader className="p-4 sm:p-6">
+                                        <CardTitle className="flex items-center text-base sm:text-lg">
+                                            <DollarSign className="h-5 w-5 mr-2" />
+                                            Payment Information
+                                        </CardTitle>
+                                    </CardHeader>
+
+                                    <CardContent className="space-y-4 p-4 sm:p-6">
+                        <Alert className="mb-4">
+                            <Info className="h-4 w-4 mr-2" />
+                            <AlertDescription>
+                                Select how customers can pay for your product.
+                            </AlertDescription>
+                        </Alert>                                        <div>
+                                            <Label>Supported Payment Methods</Label>
+
+                                            <div className="mt-2 space-y-3">
+                                                {/* Online Payment */}
+                                                <div className="flex items-center">
+                                                    <Checkbox
+                                                        id="online"
+                                                        checked={data.payment_methods.includes("online")}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                setData("payment_methods", [...data.payment_methods, "online"]);
+                                                            } else {
+                                                                setData(
+                                                                    "payment_methods",
+                                                                    data.payment_methods.filter((m) => m !== "online")
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Label htmlFor="online" className="ml-2">
+                                                        Online Payment
+                                                    </Label>
+                                                </div>
+
+                                                {/* Cash on Delivery (Premium only) */}
+                                                <div className="flex items-center">
+                                                    <Checkbox
+                                                        id="cod"
+                                                        checked={data.payment_methods.includes("cod")}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                // ✅ Restrict to plans that allow COD
+                                                                if (!subscriptionUsage?.allows_cod) {
+                                                                    toast.warning(
+                                                                        "Cash on Delivery is not available for your current subscription plan. Please upgrade your plan."
+                                                                    );
+                                                                    return; // stop here, do not allow check
+                                                                }
+
+                                                                setData("payment_methods", [...data.payment_methods, "cod"]);
+                                                            } else {
+                                                                setData(
+                                                                    "payment_methods",
+                                                                    data.payment_methods.filter((m) => m !== "cod")
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Label htmlFor="cod" className="ml-2">
+                                                        Cash on Delivery (COD)
+                                                        {!subscriptionUsage?.allows_cod && (
+                                                            <span className="text-xs text-red-500 ml-2">
+                                                                (Not available for your plan)
+                                                            </span>
+                                                        )}
+                                                    </Label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </TabsContent>
+
+
+                            {/* Shipping & Delivery Tab */}
+                            <TabsContent value="shipping">
+                                <Card>
+                                    <CardHeader className="p-4 sm:p-6">
+                                        <CardTitle className="flex items-center text-base sm:text-lg">
+                                            <Truck className="h-5 w-5 mr-2" />
+                                            Shipping & Delivery
+                                        </CardTitle>
+                                    </CardHeader>
+
+                                    <CardContent className="space-y-4 p-4 sm:p-6">
+                        <Alert className="mb-4">
+                            <Info className="h-4 w-4 mr-2" />
+                            <AlertDescription>
+                                Configure your shipping options for this product.
+                            </AlertDescription>
+                        </Alert>                                        {/* Shipping Methods */}
+                                        <div>
+                                            <Label>Shipping Methods</Label>
+
+                                            <RadioGroup
+                                                value={data.shipping_option}
+                                                onValueChange={handleShippingMethodChange}
+                                                className="mt-2 space-y-2"
+                                            >
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="free" id="free" />
+                                                    <Label htmlFor="free">Free Shipping</Label>
+                                                </div>
+
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="paid" id="paid" />
+                                                    <Label htmlFor="paid">Paid Shipping</Label>
+                                                </div>
+                                            </RadioGroup>
+
+                                            {/* Extra Fee when Paid Shipping selected */}
+                                            {data.shipping_option === "paid" && (
+                                                <div className="mt-4 space-y-2">
+                                                    <Label htmlFor="extra-fee">Extra Fee for Shipping</Label>
+                                                    <Input
+                                                        type="number"
+                                                        id="extra-fee"
+                                                        placeholder="Enter extra fee (e.g. 1500)"
+                                                        value={data.extra_fee}
+                                                        onChange={(e) => setData("extra_fee", e.target.value)}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Delivery Time */}
+                                            <div className="mt-4 space-y-2">
+                                                <Label htmlFor="delivery-time">Estimated Delivery Time</Label>
+                                                <Input
+                                                    id="delivery-time"
+                                                    placeholder="e.g. 2–5 business days"
+                                                    value={data.delivery_time}
+                                                    onChange={(e) => setData("delivery_time", e.target.value)}
+                                                />
+                                            </div>
+
+                                            {/* Return Policy */}
+                                            <div className="mt-4 space-y-2">
+                                                <Label htmlFor="return-policy">Return Policy</Label>
+                                                <Textarea
+                                                    id="return-policy"
+                                                    placeholder="e.g. Returns accepted within 7 days of delivery"
+                                                    value={data.return_policy}
+                                                    onChange={(e) => setData("return_policy", e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
                         </Tabs>
 
-                        {/* Submit Button */}
-                        <div className="flex justify-end pt-6">
+                        {/* Navigation and Submit Buttons */}
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-6">
                             <Button
-                                type="submit"
-                                disabled={processing}
-                                className="min-w-[120px]"
+                                type="button"
+                                onClick={goToPreviousTab}
+                                disabled={isFirstTab}
+                                variant="outline"
+                                className="w-full sm:w-auto order-2 sm:order-1"
                             >
-                                {processing ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                        Creating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4 mr-2" />
-                                        Create Product
-                                    </>
-                                )}
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                                Previous
                             </Button>
+
+                            <div className="flex gap-3 order-1 sm:order-2">
+                                {!isLastTab ? (
+                                    <Button
+                                        type="button"
+                                        onClick={goToNextTab}
+                                        className="w-full sm:w-auto min-w-[120px]"
+                                    >
+                                        Next
+                                        <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="w-full sm:w-auto min-w-[120px]"
+                                    >
+                                        {processing ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                Creating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save className="h-4 w-4 mr-2" />
+                                                Create Product
+                                            </>
+                                        )}
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </form>
                 </div>
             </div>
-        </AppLayout>
+        </VendorLayout>
     );
 }

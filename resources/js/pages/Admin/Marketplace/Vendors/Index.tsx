@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react';
+import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
     Search,
     Eye,
@@ -17,10 +16,12 @@ import {
     Store,
     MapPin,
     Phone,
-    Mail,
     Calendar,
     Filter,
-    MoreHorizontal
+    MoreHorizontal,
+    Download,
+    FileText,
+    ExternalLink
 } from 'lucide-react';
 import {
     Dialog,
@@ -46,45 +47,75 @@ import {
 import { toast } from 'sonner';
 
 interface Vendor {
-    business_phone: ReactNode;
-    business_type: ReactNode;
-    business_address: ReactNode;
     id: number;
     user_id: number;
     business_name: string;
-    business_description: string;
-    contact_person: string;
+    business_type?: string;
+    description?: string;
+    business_description?: string;
+    logo?: string;
     phone: string;
     email: string;
+    website?: string;
     address: string;
+    business_address?: string;
+    business_phone?: string;
+    business_email?: string;
+    business_website?: string;
     city: string;
     state: string;
     postal_code: string;
     country: string;
-    business_license: string | null;
-    tax_id: string | null;
-    bank_account: string | null;
+    latitude?: number;
+    longitude?: number;
+    business_license?: string | null;
+    business_registration_number?: string;
+    tax_id?: string | null;
+    tax_number?: string;
+    business_documents?: string[] | string;
+    bank_name?: string;
+    bank_account?: string | null;
+    bank_account_number?: string;
+    bank_account_name?: string;
+    bank_branch?: string;
+    years_in_business?: number;
+    specializations?: string[] | string;
+    slug?: string;
     status: 'pending' | 'approved' | 'rejected' | 'suspended';
     is_verified: boolean;
     is_active: boolean;
-    rating: number;
+    rating?: number | null;
     total_sales: number;
+    total_reviews?: number;
     products_count: number;
     orders_count: number;
+    commission_rate?: number;
+    payment_details?: Record<string, unknown>;
+    verification_notes?: string;
+    verified_at?: string | null;
+    verified_by?: number;
     rejection_reason: string | null;
     approved_at: string | null;
+    social_media?: Record<string, unknown>;
+    banner_image?: string;
+    additional_info?: string;
     created_at: string;
     updated_at: string;
     user: {
         name: string;
         email: string;
     };
+    contact_person?: string;
 }
 
 interface VendorAdminProps {
     vendors: {
         data: Vendor[];
-        links?: any[];
+        links?: Array<{
+            url: string | null;
+            label: string;
+            active: boolean;
+        }>;
         meta?: {
             total: number;
             from: number;
@@ -110,10 +141,10 @@ interface VendorAdminProps {
 export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProps) {
     const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const [rejectionReason, setRejectionReason] = useState('');
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [verificationFilter, setVerificationFilter] = useState(filters.verification || 'all');
+    const [previewDocument, setPreviewDocument] = useState<{url: string, name: string} | null>(null);
 
     const handleSearch = () => {
         router.get('/admin/marketplace/vendors', {
@@ -165,21 +196,32 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
     };
 
     const handleSuspend = (vendor: Vendor) => {
-        const reason = prompt(`Please provide a reason for suspending ${vendor.business_name}:`);
-        if (reason) {
-            router.post(`/admin/marketplace/vendors/${vendor.id}/suspend`, {
-                reason: reason
-            },
-                {
-                    onSuccess: () => {
-                        console.log('Vendor suspended successfully');
-                        toast.success('Vendor suspended successfully');
-                    },
-                    onError: (error) => {
-                        toast.error('Failed to suspend vendor');
-                        console.error('Error suspending vendor:', error);
-                    }
-                });
+        const confirmed = confirm(
+            `Are you sure you want to suspend ${vendor.business_name}?\n\n` +
+            `This action will:\n` +
+            `• Deactivate all their products\n` +
+            `• Send an email notification to the vendor\n` +
+            `• Revoke their verification status\n\n` +
+            `You will need to provide a reason for the suspension.`
+        );
+        
+        if (confirmed) {
+            const reason = prompt(`Please provide a reason for suspending ${vendor.business_name}:`);
+            if (reason) {
+                router.post(`/admin/marketplace/vendors/${vendor.id}/suspend`, {
+                    reason: reason
+                },
+                    {
+                        onSuccess: () => {
+                            console.log('Vendor suspended successfully');
+                            toast.success('Vendor suspended successfully. Email notification sent.');
+                        },
+                        onError: (error) => {
+                            toast.error('Failed to suspend vendor');
+                            console.error('Error suspending vendor:', error);
+                        }
+                    });
+            }
         }
     };
 
@@ -200,12 +242,13 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
     };
 
     const handleToggleVerification = (vendor: Vendor) => {
-        const action = vendor.is_verified ? 'unverify' : 'verify';
         const message = vendor.is_verified ? 'unverify' : 'verify';
 
         if (confirm(`Are you sure you want to ${message} ${vendor.business_name}?`)) {
             router.patch(`/admin/marketplace/vendors/${vendor.id}/toggle-verification`, {},
                 {
+                    preserveState: false,
+                    preserveScroll: true,
                     onSuccess: () => {
                         toast.success(`Vendor ${message}ed successfully`);
                     },
@@ -400,7 +443,6 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                             <TableBody>
                                 {vendors?.data?.length > 0 ? (
                                     vendors?.data.map((vendor) => (
-                                        console.log(vendor),
                                         <TableRow key={vendor.id}>
                                             <TableCell>
                                                 <div>
@@ -527,7 +569,7 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                     Showing {vendors.meta.from} to {vendors.meta.to} of {vendors.meta.total} results
                                 </div>
                                 <div className="flex space-x-2">
-                                    {vendors.links?.map((link: any, index: number) => (
+                                    {vendors.links?.map((link, index: number) => (
                                         <Button
                                             key={index}
                                             variant={link.active ? 'default' : 'outline'}
@@ -545,8 +587,9 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
 
                 {/* Vendor Details Dialog */}
                 {selectedVendor && (
+                    console.log(selectedVendor),
                     <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogContent className="max-w-6xl lg:min-w-6xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>Vendor Details - {selectedVendor.business_name}</DialogTitle>
                                 <DialogDescription>
@@ -554,115 +597,433 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-6">
-                                {/* Business Information */}
+                                {/* Basic Business Information */}
                                 <div>
-                                    <h4 className="font-semibold mb-3">Business Information</h4>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Basic Business Information</h4>
+                                    <div className="grid lg:grid-cols-2 gap-4">
                                         <div>
-                                            <Label>Business Name</Label>
-                                            <p className="text-sm">{selectedVendor.business_name}</p>
+                                            <Label className="font-medium">Business Name</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.business_name}</p>
                                         </div>
                                         <div>
-                                            <Label>Contact Person</Label>
-                                            <p className="text-sm">{selectedVendor.contact_person}</p>
+                                            <Label className="font-medium">Business Type</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.business_type || 'Not specified'}</p>
                                         </div>
                                         <div>
-                                            <Label>Email</Label>
-                                            <p className="text-sm">{selectedVendor.email}</p>
+                                            <Label className="font-medium">Contact Person</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.contact_person || selectedVendor.user?.name || 'Not provided'}</p>
                                         </div>
                                         <div>
-                                            <Label>Phone</Label>
-                                            <p className="text-sm">{selectedVendor.phone}</p>
+                                            <Label className="font-medium">Years in Business</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.years_in_business || 'Not specified'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Business Registration Number</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.business_registration_number || 'Not provided'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Commission Rate</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.commission_rate ? `${selectedVendor.commission_rate}%` : 'Default rate applies'}</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Business Description */}
                                 <div>
-                                    <Label>Business Description</Label>
-                                    <p className="text-sm mt-1">{selectedVendor.business_description}</p>
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Business Description</h4>
+                                    <div className="p-3 bg-gray-50 rounded-md">
+                                        <p className="text-sm">{selectedVendor.business_description || selectedVendor.description || 'No description provided'}</p>
+                                    </div>
                                 </div>
 
-                                {/* Address */}
+                                {/* Specializations */}
+                                {selectedVendor.specializations && (
+                                    <div>
+                                        <h4 className="font-semibold mb-3 text-lg border-b pb-2">Specializations</h4>
+                                        <div className="p-3 bg-gray-50 rounded-md">
+                                            <p className="text-sm">
+                                                {Array.isArray(selectedVendor.specializations) 
+                                                    ? selectedVendor.specializations.join(', ') 
+                                                    : selectedVendor.specializations
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Contact Information */}
                                 <div>
-                                    <h4 className="font-semibold mb-3">Address</h4>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Contact Information</h4>
+                                    <div className="grid lg:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="font-medium">Primary Email</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.email}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Business Email</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.business_email || 'Same as primary'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Primary Phone</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.phone}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Business Phone</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.business_phone || 'Same as primary'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Website</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">
+                                                {selectedVendor.website || selectedVendor.business_website ? (
+                                                    <a 
+                                                        href={selectedVendor.website || selectedVendor.business_website} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-600 hover:underline"
+                                                    >
+                                                        {selectedVendor.website || selectedVendor.business_website}
+                                                    </a>
+                                                ) : 'Not provided'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Address Information */}
+                                <div>
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Address Information</h4>
+                                    <div className="grid lg:grid-cols-2 gap-4">
                                         <div className="col-span-2">
-                                            <Label>Street Address</Label>
-                                            <p className="text-sm">{selectedVendor.address}</p>
+                                            <Label className="font-medium">Street Address</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.address || selectedVendor.business_address}</p>
                                         </div>
                                         <div>
-                                            <Label>City</Label>
-                                            <p className="text-sm">{selectedVendor.city}</p>
+                                            <Label className="font-medium">City</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.city}</p>
                                         </div>
                                         <div>
-                                            <Label>State/Province</Label>
-                                            <p className="text-sm">{selectedVendor.state}</p>
+                                            <Label className="font-medium">State/Province</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.state}</p>
                                         </div>
                                         <div>
-                                            <Label>Postal Code</Label>
-                                            <p className="text-sm">{selectedVendor.postal_code}</p>
+                                            <Label className="font-medium">Postal Code</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.postal_code}</p>
                                         </div>
                                         <div>
-                                            <Label>Country</Label>
-                                            <p className="text-sm">{selectedVendor.country}</p>
+                                            <Label className="font-medium">Country</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.country}</p>
+                                        </div>
+                                        {(selectedVendor.latitude && selectedVendor.longitude) && (
+                                            <div className="col-span-2">
+                                                <Label className="font-medium">GPS Coordinates</Label>
+                                                <p className="text-sm mt-1 p-2 bg-gray-50 rounded">
+                                                    Lat: {selectedVendor.latitude}, Lng: {selectedVendor.longitude}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Legal & Tax Information */}
+                                <div>
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Legal & Tax Information</h4>
+                                    <div className="grid lg:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="font-medium">Business License</Label>
+                                            {selectedVendor.business_license ? (
+                                                // Check if it's a URL (starts with http, https, or /)
+                                                selectedVendor.business_license.match(/^(https?:\/\/|\/)/i) ? (
+                                                    <div className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center space-x-2">
+                                                                <FileText className="h-4 w-4 text-blue-600" />
+                                                                <span className="text-sm font-medium text-blue-800">License Document</span>
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => setPreviewDocument({url: selectedVendor.business_license!, name: 'Business License'})}
+                                                                    className="text-xs"
+                                                                >
+                                                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                                                    Preview
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => {
+                                                                        const link = document.createElement('a');
+                                                                        link.href = selectedVendor.business_license!;
+                                                                        link.download = 'business-license';
+                                                                        document.body.appendChild(link);
+                                                                        link.click();
+                                                                        document.body.removeChild(link);
+                                                                    }}
+                                                                    className="text-xs"
+                                                                >
+                                                                    <Download className="h-3 w-3 mr-1" />
+                                                                    Download
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.business_license}</p>
+                                                )
+                                            ) : (
+                                                <p className="text-sm mt-1 p-2 bg-gray-50 rounded">Not provided</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Tax ID</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.tax_id || selectedVendor.tax_number || 'Not provided'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Banking Information */}
+                                <div>
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Banking Information</h4>
+                                    <div className="grid lg:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="font-medium">Bank Name</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.bank_name || 'Not provided'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Account Number</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">
+                                                {selectedVendor.bank_account_number || selectedVendor.bank_account || 'Not provided'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Account Name</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.bank_account_name || 'Not provided'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Bank Branch</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{selectedVendor.bank_branch || 'Not provided'}</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Business Documents */}
                                 <div>
-                                    <h4 className="font-semibold mb-3">Business Documents</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Business License</Label>
-                                            <p className="text-sm">{selectedVendor.business_license || 'Not provided'}</p>
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Business Documents</h4>
+                                    <div className="space-y-3">
+                                        {selectedVendor.business_documents ? (
+                                            <div className="space-y-2">
+                                                {Array.isArray(selectedVendor.business_documents) ? (
+                                                    selectedVendor.business_documents.map((doc, index) => {
+                                                        const fileName = doc.split('/').pop() || `Document ${index + 1}`;
+                                                        const fileExtension = fileName.split('.').pop()?.toLowerCase();
+                                                        const isPdf = fileExtension === 'pdf';
+                                                        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension || '');
+                                                        
+                                                        return (
+                                                            <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center space-x-2">
+                                                                        <FileText className="h-4 w-4 text-blue-600" />
+                                                                        <span className="text-sm font-medium text-blue-800 truncate">{fileName}</span>
+                                                                        {isPdf && <Badge variant="outline" className="text-xs">PDF</Badge>}
+                                                                        {isImage && <Badge variant="outline" className="text-xs">Image</Badge>}
+                                                                    </div>
+                                                                    <div className="flex space-x-2">
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => setPreviewDocument({url: doc, name: fileName})}
+                                                                            className="text-xs"
+                                                                        >
+                                                                            <ExternalLink className="h-3 w-3 mr-1" />
+                                                                            Preview
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => {
+                                                                                const link = document.createElement('a');
+                                                                                link.href = doc;
+                                                                                link.download = fileName;
+                                                                                document.body.appendChild(link);
+                                                                                link.click();
+                                                                                document.body.removeChild(link);
+                                                                            }}
+                                                                            className="text-xs"
+                                                                        >
+                                                                            <Download className="h-3 w-3 mr-1" />
+                                                                            Download
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center space-x-2">
+                                                                <FileText className="h-4 w-4 text-blue-600" />
+                                                                <span className="text-sm font-medium text-blue-800">Business Document</span>
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => setPreviewDocument({url: selectedVendor.business_documents as string, name: 'Business Document'})}
+                                                                    className="text-xs"
+                                                                >
+                                                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                                                    Preview
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => {
+                                                                        const link = document.createElement('a');
+                                                                        link.href = selectedVendor.business_documents as string;
+                                                                        link.download = 'business-document';
+                                                                        document.body.appendChild(link);
+                                                                        link.click();
+                                                                        document.body.removeChild(link);
+                                                                    }}
+                                                                    className="text-xs"
+                                                                >
+                                                                    <Download className="h-3 w-3 mr-1" />
+                                                                    Download
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                                                <p className="text-sm text-gray-600">No documents uploaded</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Performance Metrics */}
+                                <div>
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Performance Metrics</h4>
+                                    <div className="grid lg:grid-cols-3 gap-4">
+                                        <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-green-600">{selectedVendor.products_count || 0}</p>
+                                            <p className="text-sm text-green-700">Products</p>
                                         </div>
-                                        <div>
-                                            <Label>Tax ID</Label>
-                                            <p className="text-sm">{selectedVendor.tax_id || 'Not provided'}</p>
+                                        <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-blue-600">{selectedVendor.orders_count || 0}</p>
+                                            <p className="text-sm text-blue-700">Orders</p>
                                         </div>
-                                        <div>
-                                            <Label>Bank Account</Label>
-                                            <p className="text-sm">{selectedVendor.bank_account || 'Not provided'}</p>
+                                        <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-yellow-600">{typeof selectedVendor.rating === 'number' ? selectedVendor.rating.toFixed(1) : '0.0'}</p>
+                                            <p className="text-sm text-yellow-700">Rating</p>
+                                        </div>
+                                        <div className="text-center p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-purple-600">{selectedVendor.total_sales || 0}</p>
+                                            <p className="text-sm text-purple-700">Total Sales</p>
+                                        </div>
+                                        <div className="text-center p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-indigo-600">{selectedVendor.total_reviews || 0}</p>
+                                            <p className="text-sm text-indigo-700">Reviews</p>
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* Additional Information */}
+                                {selectedVendor.additional_info && (
+                                    <div>
+                                        <h4 className="font-semibold mb-3 text-lg border-b pb-2">Additional Information</h4>
+                                        <div className="p-3 bg-gray-50 rounded-md">
+                                            <p className="text-sm">{selectedVendor.additional_info}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Social Media */}
+                                {selectedVendor.social_media && (
+                                    <div>
+                                        <h4 className="font-semibold mb-3 text-lg border-b pb-2">Social Media</h4>
+                                        <div className="p-3 bg-gray-50 rounded-md">
+                                            <p className="text-sm">
+                                                {typeof selectedVendor.social_media === 'object' 
+                                                    ? JSON.stringify(selectedVendor.social_media, null, 2)
+                                                    : selectedVendor.social_media
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                                 {/* Status Information */}
                                 <div>
-                                    <h4 className="font-semibold mb-3">Status Information</h4>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <h4 className="font-semibold mb-3 text-lg border-b pb-2">Status & Verification Information</h4>
+                                    <div className="grid lg:grid-cols-2 gap-4">
                                         <div>
-                                            <Label>Application Status</Label>
+                                            <Label className="font-medium">Application Status</Label>
                                             <div className="mt-1">
                                                 <Badge
                                                     variant={getStatusVariant(selectedVendor.status)}
-                                                    className={getStatusColor(selectedVendor.status)}
+                                                    className={`${getStatusColor(selectedVendor.status)} px-3 py-1`}
                                                 >
                                                     {selectedVendor.status.charAt(0).toUpperCase() + selectedVendor.status.slice(1)}
                                                 </Badge>
                                             </div>
                                         </div>
                                         <div>
-                                            <Label>Verification Status</Label>
+                                            <Label className="font-medium">Verification Status</Label>
                                             <div className="mt-1">
                                                 <Badge
                                                     variant={selectedVendor.is_verified ? 'default' : 'secondary'}
-                                                    className={selectedVendor.is_verified ? 'bg-blue-100 text-blue-700 border-blue-300' : ''}
+                                                    className={`${selectedVendor.is_verified ? 'bg-blue-100 text-blue-700 border-blue-300' : ''} px-3 py-1`}
                                                 >
                                                     {selectedVendor.is_verified ? 'Verified' : 'Unverified'}
                                                 </Badge>
                                             </div>
                                         </div>
                                         <div>
-                                            <Label>Applied On</Label>
-                                            <p className="text-sm">{new Date(selectedVendor.created_at).toLocaleDateString()}</p>
+                                            <Label className="font-medium">Active Status</Label>
+                                            <div className="mt-1">
+                                                <Badge
+                                                    variant={selectedVendor.is_active ? 'default' : 'secondary'}
+                                                    className={`${selectedVendor.is_active ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'} px-3 py-1`}
+                                                >
+                                                    {selectedVendor.is_active ? 'Active' : 'Inactive'}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label className="font-medium">Applied On</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{new Date(selectedVendor.created_at).toLocaleDateString()}</p>
                                         </div>
                                         {selectedVendor.approved_at && (
                                             <div>
-                                                <Label>Approved On</Label>
-                                                <p className="text-sm">{new Date(selectedVendor.approved_at).toLocaleDateString()}</p>
+                                                <Label className="font-medium">Approved On</Label>
+                                                <p className="text-sm mt-1 p-2 bg-green-50 rounded">{new Date(selectedVendor.approved_at).toLocaleDateString()}</p>
+                                            </div>
+                                        )}
+                                        {selectedVendor.verified_at && (
+                                            <div>
+                                                <Label className="font-medium">Verified On</Label>
+                                                <p className="text-sm mt-1 p-2 bg-blue-50 rounded">{new Date(selectedVendor.verified_at).toLocaleDateString()}</p>
+                                            </div>
+                                        )}
+                                        {selectedVendor.verification_notes && (
+                                            <div className="col-span-2">
+                                                <Label className="font-medium">Verification Notes</Label>
+                                                <p className="text-sm mt-1 p-3 bg-blue-50 border border-blue-200 rounded-md">{selectedVendor.verification_notes}</p>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <Label className="font-medium">Last Updated</Label>
+                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{new Date(selectedVendor.updated_at).toLocaleDateString()}</p>
+                                        </div>
+                                        {selectedVendor.slug && (
+                                            <div>
+                                                <Label className="font-medium">URL Slug</Label>
+                                                <p className="text-sm mt-1 p-2 bg-gray-50 rounded font-mono">{selectedVendor.slug}</p>
                                             </div>
                                         )}
                                     </div>
@@ -671,35 +1032,12 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                 {/* Rejection Reason */}
                                 {selectedVendor.rejection_reason && (
                                     <div>
-                                        <Label>Rejection Reason</Label>
-                                        <p className="text-sm mt-1 p-3 bg-red-50 border border-red-200 rounded-md">
-                                            {selectedVendor.rejection_reason}
-                                        </p>
+                                        <h4 className="font-semibold mb-3 text-lg border-b pb-2 text-red-600">Rejection Reason</h4>
+                                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                                            <p className="text-sm text-red-700">{selectedVendor.rejection_reason}</p>
+                                        </div>
                                     </div>
                                 )}
-
-                                {/* Performance Metrics */}
-                                <div>
-                                    <h4 className="font-semibold mb-3">Performance Metrics</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <Label>Products</Label>
-                                            <p className="text-sm font-medium">{selectedVendor.products_count}</p>
-                                        </div>
-                                        <div>
-                                            <Label>Total Orders</Label>
-                                            <p className="text-sm font-medium">{selectedVendor?.orders_count}</p>
-                                        </div>
-                                        <div>
-                                            <Label>Total Sales</Label>
-                                            {/* <p className="text-sm font-medium">${selectedVendor?.total_sales?.toFixed(2)}</p> */}
-                                        </div>
-                                        <div>
-                                            <Label>Rating</Label>
-                                            {/* <p className="text-sm font-medium">{selectedVendor?.rating?.toFixed(1)} ⭐</p> */}
-                                        </div>
-                                    </div>
-                                </div>
 
                                 {/* Action Buttons */}
                                 {selectedVendor.status === 'pending' && (
@@ -769,6 +1107,85 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                     </Dialog>
                 )}
             </div>
+
+            {/* Document Preview Modal */}
+            {previewDocument && (
+                <Dialog open={!!previewDocument} onOpenChange={() => setPreviewDocument(null)}>
+                    <DialogContent className="max-w-7xl min-w-[70%] break-words max-h-[90vh] overflow-hidden">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center space-x-2">
+                                <FileText className="h-5 w-5" />
+                                <span>Document Preview: {previewDocument.name}</span>
+                            </DialogTitle>
+                            <DialogDescription>
+                                Preview of the vendor document. You can download it using the button below.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-hidden">
+                            <div className="h-[60vh] border rounded-lg overflow-hidden bg-gray-50">
+                                {previewDocument.url.toLowerCase().endsWith('.pdf') ? (
+                                    <iframe
+                                        src={previewDocument.url}
+                                        className="w-full h-full border-0"
+                                        title={previewDocument.name}
+                                    />
+                                ) : previewDocument.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                    <div className="w-full h-full flex items-center justify-center p-4">
+                                        <img
+                                            src={previewDocument.url}
+                                            alt={previewDocument.name}
+                                            className="max-w-full max-h-full object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center p-8">
+                                        <div className="text-center">
+                                            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                                            <p className="text-lg font-medium text-gray-600 mb-2">Preview not available</p>
+                                            <p className="text-sm text-gray-500 mb-4">This file type cannot be previewed in the browser</p>
+                                            <Button
+                                                onClick={() => window.open(previewDocument.url, '_blank')}
+                                                className="mr-2"
+                                            >
+                                                <ExternalLink className="h-4 w-4 mr-2" />
+                                                Open in New Tab
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-4 border-t">
+                            <Button
+                                variant="outline"
+                                onClick={() => window.open(previewDocument.url, '_blank')}
+                            >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Open in New Tab
+                            </Button>
+                            <div className="space-x-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = previewDocument.url;
+                                        link.download = previewDocument.name;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                    }}
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download
+                                </Button>
+                                <Button onClick={() => setPreviewDocument(null)}>
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </AdminLayout>
     );
 }

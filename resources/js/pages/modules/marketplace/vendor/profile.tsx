@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+
+declare global {
+    function route(name: string, params?: any): string;
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,24 +21,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-    User,
+import { 
     Building,
-    MapPin,
-    Globe,
-    Phone,
-    Mail,
-    CreditCard,
-    FileText,
+    MapPin, 
+    CreditCard, 
     Camera,
     Save,
     ArrowLeft,
     Shield,
     AlertCircle,
     CheckCircle,
-    Clock
+    Clock,
+    Trash2, 
 } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import AppLayout from '@/layouts/app-layout'; 
 
 interface VendorProfileProps {
     vendor: {
@@ -61,9 +69,32 @@ interface VendorProfileProps {
         additional_info: string;
         rejection_reason?: string;
     };
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+            min_commission_amount?: number;
+            max_commission_amount?: number;
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+            withdrawal_fee?: number;
+        };
+        tax: {
+            tax_rate: number;
+            tax_inclusive: boolean;
+        };
+        payout: {
+            min_payout_amount: number;
+            payout_schedule: string;
+            auto_payout_enabled: boolean;
+        };
+    };
 }
 
-export default function VendorProfile({ vendor }: VendorProfileProps) {
+export default function VendorProfile({ vendor, marketplaceSettings }: VendorProfileProps) {
+ 
     const { data, setData, put, processing, errors, isDirty } = useForm({
         business_name: vendor.business_name || '',
         business_type: vendor.business_type || '',
@@ -86,32 +117,57 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
         bank_account_number: vendor.bank_account_number || '',
         bank_account_name: vendor.bank_account_name || '',
         additional_info: vendor.additional_info || '',
+        logo: null as File | null,
+        banner_image: null as File | null,
+        _method: 'PUT',
     });
 
     const [logoPreview, setLogoPreview] = useState<string | null>(vendor.logo);
     const [bannerPreview, setBannerPreview] = useState<string | null>(vendor.banner_image);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+ 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        put(route('marketplace.vendor.profile.update'), {
+        put('/marketplace/vendor/profile', {
             onSuccess: () => {
                 // Handle success
             },
+            onError: (error: Record<string, string>) => {
+                // Handle error
+                console.error('Error updating vendor profile', error);
+            }
         });
     };
 
-    const handleImageUpload = (file: File, type: 'logo' | 'banner') => {
+    const handleImageUpload = (file: File, type: 'logo' | 'banner_image') => {
         const reader = new FileReader();
         reader.onload = (e) => {
             if (type === 'logo') {
                 setLogoPreview(e.target?.result as string);
-                setData('logo' as any, file);
+                setData('logo', file);
             } else {
                 setBannerPreview(e.target?.result as string);
-                setData('banner_image' as any, file);
+                setData('banner_image', file);
             }
         };
         reader.readAsDataURL(file);
+    };
+
+    const handleDelete = () => {
+        setIsDeleting(true);
+        router.delete('/marketplace/vendor/profile', {
+            onSuccess: () => {
+                setShowDeleteDialog(false);
+            },
+            onError: () => {
+                setIsDeleting(false);
+            },
+            onFinish: () => {
+                setIsDeleting(false);
+            }
+        });
     };
 
     const getVerificationBadge = () => {
@@ -196,11 +252,27 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
 
                     <form onSubmit={handleSubmit}>
                         <Tabs defaultValue="business" className="space-y-6">
-                            <TabsList className="grid w-full grid-cols-4">
-                                <TabsTrigger value="business">Business Info</TabsTrigger>
-                                <TabsTrigger value="contact">Contact Details</TabsTrigger>
-                                <TabsTrigger value="financial">Financial Info</TabsTrigger>
-                                <TabsTrigger value="branding">Branding</TabsTrigger>
+                            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto gap-2">
+                                <TabsTrigger value="business" className="text-xs sm:text-sm">
+                                    <Building className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Business Info</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="contact" className="text-xs sm:text-sm">
+                                    <MapPin className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Contact Details</span>
+                                </TabsTrigger> 
+                                <TabsTrigger value="financial" className="text-xs sm:text-sm">
+                                    <CreditCard className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Financial Info</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="branding" className="text-xs sm:text-sm">
+                                    <Camera className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Branding</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="danger" className="text-xs sm:text-sm text-red-600 data-[state=active]:text-red-600">
+                                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Danger Zone</span>
+                                </TabsTrigger>
                             </TabsList>
 
                             {/* Business Information */}
@@ -307,7 +379,7 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
                                     </CardContent>
                                 </Card>
                             </TabsContent>
-
+ 
                             {/* Contact Details */}
                             <TabsContent value="contact">
                                 <Card>
@@ -601,7 +673,7 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
                                                             onChange={(e) => {
                                                                 const file = e.target.files?.[0];
                                                                 if (file) {
-                                                                    handleImageUpload(file, 'banner');
+                                                                    handleImageUpload(file, 'banner_image');
                                                                 }
                                                             }}
                                                             className="hidden"
@@ -618,6 +690,55 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
                                                             Recommended: 1200x400px, PNG or JPG
                                                         </p>
                                                     </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            {/* Danger Zone Tab */}
+                            <TabsContent value="danger">
+                                <Card className="border-red-200">
+                                    <CardHeader className="bg-red-50">
+                                        <CardTitle className="flex items-center text-red-800">
+                                            <AlertCircle className="h-5 w-5 mr-2" />
+                                            Danger Zone
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6 pt-6">
+                                        <Alert className="border-yellow-200 bg-yellow-50">
+                                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                            <AlertDescription className="text-yellow-800">
+                                                <strong>Warning:</strong> Actions in this section are permanent and cannot be undone.
+                                                Please proceed with caution.
+                                            </AlertDescription>
+                                        </Alert>
+
+                                        <div className="space-y-4">
+                                            <div className="border border-red-200 rounded-lg p-4 sm:p-6 bg-red-50/50">
+                                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                                                    <div className="space-y-2">
+                                                        <h3 className="font-semibold text-lg text-red-800">Delete Vendor Store</h3>
+                                                        <p className="text-sm text-gray-700">
+                                                            Permanently delete your vendor store and all associated data.
+                                                        </p>
+                                                        <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                                                            <li>All your products will be deleted</li>
+                                                            <li>Your subscription will be cancelled</li>
+                                                            <li>All store data will be permanently removed</li>
+                                                            <li>You'll need to re-register to become a vendor again</li>
+                                                        </ul>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        onClick={() => setShowDeleteDialog(true)}
+                                                        className="w-full sm:w-auto min-w-[140px]"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                        Delete Store
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -647,6 +768,48 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
                             </Button>
                         </div>
                     </form>
+
+                    {/* Delete Confirmation Dialog */}
+                    <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Are you absolutely sure?</DialogTitle>
+                                <DialogDescription>
+                                    This action cannot be undone. This will permanently delete your vendor store,
+                                    all your products, and remove all associated data. You will need to re-register
+                                    if you want to become a vendor again.
+                                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                        <p className="text-sm font-medium text-red-800">
+                                            ⚠️ Warning: Make sure you have no pending orders before deleting your store.
+                                        </p>
+                                    </div>
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => setShowDeleteDialog(false)} 
+                                    disabled={isDeleting}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        'Delete Store'
+                                    )}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         </AppLayout>

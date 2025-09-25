@@ -55,6 +55,13 @@ class Product extends Model
         'shipping_weight',
         'free_shipping',
         'shipping_cost',
+
+         'payment_methods',
+        'shipping_option',
+        'extra_fee',
+        'delivery_time',
+        'return_policy',
+        'additional_info',
     ];
 
     protected $casts = [
@@ -81,6 +88,9 @@ class Product extends Model
         'total_sales' => 'integer',
         'available_from' => 'datetime',
         'available_until' => 'datetime',
+        'payment_methods' => 'array',
+        'extra_fee' => 'decimal:2',
+
     ];
 
     /**
@@ -260,6 +270,14 @@ class Product extends Model
     public function calculateAverageRating(): float
     {
         return $this->reviews()->avg('rating') ?? 0;
+    }
+
+    /**
+     * Get rating attribute - always return a number
+     */
+    public function getRatingAttribute($value): float
+    {
+        return $value ? (float) $value : 0.0;
     }
 
     /**

@@ -342,9 +342,18 @@ export default function PublicMarketplace({
 
                         {/* Products Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {safeProducts.map((product) => (
-                                <ProductCard key={product.id} auth={auth} product={product} handleAddToCart={handleAddToCart} />
-                            ))}
+                            {safeProducts.length > 0 ? (
+                                safeProducts.map((product) => (
+                                    <ProductCard key={product.id} auth={auth} product={product} handleAddToCart={handleAddToCart} />
+                                ))
+                            ) : (
+                                <div className="col-span-3 text-center">
+                                    <p className='text-lg'>No products found.</p>
+                                    <Link href="/store" className=" hover:underline">
+                                        Clear filters
+                                    </Link>
+                                </div>
+                            )}
                         </div>
 
                         {/* Pagination */}
@@ -381,7 +390,7 @@ export default function PublicMarketplace({
                     </div>
                 </div>
             </div>
-            <Toaster position="top-right" richColors />
+            <Toaster position="bottom-right" richColors />
         </div>
     );
 }

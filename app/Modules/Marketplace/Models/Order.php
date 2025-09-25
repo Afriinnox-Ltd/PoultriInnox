@@ -41,6 +41,9 @@ class Order extends Model
         'delivered_at',
         'cancelled_at',
         'refunded_at',
+        'vendor_confirmed',
+        'vendor_confirmed_at',
+        'vendor_confirmed_by',
     ];
 
     protected $casts = [
@@ -50,11 +53,13 @@ class Order extends Model
         'discount_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'admin_confirmed' => 'boolean',
+        'vendor_confirmed' => 'boolean',
         'shipping_address' => 'array',
         'billing_address' => 'array',
         'shipped_at' => 'datetime',
         'delivered_at' => 'datetime',
         'admin_confirmed_at' => 'datetime',
+        'vendor_confirmed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'refunded_at' => 'datetime',
     ];
@@ -84,6 +89,14 @@ class Order extends Model
     }
 
     /**
+     * Get the vendor who confirmed this order
+     */
+    public function vendorConfirmedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'vendor_confirmed_by');
+    }
+
+    /**
      * Get all order items
      */
     public function items(): HasMany
@@ -100,11 +113,27 @@ class Order extends Model
     }
 
     /**
+     * Get the primary payment for this order (latest completed payment)
+     */
+    public function payment(): HasOne
+    {
+        return $this->hasOne(Payment::class)->latest();
+    }
+
+    /**
      * Get the shipping information for this order
      */
     public function shipping(): HasOne
     {
         return $this->hasOne(Shipping::class);
+    }
+
+    /**
+     * Get the delivery confirmation for this order
+     */
+    public function deliveryConfirmation(): HasOne
+    {
+        return $this->hasOne(DeliveryConfirmation::class);
     }
 
     /**
@@ -387,7 +416,7 @@ class Order extends Model
     }
 
     /**
-     * Mark order as delivered and confirm payment
+     * Mark order as delivered and request buyer confirmation
      */
     public function markAsDeliveredWithPayment(): void
     {
@@ -395,11 +424,14 @@ class Order extends Model
             'status' => 'delivered',
             'shipping_status' => 'delivered',
             'delivered_at' => now(),
-            'payment_status' => 'completed', // Confirm payment on delivery
+            'payment_status' => 'pending_confirmation', // Keep pending until buyer confirms
         ]);
 
-        // Update or create payment record
-        $this->updatePaymentOnDelivery();
+        // Create delivery confirmation request
+        $this->createDeliveryConfirmationRequest();
+
+        // Send notification to buyer
+        $this->user->notify(new \App\Notifications\DeliveryConfirmationRequestNotification($this));
     }
 
     /**
@@ -445,7 +477,7 @@ class Order extends Model
     /**
      * Calculate vendor amount (total minus commission)
      */
-    private function calculateVendorAmount(): float
+    public function calculateVendorAmount(): float
     {
         $commissionRate = 0.10; // 10% commission rate - make this configurable
         return $this->total_amount * (1 - $commissionRate);
@@ -454,9 +486,60 @@ class Order extends Model
     /**
      * Calculate commission amount
      */
-    private function calculateCommissionAmount(): float
+    public function calculateCommissionAmount(): float
     {
         $commissionRate = 0.10; // 10% commission rate - make this configurable
         return $this->total_amount * $commissionRate;
+    }
+
+    /**
+     * Create delivery confirmation request
+     */
+    private function createDeliveryConfirmationRequest(): void
+    {
+        $this->deliveryConfirmation()->create([
+            'user_id' => $this->user_id,
+            'confirmed' => false,
+            'delivery_requested_at' => now(),
+        ]);
+    }
+
+    /**
+     * Confirm delivery by buyer and release payment
+     */
+    public function confirmDeliveryByBuyer(array $proofImages = [], string $notes = null): void
+    {
+        // Mark delivery as confirmed
+        $deliveryConfirmation = $this->deliveryConfirmation;
+        if ($deliveryConfirmation) {
+            $deliveryConfirmation->markAsConfirmed($proofImages, $notes);
+        }
+
+        // Update payment status and create/update payment record
+        $this->update(['payment_status' => 'completed']);
+        $this->updatePaymentOnDelivery();
+
+        // Notify vendor about confirmed delivery
+        if ($this->vendor && $this->vendor->user) {
+            $this->vendor->user->notify(new \App\Notifications\DeliveryConfirmedByBuyerNotification($this));
+        }
+    }
+
+    /**
+     * Check if delivery is confirmed by buyer
+     */
+    public function isDeliveryConfirmed(): bool
+    {
+        return $this->deliveryConfirmation && $this->deliveryConfirmation->isConfirmed();
+    }
+
+    /**
+     * Check if delivery confirmation is pending
+     */
+    public function isDeliveryConfirmationPending(): bool
+    {
+        return $this->status === 'delivered' && 
+               $this->payment_status === 'pending_confirmation' && 
+               !$this->isDeliveryConfirmed();
     }
 }

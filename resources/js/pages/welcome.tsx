@@ -1,10 +1,7 @@
 import { type SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
-import React from 'react';
+import { Head, Link, usePage } from '@inertiajs/react'; 
 import {
-    Heart,
-    TrendingUp,
-    Shield,
+    Heart, 
     BarChart3,
     Thermometer,
     Bell,
@@ -13,20 +10,12 @@ import {
     CheckCircle,
     Star,
     Monitor,
-    Wifi,
-    Package,
-    Zap,
-    Award,
-    Globe,
-    ArrowRight,
-    Play,
+    Wifi, 
+    ArrowRight, 
     ChevronDown,
-    Droplets,
-    AlertTriangle,
+    Droplets, 
     Lightbulb,
-    DollarSign,
-    Calculator,
-    PieChart,
+    DollarSign, 
     Utensils
 } from 'lucide-react';
 import WelcomeNav from '@/components/navigation/WelcomeNav';
@@ -34,39 +23,7 @@ export default function Welcome() {
     const { auth } = usePage<SharedData>().props;
 
 
-    const features = [
-        {
-            icon: <Thermometer className="w-12 h-12 text-emerald-600" />,
-            title: "Smart Temperature Control",
-            description: "Automated temperature monitoring and control system ensures optimal brooding conditions 24/7 with real-time adjustments."
-        },
-        {
-            icon: <Heart className="w-12 h-12 text-emerald-500" />,
-            title: "Health Monitoring",
-            description: "Advanced health tracking system monitors chick behavior, feeding patterns, and vital signs to detect issues early."
-        },
-        {
-            icon: <BarChart3 className="w-12 h-12 text-emerald-600" />,
-            title: "Growth Analytics",
-            description: "Comprehensive growth tracking with detailed analytics, weight monitoring, and performance metrics for optimal development."
-        },
-        {
-            icon: <Bell className="w-12 h-12 text-emerald-600" />,
-            title: "Smart Alerts",
-            description: "Instant notifications for temperature changes, feeding schedules, health concerns, and maintenance requirements."
-        },
-        {
-            icon: <Shield className="w-12 h-12 text-emerald-600" />,
-            title: "Safety Features",
-            description: "Built-in safety protocols with emergency shutoffs, backup systems, and fail-safe mechanisms for maximum protection."
-        },
-        {
-            icon: <Monitor className="w-12 h-12 text-indigo-600" />,
-            title: "Remote Monitoring",
-            description: "Access your brooder data from anywhere with our mobile-friendly dashboard and real-time monitoring capabilities."
-        }
-    ];
-
+ 
     const benefits = [
         "✔ Simplifies daily farm operations",
         "✔ Saves time & money through automation",

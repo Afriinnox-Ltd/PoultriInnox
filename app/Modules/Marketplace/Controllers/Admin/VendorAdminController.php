@@ -5,6 +5,7 @@ namespace App\Modules\Marketplace\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Modules\Marketplace\Models\Vendor;
 use App\Models\User;
+use App\Notifications\VendorSuspensionNotification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -113,6 +114,7 @@ class VendorAdminController extends Controller
         $vendor->update([
             'status' => 'approved',
             'is_verified' => true,
+            'is_active' => true,
             'verification_notes' => $request->notes,
             'approved_at' => now(),
             'admin_notes' => $request->notes,
@@ -168,10 +170,12 @@ class VendorAdminController extends Controller
             // Deactivate all vendor products
             $vendor->products()->update(['status' => 'inactive']);
 
-            // Send notification to vendor
-            // TODO: Add notification logic
+            // Send suspension notification to vendor
+            if ($vendor->user) {
+                $vendor->user->notify(new VendorSuspensionNotification($vendor, $request->reason));
+            }
 
-            return back()->with('success', 'Vendor suspended successfully.');
+            return back()->with('success', 'Vendor suspended successfully. Notification sent to vendor.');
         } catch (\Throwable $th) {
             dd($th);
             return back()->with('error', 'Failed to suspend vendor: ' . $th->getMessage());
@@ -308,7 +312,15 @@ class VendorAdminController extends Controller
                 \App\Modules\Marketplace\Models\Product::whereIn('vendor_id', $vendor_ids)
                     ->update(['status' => 'inactive']);
 
-                $message = 'Vendors suspended successfully.';
+                // Send suspension notifications to all suspended vendors
+                $suspendedVendors = Vendor::whereIn('id', $vendor_ids)->with('user')->get();
+                foreach ($suspendedVendors as $vendor) {
+                    if ($vendor->user) {
+                        $vendor->user->notify(new VendorSuspensionNotification($vendor, $validated['reason']));
+                    }
+                }
+
+                $message = 'Vendors suspended successfully. Notifications sent to all affected vendors.';
                 break;
 
             case 'verify':

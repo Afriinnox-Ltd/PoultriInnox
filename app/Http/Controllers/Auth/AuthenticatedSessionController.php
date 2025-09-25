@@ -18,6 +18,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): Response
     {
+        // Store intended URL in session if provided
+        if ($request->has('intended')) {
+            session(['url.intended' => $request->get('intended')]);
+        }
+
         return Inertia::render('auth/login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => $request->session()->get('status'),
@@ -33,6 +38,16 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Get the intended URL from session
+        $intendedUrl = session('url.intended');
+
+        // If there's an intended URL, clear it from session and redirect
+        if ($intendedUrl) {
+            session()->forget('url.intended');
+            return redirect($intendedUrl);
+        }
+
+        // Default redirect to dashboard
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
