@@ -1,22 +1,26 @@
 import { Link, usePage } from '@inertiajs/react'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SharedData } from '@/types'
 import MegaMenu from './MegaMenu'
-import { ChevronDown, Menu, X, ShoppingCart, User } from 'lucide-react'
+import { ChevronDown, Menu, X, ShoppingCart, MoveDown } from 'lucide-react'
 
 function WelcomeNav({ auth }: any) {
     const [isMegaMenuVisible, setIsMegaMenuVisible] = useState(false);
+    const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     console.log(auth);
     const { cartCount } = usePage<SharedData>().props;
+
+    // Get current URL for redirect after login
+    const currentUrl = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '';
+    const loginUrl = `/login${currentUrl ? `?intended=${encodeURIComponent(currentUrl)}` : ''}`;
 
     const toggleMobileMenu = () => {
         setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -50,34 +54,44 @@ function WelcomeNav({ auth }: any) {
                         </div>
 
                         {auth?.user ? (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger className='cursor-pointer flex items-center gap-2'>
-                                    <span>My account </span> <span>
+                            <div
+                                className="relative"
+                                onMouseEnter={() => setIsAccountMenuOpen(true)}
+                                onMouseLeave={() => setIsAccountMenuOpen(false)}
+                            >
+                                <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
+                                    <DropdownMenuTrigger className='cursor-pointer flex items-center gap-2 text-gray-600 hover:text-emerald-600 transition-colors'>
+                                        <span className='flex items-center'>
+                                            My account
+                                            <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${isAccountMenuOpen ? 'rotate-180' : ''}`} />
+                                        </span>
                                         {cartCount > 0 && (
                                             <span className="bg-emerald-600 text-white text-xs rounded-full px-2 py-1 min-w-[20px] h-5 flex items-center justify-center font-medium">
                                                 {cartCount > 99 ? '99+' : cartCount}
                                             </span>
-                                        )}</span></DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <DropdownMenuLabel>Dashboard</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem>
-                                        <Link href="/cart" className="flex items-center gap-2">
-                                            Cart
-                                            {cartCount > 0 && (
-                                                <span className="bg-emerald-600 text-white text-xs rounded-full px-2 py-1 min-w-[20px] h-5 flex items-center justify-center font-medium">
-                                                    {cartCount > 99 ? '99+' : cartCount}
-                                                </span>
-                                            )}
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem><Link href="/orders">My orders</Link></DropdownMenuItem>
-                                    <DropdownMenuItem><Link href="/settings">Settings</Link></DropdownMenuItem>
-                                    <DropdownMenuItem><Link href="/logout">Logout</Link></DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                                        )}
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem>
+                                            <Link href="/cart" className="flex items-center gap-2 w-full">
+                                                Cart
+                                                {cartCount > 0 && (
+                                                    <span className="bg-emerald-600 text-white text-xs rounded-full px-2 py-1 min-w-[20px] h-5 flex items-center justify-center font-medium">
+                                                        {cartCount > 99 ? '99+' : cartCount}
+                                                    </span>
+                                                )}
+                                            </Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem><Link href="/dashboard" className="w-full">Dashboard</Link></DropdownMenuItem>
+                                        <DropdownMenuItem><Link href="/orders" className="w-full">My orders</Link></DropdownMenuItem>
+                                        <DropdownMenuItem><Link href="/settings" className="w-full">Settings</Link></DropdownMenuItem>
+                                        {/* <DropdownMenuItem><Link href="/logout" className="w-full">Logout</Link></DropdownMenuItem> */}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
                         ) : (
-                            <Link href="/login" className="bg-emerald-600 text-white px-10 py-2 rounded-full hover:bg-emerald-700 transition-colors">
+                            <Link href={loginUrl} className="bg-emerald-600 text-white px-10 py-2 rounded-full hover:bg-emerald-700 transition-colors">
                                 Login
                             </Link>
                         )}
@@ -196,7 +210,7 @@ function WelcomeNav({ auth }: any) {
                         ) : (
                             <div className="border-t border-gray-200 pt-2">
                                 <Link
-                                    href="/login"
+                                    href={loginUrl}
                                     className="block mx-3 my-2 px-4 py-2 text-center bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-colors"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >

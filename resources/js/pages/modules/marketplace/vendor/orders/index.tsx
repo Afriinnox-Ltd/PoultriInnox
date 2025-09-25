@@ -6,6 +6,24 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Order, OrderItem, ProductImage } from '@/types/marketplace';
+
+interface ExtendedOrderItem extends OrderItem {
+    product_payment_methods?: string[];
+    product_shipping_option?: string;
+    product_extra_fee?: number;
+    product_delivery_time?: string;
+    product_return_policy?: string;
+}
+
+interface ShippingAddress {
+    city?: string;
+    state?: string;
+    country?: string;
+    address_line_1?: string;
+    address_line_2?: string;
+    name?: string;
+    phone?: string;
+}
 import {
     Package,
     Truck,
@@ -21,7 +39,9 @@ import {
     DollarSign,
     Users,
     TrendingUp,
-    MapPin
+    MapPin,
+    CreditCard,
+    Calculator
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 
@@ -34,7 +54,7 @@ interface VendorOrdersPageProps {
                 email: string;
                 phone?: string;
             };
-            items: Array<OrderItem & {
+            items: Array<ExtendedOrderItem & {
                 product: {
                     id: number;
                     name: string;
@@ -72,9 +92,38 @@ interface VendorOrdersPageProps {
         monthly_revenue: number;
     };
     user_type: 'vendor';
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+        };
+        tax: {
+            tax_rate: number;
+            tax_enabled: boolean;
+            tax_inclusive: boolean;
+        };
+        general: {
+            currency: string;
+            currency_symbol: string;
+            auto_approve_vendors: boolean;
+        };
+        orders: {
+            auto_complete_days: number;
+            allow_cancellation: boolean;
+            cancellation_window_hours: number;
+        };
+        shipping: {
+            free_shipping_threshold: number;
+            default_shipping_cost: number;
+        };
+    };
 }
 
-export default function VendorOrdersPage({ orders, filters, stats, user_type }: VendorOrdersPageProps) {
+export default function VendorOrdersPage({ orders, filters, stats, marketplaceSettings }: VendorOrdersPageProps) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [paymentStatusFilter, setPaymentStatusFilter] = useState(filters.payment_status || '');
@@ -105,10 +154,17 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
     };
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('rw-RW', {
-            style: 'currency',
-            currency: 'RWF'
-        }).format(amount);
+        const currency = marketplaceSettings?.general?.currency || 'RWF';
+        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+        
+        if (currency === 'RWF') {
+            return new Intl.NumberFormat('rw-RW', {
+                style: 'currency',
+                currency: 'RWF'
+            }).format(amount);
+        }
+        
+        return `${symbol}${amount.toLocaleString()}`;
     };
 
     const formatDate = (dateString: string) => {
@@ -120,6 +176,8 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
             minute: '2-digit'
         });
     };
+
+
 
     const handleSearch = () => {
         const params = new URLSearchParams();
@@ -158,29 +216,9 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
         }
     };
 
-    const updateShippingInfo = async (orderId: number, shippingData: any) => {
-        try {
-            const response = await fetch(`/vendor/orders/${orderId}/shipping`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify(shippingData),
-            });
 
-            if (response.ok) {
-                window.location.reload();
-            } else {
-                alert('Failed to update shipping information. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error updating shipping info:', error);
-            alert('Failed to update shipping information. Please try again.');
-        }
-    };
 
-    const printOrder = (order: any) => {
+    const printOrder = (order: VendorOrdersPageProps['orders']['data'][0]) => {
         // Create a new window for printing
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
@@ -348,7 +386,7 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
                         </tr>
                     </thead>
                     <tbody>
-                        ${order.items.map((item: any) => `
+                        ${order.items.map((item) => `
                             <tr>
                                 <td><strong>${item.product_name}</strong></td>
                                 <td>${item.product_sku || 'N/A'}</td>
@@ -492,7 +530,7 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
                         <Card>
                             <CardContent className="p-4">
                                 <div className="flex items-center">
-                                    <CheckCircle className="h-8 w-8 text-green-600" />
+                                    <CheckCircle className="h-8 w-8 text-emerald-600" />
                                     <div className="ml-4">
                                         <p className="text-sm font-medium text-gray-600">Completed</p>
                                         <p className="text-2xl font-bold text-gray-900">{stats.completed_orders}</p>
@@ -525,6 +563,84 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Commission & Settings Info */}
+                    {marketplaceSettings && (
+                        <Card className="mb-6">
+                            <CardHeader>
+                                <CardTitle className="flex items-center">
+                                    <Calculator className="h-5 w-5 mr-2" />
+                                    Commission & Settings
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <div className="text-2xl font-bold text-blue-900">
+                                            {marketplaceSettings.commission.commission_type === 'percentage' 
+                                                ? `${marketplaceSettings.commission.default_commission_rate}%`
+                                                : formatCurrency(marketplaceSettings.commission.default_commission_rate)
+                                            }
+                                        </div>
+                                        <div className="text-sm font-medium text-blue-700">Commission Rate</div>
+                                        <div className="text-xs text-blue-600 mt-1">
+                                            {marketplaceSettings.commission.commission_type === 'percentage' ? 'Per sale' : 'Fixed per order'}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                                        <div className="text-2xl font-bold text-orange-900">
+                                            {marketplaceSettings.fees.platform_fee_rate}%
+                                        </div>
+                                        <div className="text-sm font-medium text-orange-700">Platform Fee</div>
+                                        <div className="text-xs text-orange-600 mt-1">
+                                            Hosting & support
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                        <div className="text-2xl font-bold text-purple-900">
+                                            {marketplaceSettings.fees.transaction_fee_rate}%
+                                        </div>
+                                        <div className="text-sm font-medium text-purple-700">Transaction Fee</div>
+                                        <div className="text-xs text-purple-600 mt-1">
+                                            Payment processing
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                        <div className="text-2xl font-bold text-emerald-900">
+                                            {(100 - marketplaceSettings.commission.default_commission_rate - 
+                                              marketplaceSettings.fees.platform_fee_rate - 
+                                              marketplaceSettings.fees.transaction_fee_rate).toFixed(1)}%
+                                        </div>
+                                        <div className="text-sm font-medium text-emerald-700">Your Take Rate</div>
+                                        <div className="text-xs text-emerald-600 mt-1">
+                                            What you earn
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Additional Settings Info */}
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                    <div className="flex justify-between items-center p-2 border rounded">
+                                        <span className="text-gray-600">Currency:</span>
+                                        <span className="font-medium">{marketplaceSettings.general.currency}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-2 border rounded">
+                                        <span className="text-gray-600">Tax Rate:</span>
+                                        <span className="font-medium">
+                                            {marketplaceSettings.tax.tax_enabled ? `${marketplaceSettings.tax.tax_rate}%` : 'Disabled'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-2 border rounded">
+                                        <span className="text-gray-600">Free Shipping:</span>
+                                        <span className="font-medium">{formatCurrency(marketplaceSettings.shipping.free_shipping_threshold)}+</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Filters */}
                     <Card className="mb-6">
@@ -642,7 +758,7 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
                                     <CardContent className="p-6">
                                         {/* Order Header */}
                                         <div className="flex justify-between items-start mb-4">
-                                            <div>
+                                            <div className="flex-1">
                                                 <h3 className="text-lg font-semibold">
                                                     Order #{order.order_number}
                                                 </h3>
@@ -651,13 +767,52 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
                                                         <Calendar className="h-4 w-4 mr-1" />
                                                         {formatDate(order.created_at)}
                                                     </div>
-                                                    <div className="flex items-center">
-                                                        <Users className="h-4 w-4 mr-1" />
-                                                        {order.user.name}
+                                                    {order.payment_method && (
+                                                        <div className="flex items-center">
+                                                            <CreditCard className="h-4 w-4 mr-1" />
+                                                            {order.payment_method === 'cash_on_delivery' ? 'COD' : 'Online'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Minimized Customer Details */}
+                                                <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                                                    <div className="flex items-center gap-4 text-sm">
+                                                        <div className="flex items-center">
+                                                            <Users className="h-4 w-4 mr-1 text-gray-500" />
+                                                            <span className="font-medium">{order.user.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center">
+                                                            <span className="text-gray-500">•</span>
+                                                            <span className="ml-2">{order.user.email}</span>
+                                                        </div>
+                                                        {order.user.phone && (
+                                                            <>
+                                                                <div className="flex items-center">
+                                                                    <span className="text-gray-500">•</span>
+                                                                    <span className="ml-2">{order.user.phone}</span>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                        {order.shipping_address && (
+                                                            <div className="flex items-center">
+                                                                <MapPin className="h-4 w-4 mr-1 text-gray-500" />
+                                                                <span className="text-gray-600">
+                                                                    {typeof order.shipping_address === 'object' && order.shipping_address !== null
+                                                                        ? (() => {
+                                                                            const addr = order.shipping_address as ShippingAddress;
+                                                                            return `${addr.city || ''}${addr.state ? `, ${addr.state}` : ''}`.trim() || 'Address Available';
+                                                                        })()
+                                                                        : 'Delivery Address Provided'
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
+                                            
+                                            <div className="text-right ml-4">
                                                 <div className="flex gap-2 mb-2">
                                                     <Badge className={getStatusColor(order.status)}>
                                                         {order.status}
@@ -674,25 +829,7 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
 
                                         <Separator className="mb-4" />
 
-                                        {/* Customer Information */}
-                                        <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                                            <h4 className="font-medium mb-2">Customer Information</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                                <div>
-                                                    <span className="font-medium">Email:</span> {order.user.email}
-                                                </div>
-                                                {order.user.phone && (
-                                                    <div>
-                                                        <span className="font-medium">Phone:</span> {order.user.phone}
-                                                    </div>
-                                                )}
-                                                {order.shipping_address && (
-                                                    <div>
-                                                        <span className="font-medium">Address:</span> {order.shipping_address.city}, {order.shipping_address.state}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+
 
                                         {/* Order Items */}
                                         <div className="space-y-3 mb-4">
@@ -716,6 +853,29 @@ export default function VendorOrdersPage({ orders, filters, stats, user_type }: 
                                                         <p className="text-sm text-gray-600">
                                                             SKU: {item.product_sku || 'N/A'} • Quantity: {item.quantity} × {formatCurrency(item.unit_price)}
                                                         </p>
+                                                        {/* Product shipping & payment info for vendor reference */}
+                                                        <div className="flex gap-2 mt-1">
+                                                            {item.product_payment_methods?.includes('cod') && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    COD Enabled
+                                                                </Badge>
+                                                            )}
+                                                            {item.product_shipping_option === 'free' ? (
+                                                                <Badge variant="outline" className="text-xs text-emerald-600">
+                                                                    Free Shipping
+                                                                </Badge>
+                                                            ) : item.product_extra_fee && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    Shipping: {formatCurrency(item.product_extra_fee)}
+                                                                </Badge>
+                                                            )}
+                                                            {item.product_delivery_time && (
+                                                                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                                                    <Clock className="h-3 w-3" />
+                                                                    {item.product_delivery_time}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div className="text-right">
                                                         <p className="font-semibold">

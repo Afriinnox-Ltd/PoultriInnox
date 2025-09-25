@@ -14,7 +14,8 @@ import {
     AlertTriangle,
     CheckCircle,
     Clock,
-    Eye
+    Eye,
+    Settings
 } from 'lucide-react';
 
 interface MarketplaceAdminDashboardProps {
@@ -235,6 +236,23 @@ export default function MarketplaceAdminDashboard({
                                 <a href="/admin/marketplace/payments">
                                     <DollarSign className="h-4 w-4 mr-2" />
                                     Manage Payments
+                                </a>
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                        <CardHeader>
+                            <CardTitle className="text-sm">Marketplace Settings</CardTitle>
+                            <CardDescription>
+                                Configure taxes, commissions, and platform fees
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button variant="outline" size="sm" asChild className="w-full">
+                                <a href="/admin/marketplace/settings">
+                                    <Settings className="h-4 w-4 mr-2" />
+                                    Settings
                                 </a>
                             </Button>
                         </CardContent>

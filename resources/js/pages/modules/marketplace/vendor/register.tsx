@@ -9,11 +9,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
     Store,
-    FileText,
-    Mail,
-    Phone,
-    MapPin,
-    Globe,
+    FileText, 
+    Phone, 
     CreditCard,
     Shield,
     CheckCircle,
@@ -23,6 +20,7 @@ import {
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface VendorRegistrationProps {
     user: {
@@ -42,10 +40,11 @@ interface VendorRegistrationProps {
         status: 'pending' | 'approved' | 'rejected' | 'suspended';
         is_verified: boolean;
         created_at: string;
-    };
+    }; 
 }
 
 export default function VendorRegistration({ user, existing_application }: VendorRegistrationProps) {
+ 
     const [formData, setFormData] = useState({
         business_name: existing_application?.business_name || '',
         business_registration_number: '',
@@ -64,7 +63,7 @@ export default function VendorRegistration({ user, existing_application }: Vendo
         specializations: ''
     });
 
-    const [documents, setDocuments] = useState<File[]>([]);
+    const [business_documents, setBusinessDocuments] = useState<File[]>([]);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,12 +96,12 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                 return true;
             });
 
-            setDocuments(prev => [...prev, ...newFiles]);
+            setBusinessDocuments(prev => [...prev, ...newFiles]);
         }
     };
 
     const removeDocument = (index: number) => {
-        setDocuments(prev => prev.filter((_, i) => i !== index));
+        setBusinessDocuments(prev => prev.filter((_, i) => i !== index));
     };
 
     const validateForm = () => {
@@ -150,6 +149,10 @@ export default function VendorRegistration({ user, existing_application }: Vendo
             newErrors.bank_account_name = 'Bank account name is required';
         }
 
+        if (business_documents.length === 0) {
+            newErrors.business_documents = 'At least one verification document is required';
+        }
+
         if (!agreeToTerms) {
             newErrors.terms = 'You must agree to the terms and conditions';
         }
@@ -176,17 +179,16 @@ export default function VendorRegistration({ user, existing_application }: Vendo
             });
 
             // Add documents
-            documents.forEach((file, index) => {
-                formDataToSend.append(`documents[${index}]`, file);
+            business_documents.forEach((file, index) => {
+                formDataToSend.append(`business_documents[${index}]`, file);
             });
 
             router.post('/marketplace/vendor/register', formDataToSend , {
-                onSuccess: (response) => {
+                onSuccess: () => {
                     toast.success("Registration successful! Your application is under review.")
                 },
-                onError:(error) =>{
-                        console.log(error)
-                    toast.error("An error occurred while submitting your application. Please try again later.");
+                onError:(error) =>{ 
+                    toast.error(error.message || 'An error occurred. Please try again.');
                 }
             })
         } catch (error) {
@@ -286,27 +288,27 @@ export default function VendorRegistration({ user, existing_application }: Vendo
             <div className="py-6">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     {/* Header Section */}
-                    <Card className="mb-8 bg-gradient-to-r from-blue-50 to-emerald-50">
+                    <Card className="mb-8 bg-emerald-500">
                         <CardContent className="p-6">
                             <div className="text-center">
-                                <Store className="h-12 w-12 text-emerald-600 mx-auto mb-4" />
-                                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                                <Store className="h-12 w-12 text-white mx-auto mb-4" />
+                                <h1 className="text-2xl font-bold text-white mb-2">
                                     Join Our Marketplace
                                 </h1>
-                                <p className="text-gray-600 mb-4">
+                                <p className="text-emerald-100  mb-4">
                                     Start selling your poultry equipment and supplies to thousands of customers
                                 </p>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 text-emerald-100 md:grid-cols-3 gap-4">
                                     <div className="flex items-center justify-center">
-                                        <CheckCircle className="h-5 w-5 text-emerald-600 mr-2" />
+                                        <CheckCircle className="h-5 w-5 text-emerald-100 mr-2" />
                                         <span className="text-sm">No Setup Fees</span>
                                     </div>
                                     <div className="flex items-center justify-center">
-                                        <CheckCircle className="h-5 w-5 text-emerald-600 mr-2" />
+                                        <CheckCircle className="h-5 w-5 text-emerald-100 mr-2" />
                                         <span className="text-sm">Marketing Support</span>
                                     </div>
                                     <div className="flex items-center justify-center">
-                                        <CheckCircle className="h-5 w-5 text-emerald-600 mr-2" />
+                                        <CheckCircle className="h-5 w-5 text-emerald-100 mr-2" />
                                         <span className="text-sm">24/7 Customer Support</span>
                                     </div>
                                 </div>
@@ -357,19 +359,24 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <Label htmlFor="business_type">Business Type *</Label>
-                                        <select
-                                            id="business_type"
+                                        <Select
                                             value={formData.business_type}
-                                            onChange={(e) => handleInputChange('business_type', e.target.value)}
-                                            className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errors.business_type ? 'border-red-500' : ''}`}
+                                            onValueChange={(value) => handleInputChange('business_type', value)}
                                         >
-                                            <option value="">Select business type</option>
-                                            <option value="individual">Individual</option>
-                                            <option value="company">Company</option>
-                                            <option value="cooperative">Cooperative</option>
-                                        </select>
+                                            <SelectTrigger className={errors.business_type ? 'border-red-500' : ''}>
+                                                <SelectValue placeholder="Select business type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="individual">Individual/Sole Proprietorship</SelectItem>
+                                                <SelectItem value="partnership">Partnership</SelectItem>
+                                                <SelectItem value="corporation">Corporation</SelectItem>
+                                                <SelectItem value="llc">Limited Liability Company (LLC)</SelectItem>
+                                                <SelectItem value="cooperative">Cooperative</SelectItem>
+                                                <SelectItem value="nonprofit">Non-Profit Organization</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                         {errors.business_type && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.business_type}</p>
+                                            <p className="text-sm text-red-500 mt-1">{errors.business_type}</p>
                                         )}
                                     </div>
 
@@ -387,15 +394,6 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="tax_number">Tax Number / VAT ID</Label>
-                                        <Input
-                                            id="tax_number"
-                                            value={formData.tax_number}
-                                            onChange={(e) => handleInputChange('tax_number', e.target.value)}
-                                            placeholder="Tax identification number"
-                                        />
-                                    </div>
 
                                     <div>
                                         <Label htmlFor="specializations">Specializations</Label>
@@ -575,7 +573,7 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div>
-                                    <Label htmlFor="documents">Upload Documents (Optional)</Label>
+                                    <Label htmlFor="documents">Upload Verification Documents <span className="text-red-500">*</span></Label>
                                     <div className="mt-2">
                                         <label htmlFor="file-upload" className="cursor-pointer">
                                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
@@ -598,10 +596,10 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                         </label>
                                     </div>
 
-                                    {documents.length > 0 && (
+                                    {business_documents.length > 0 && (
                                         <div className="mt-4 space-y-2">
                                             <p className="text-sm font-medium">Uploaded Documents:</p>
-                                            {documents.map((file, index) => (
+                                            {business_documents.map((file, index) => (
                                                 <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                                                     <span className="text-sm">{file.name}</span>
                                                     <Button
@@ -617,11 +615,15 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                         </div>
                                     )}
 
+                                    {errors.business_documents && (
+                                        <p className="text-sm text-red-500">{errors.business_documents}</p>
+                                    )}
+
                                     <div className="bg-blue-50 p-3 rounded-lg">
-                                        <p className="text-sm text-blue-700">
+                                        <p className="text-sm text-emerald-700">
                                             <strong>Helpful documents to include:</strong>
                                         </p>
-                                        <ul className="text-xs text-blue-600 mt-1 list-disc list-inside">
+                                        <ul className="text-xs text-emerald-600 mt-1 list-disc list-inside">
                                             <li>Business license or registration</li>
                                             <li>Tax identification documents</li>
                                             <li>Product catalogs or brochures</li>
@@ -646,11 +648,11 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                         <div className="text-sm">
                                             <Label htmlFor="terms" className="cursor-pointer">
                                                 I agree to the{' '}
-                                                <a href="/terms" target="_blank" className="text-blue-600 hover:underline">
+                                                <a href="/terms" target="_blank" className="text-emerald-600 hover:underline">
                                                     Terms of Service
                                                 </a>{' '}
                                                 and{' '}
-                                                <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">
+                                                <a href="/privacy" target="_blank" className="text-emerald-600 hover:underline">
                                                     Privacy Policy
                                                 </a>
                                                 , and understand that my application will be reviewed before approval.

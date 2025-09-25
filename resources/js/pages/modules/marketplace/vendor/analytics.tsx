@@ -1,0 +1,435 @@
+import React from 'react';
+import { Head, Link } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+    Package,
+    TrendingUp,
+    ShoppingCart,
+    DollarSign,
+    AlertTriangle,
+    ArrowLeft,
+    BarChart3,
+    Activity
+} from 'lucide-react';
+
+interface Product {
+    id: number;
+    name: string;
+    slug: string;
+    stock_quantity?: number;
+    category?: {
+        name: string;
+    };
+}
+
+interface TopSellingProduct {
+    id: number;
+    name: string;
+    slug: string;
+    total_sold: number;
+    total_revenue: number;
+}
+
+interface MonthlySale {
+    month: string;
+    total_orders: number;
+    total_revenue: number;
+}
+
+interface CategoryPerformance {
+    category_name: string;
+    product_count: number;
+    total_sold: number;
+    total_revenue: number;
+}
+
+interface VendorAnalyticsProps {
+    stats: {
+        totalProducts: number;
+        activeProducts: number;
+        lowStockProducts: number;
+        outOfStockProducts: number;
+        totalOrders: number;
+        completedOrders: number;
+        pendingOrders: number;
+        totalRevenue: number;
+    };
+    topSellingProducts: TopSellingProduct[];
+    lowStockItems: Product[];
+    recentProducts: Product[];
+    monthlySales: MonthlySale[];
+    categoryPerformance: CategoryPerformance[];
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+        };
+        general: {
+            currency: string;
+            currency_symbol: string;
+        };
+    };
+}
+
+export default function VendorAnalytics({
+    stats,
+    topSellingProducts,
+    lowStockItems,
+    monthlySales,
+    categoryPerformance,
+    marketplaceSettings
+}: VendorAnalyticsProps) {
+    const formatCurrency = (amount: number) => {
+        const currency = marketplaceSettings?.general?.currency || 'RWF';
+        
+        if (currency === 'RWF') {
+            return new Intl.NumberFormat('rw-RW', { 
+                style: 'currency', 
+                currency: 'RWF',
+                minimumFractionDigits: 0 
+            }).format(amount);
+        }
+        
+        const symbol = marketplaceSettings?.general?.currency_symbol || '$';
+        return `${symbol}${amount.toLocaleString()}`;
+    };
+
+    const formatMonth = (monthStr: string) => {
+        const [year, month] = monthStr.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    };
+
+    const completionRate = stats.totalOrders > 0 
+        ? ((stats.completedOrders / stats.totalOrders) * 100).toFixed(1) 
+        : '0';
+
+    return (
+        <AppLayout>
+            <Head title="Vendor Analytics" />
+
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href="/marketplace/vendor/dashboard">
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                               <span className='lg:block hidden'>Back to Dashboard</span> 
+                            </Link>
+                        </Button>
+                        <div>
+                            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Analytics Dashboard</h2>
+                            <p className="text-muted-foreground text-sm sm:text-base">
+                                Track your store performance and product insights
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Overview Stats */}
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {stats.activeProducts} active
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.totalOrders}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {completionRate}% completion rate
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
+                            <p className="text-xs text-muted-foreground">
+                                From {stats.completedOrders} completed orders
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Stock Alerts</CardTitle>
+                            <AlertTriangle className="h-4 w-4 text-emerald-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-emerald-500">
+                                {stats.lowStockProducts + stats.outOfStockProducts}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {stats.outOfStockProducts} out of stock
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Earnings Breakdown */}
+                {marketplaceSettings && (
+                    console.log(marketplaceSettings),
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <DollarSign className="h-5 w-5 mr-2" />
+                                Earnings Breakdown
+                            </CardTitle>
+                            <CardDescription>
+                                Based on your total revenue of {formatCurrency(stats.totalRevenue)}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {(() => {
+
+                                    const commission = marketplaceSettings.commission?.commission_type === 'percentage' 
+                                        ? (stats.totalRevenue * marketplaceSettings.commission.default_commission_rate) / 100
+                                        : marketplaceSettings.commission.default_commission_rate * stats.completedOrders;
+                                    
+                                    const platformFee = (stats.totalRevenue * marketplaceSettings.fees.platform_fee_rate) / 100;
+                                    const transactionFee = (stats.totalRevenue * marketplaceSettings.fees.transaction_fee_rate) / 100;
+                                    const vendorEarnings = stats.totalRevenue - commission - platformFee - transactionFee;
+
+                                    return (
+                                        <>
+                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                                <div className="text-2xl font-bold text-emerald-900">
+                                                    {formatCurrency(stats.totalRevenue)}
+                                                </div>
+                                                <div className="text-sm font-medium text-emerald-700">Gross Revenue</div>
+                                                <div className="text-xs text-emerald-600 mt-1">
+                                                    Total sales amount
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                                <div className="text-2xl font-bold text-emerald-900">
+                                                    {formatCurrency(commission)}
+                                                </div>
+                                                <div className="text-sm font-medium text-emerald-700">Commission</div>
+                                                <div className="text-xs text-emerald-600 mt-1">
+                                                    {marketplaceSettings.commission.default_commission_rate}% 
+                                                    {marketplaceSettings.commission.commission_type === 'percentage' ? ' of sales' : ' per order'}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                                <div className="text-2xl font-bold text-emerald-900">
+                                                    {formatCurrency(platformFee + transactionFee)}
+                                                </div>
+                                                <div className="text-sm font-medium text-emerald-700">Total Fees</div>
+                                                <div className="text-xs text-emerald-600 mt-1">
+                                                    Platform + Transaction
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                                <div className="text-2xl font-bold text-emerald-900">
+                                                    {formatCurrency(vendorEarnings)}
+                                                </div>
+                                                <div className="text-sm font-medium text-emerald-700">Your Earnings</div>
+                                                <div className="text-xs text-emerald-600 mt-1">
+                                                    {((vendorEarnings / stats.totalRevenue) * 100).toFixed(1)}% of revenue
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+                    {/* Top Selling Products */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5" />
+                                Top Selling Products
+                            </CardTitle>
+                            <CardDescription>
+                                Your best performing products by sales volume
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {topSellingProducts.length > 0 ? (
+                                <div className="space-y-4">
+                                    {topSellingProducts.map((product, index) => (
+                                        <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-full text-sm font-bold text-emerald-600">
+                                                    {index + 1}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium">{product.name}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {product.total_sold} units sold
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold">{formatCurrency(product.total_revenue)}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                                    <p className="text-muted-foreground">No sales data available yet</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Low Stock Alert */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-emerald-500" />
+                                Low Stock Alerts
+                            </CardTitle>
+                            <CardDescription>
+                                Products that need restocking
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {lowStockItems.length > 0 ? (
+                                <div className="space-y-4">
+                                    {lowStockItems.map((product) => (
+                                        <div key={product.id} className="flex items-center justify-between p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
+                                            <div>
+                                                <p className="font-medium">{product.name}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {product.category?.name}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <Badge variant="destructive" className="bg-emerald-500">
+                                                    {product.stock_quantity} left
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Activity className="h-12 w-12 mx-auto text-emerald-500 mb-4" />
+                                    <p className="text-muted-foreground">All products well stocked!</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Monthly Sales Trend */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <BarChart3 className="h-5 w-5" />
+                            Sales Trend (Last 6 Months)
+                        </CardTitle>
+                        <CardDescription>
+                            Monthly revenue and order volume
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {monthlySales.length > 0 ? (
+                            <div className="space-y-4">
+                                {monthlySales.map((sale) => {
+                                    const maxRevenue = Math.max(...monthlySales.map(s => s.total_revenue));
+                                    const percentage = maxRevenue > 0 ? (sale.total_revenue / maxRevenue) * 100 : 0;
+                                    return (
+                                        <div key={sale.month} className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">{formatMonth(sale.month)}</span>
+                                                <div className="text-right">
+                                                    <p className="font-bold">{formatCurrency(sale.total_revenue)}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {sale.total_orders} orders
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className="bg-emerald-600 h-2 rounded-full transition-all"
+                                                    style={{ width: `${percentage}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                                <p className="text-muted-foreground">No sales data for the last 6 months</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Category Performance */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Category Performance</CardTitle>
+                        <CardDescription>
+                            Sales breakdown by product category
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {categoryPerformance.length > 0 ? (
+                            <div className="space-y-4">
+                                {categoryPerformance.map((category) => (
+                                    <div key={category.category_name} className="flex items-center justify-between p-4 border rounded-lg">
+                                        <div>
+                                            <p className="font-medium">{category.category_name}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {category.product_count} products • {category.total_sold} units sold
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold">{formatCurrency(category.total_revenue)}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                                <p className="text-muted-foreground">No category data available</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </AppLayout>
+    );
+}

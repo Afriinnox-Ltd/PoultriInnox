@@ -21,7 +21,8 @@ import {
     Shield,
     AlertCircle,
     CheckCircle,
-    ArrowLeft
+    ArrowLeft,
+    Clock
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import WelcomeNav from '@/components/navigation/WelcomeNav';
@@ -40,6 +41,11 @@ interface CheckoutPageProps {
                     id: number;
                     business_name: string;
                 };
+                payment_methods?: string[];
+                shipping_option?: string;
+                extra_fee?: number;
+                delivery_time?: string;
+                return_policy?: string;
             };
             variant?: {
                 id: number;
@@ -75,6 +81,7 @@ export default function CheckoutPage({
     total_amount = 0,
     user_addresses = []
 }: CheckoutPageProps) {
+
     const { auth } = usePage<SharedData>().props;
     const user = auth?.user;
 
@@ -98,7 +105,7 @@ export default function CheckoutPage({
         country: ''
     });
 
-    const [paymentMethod, setPaymentMethod] = useState<'cash_on_delivery'>('cash_on_delivery');
+    const [paymentMethod, setPaymentMethod] = useState<'online' | 'cash_on_delivery'>('cash_on_delivery');
     const [sameBillingAddress, setSameBillingAddress] = useState(true);
     const [selectedShippingAddress, setSelectedShippingAddress] = useState<number | null>(
         user_addresses.find(addr => addr.is_default)?.id || null
@@ -131,6 +138,61 @@ export default function CheckoutPage({
         groups[vendorId].items.push(item);
         return groups;
     }, {} as Record<number, { vendor: any; items: typeof cartItems }>);
+
+    // Calculate available payment methods across all products
+    const availablePaymentMethods = new Set<string>();
+    cartItems.forEach(item => {
+        console.log('Processing item for payment methods:', item);
+        if (item.product?.payment_methods) {
+            let methods: string[] = [];
+            
+            if (typeof item.product.payment_methods === 'string') {
+                try {
+                    // Try to parse as JSON first
+                    methods = JSON.parse(item.product.payment_methods);
+                } catch {
+                    // Fallback to comma-separated string
+                    methods = item.product.payment_methods.split(',').map((m: string) => m.trim());
+                }
+            } else if (Array.isArray(item.product.payment_methods)) {
+                methods = item.product.payment_methods;
+            }
+            
+            methods.forEach(method => {
+                // Map "cod" to "cash_on_delivery" for consistency
+                const normalizedMethod = method === 'cod' ? 'cash_on_delivery' : method;
+                availablePaymentMethods.add(normalizedMethod);
+            });
+        }
+    });
+
+    // Debug: Log available payment methods
+    console.log('Available payment methods:', Array.from(availablePaymentMethods));
+    console.log('Available payment methods size:', availablePaymentMethods.size);
+    console.log('Cart items with payment methods:', cartItems.map(item => ({
+        name: item.product?.name,
+        payment_methods: item.product?.payment_methods,
+        typeof_payment_methods: typeof item.product?.payment_methods
+    })));
+    console.log('Raw cart items:', cartItems);
+
+    // Calculate total shipping costs
+    const calculateShippingCosts = () => {
+        let totalShipping = 0;
+        Object.values(itemsByVendor).forEach(({ items }) => {
+            // Get the highest shipping cost for items from this vendor
+            let vendorShipping = 0;
+            items.forEach(item => {
+                if (item.product?.shipping_option === 'paid' && item.product?.extra_fee) {
+                    vendorShipping = Math.max(vendorShipping, item.product.extra_fee);
+                }
+            });
+            totalShipping += vendorShipping;
+        });
+        return totalShipping;
+    };
+
+    const calculatedShippingCost = calculateShippingCosts();
 
     // Early return if cart is empty
     if (!cart || cartItems.length === 0) {
@@ -257,6 +319,16 @@ export default function CheckoutPage({
             return false;
         }
 
+        // Check if payment methods are available
+        if (availablePaymentMethods.size === 0) {
+            return false;
+        }
+
+        // Check if selected payment method is supported
+        if (!availablePaymentMethods.has(paymentMethod)) {
+            return false;
+        }
+
         // Determine which shipping address to validate
         const shipping = (useCustomShipping || user_addresses.length === 0) ? shippingAddress :
             user_addresses.find(addr => addr.id === selectedShippingAddress);
@@ -276,6 +348,9 @@ export default function CheckoutPage({
 
         console.log('Form validation debug:', {
             hasCart: !!(cart && cartItems.length > 0),
+            availablePaymentMethods: Array.from(availablePaymentMethods),
+            selectedPaymentMethod: paymentMethod,
+            paymentMethodSupported: availablePaymentMethods.has(paymentMethod),
             shipping: shipping,
             billing: billing,
             shippingValid,
@@ -613,22 +688,62 @@ export default function CheckoutPage({
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center">
-                                        <Truck className="h-5 w-5 mr-2" />
+                                        <CreditCard className="h-5 w-5 mr-2" />
                                         Payment Method
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="grid grid-cols-1 gap-4">
-                                        <div
-                                            className="p-4 border rounded-lg border-emerald-500 bg-emerald-50"
-                                        >
-                                            <div className="flex items-center">
-                                                <Truck className="h-5 w-5 mr-3 text-emerald-600" />
-                                                <span className="font-medium text-emerald-700">Cash on Delivery</span>
-                                            </div>
-                                            <p className="text-sm text-emerald-600 mt-1">Pay when you receive your order</p>
+                                    {availablePaymentMethods.size > 0 ? (
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {/* Online Payment - only show if supported */}
+                                            {availablePaymentMethods.has('online') && (
+                                                <div
+                                                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                                        paymentMethod === 'online'
+                                                            ? 'border-blue-500 bg-blue-50'
+                                                            : 'border-gray-200 hover:border-gray-300'
+                                                    }`}
+                                                    onClick={() => setPaymentMethod('online')}
+                                                >
+                                                    <div className="flex items-center">
+                                                        <CreditCard className="h-5 w-5 mr-3 text-blue-600" />
+                                                        <span className="font-medium text-blue-700">Online Payment</span>
+                                                    </div>
+                                                    <p className="text-sm text-blue-600 mt-1">Pay securely with card or mobile money</p>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Cash on Delivery - only show if supported */}
+                                            {availablePaymentMethods.has('cash_on_delivery') && (
+                                                <div
+                                                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                                        paymentMethod === 'cash_on_delivery'
+                                                            ? 'border-emerald-500 bg-emerald-50'
+                                                            : 'border-gray-200 hover:border-gray-300'
+                                                    }`}
+                                                    onClick={() => setPaymentMethod('cash_on_delivery')}
+                                                >
+                                                    <div className="flex items-center">
+                                                        <Truck className="h-5 w-5 mr-3 text-emerald-600" />
+                                                        <span className="font-medium text-emerald-700">Cash on Delivery</span>
+                                                    </div>
+                                                    <p className="text-sm text-emerald-600 mt-1">Pay when you receive your order</p>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                    ) : null}
+
+                                    {availablePaymentMethods.size === 0 && (
+                                        <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                                            <div className="flex items-center text-gray-600 mb-1">
+                                                <AlertCircle className="h-4 w-4 mr-2" />
+                                                <span className="text-sm font-medium">No Payment Methods Configured</span>
+                                            </div>
+                                            <p className="text-sm text-gray-500">
+                                                Payment methods have not been configured for the items in your cart. Please contact the vendor for payment options.
+                                            </p>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
 
@@ -657,28 +772,59 @@ export default function CheckoutPage({
                                 <CardContent className="space-y-4">
                                     {/* Order Items by Vendor */}
                                     <div className="space-y-4">
-                                        {Object.values(itemsByVendor).map(({ vendor, items }) => (
-                                            <div key={vendor.id} className="space-y-2">
-                                                <div className="flex items-center text-sm font-medium text-gray-700">
-                                                    <Package className="h-4 w-4 mr-2" />
-                                                    {vendor.business_name}
-                                                </div>
-                                                {items.map((item) => (
-                                                    <div key={item.id} className="flex justify-between text-sm">
-                                                        <div className="flex-1">
-                                                            <div className="font-medium">{item.product?.name || 'Unknown Product'}</div>
-                                                            {item.variant && (
-                                                                <div className="text-gray-600 text-xs">
-                                                                    {item.variant.name}: {item.variant.value}
-                                                                </div>
-                                                            )}
-                                                            <div className="text-gray-600">Qty: {item.quantity}</div>
+                                        {Object.values(itemsByVendor).map(({ vendor, items }) => {
+                                            // Calculate vendor shipping cost
+                                            let vendorShipping = 0;
+                                            let hasShippingInfo = false;
+                                            let deliveryTime = '';
+                                            
+                                            items.forEach(item => {
+                                                if (item.product?.shipping_option === 'paid' && item.product?.extra_fee) {
+                                                    vendorShipping = Math.max(vendorShipping, item.product.extra_fee);
+                                                }
+                                                if (item.product?.delivery_time) {
+                                                    deliveryTime = item.product.delivery_time;
+                                                    hasShippingInfo = true;
+                                                }
+                                            });
+
+                                            return (
+                                                <div key={vendor.id} className="border rounded-lg p-3 space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center text-sm font-medium text-gray-700">
+                                                            <Package className="h-4 w-4 mr-2" />
+                                                            {vendor.business_name}
                                                         </div>
-                                                        <div className="font-medium">{formatCurrency(item.total_price || 0)}</div>
+                                                        {vendorShipping > 0 && (
+                                                            <Badge variant="outline" className="text-xs">
+                                                                Shipping: {formatCurrency(vendorShipping)}
+                                                            </Badge>
+                                                        )}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        ))}
+                                                    
+                                                    {items.map((item) => (
+                                                        <div key={item.id} className="flex justify-between text-sm pl-6">
+                                                            <div className="flex-1">
+                                                                <div className="font-medium">{item.product?.name || 'Unknown Product'}</div>
+                                                                {item.variant && (
+                                                                    <div className="text-gray-600 text-xs">
+                                                                        {item.variant.name}: {item.variant.value}
+                                                                    </div>
+                                                                )}
+                                                                <div className="text-gray-600">Qty: {item.quantity}</div>
+                                                                {item.product?.delivery_time && (
+                                                                    <div className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                                                                        <Clock className="h-3 w-3" />
+                                                                        {item.product.delivery_time}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="font-medium">{formatCurrency(item.total_price || 0)}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
 
                                     <Separator />
@@ -700,7 +846,7 @@ export default function CheckoutPage({
                                         <div className="flex justify-between">
                                             <span>Shipping</span>
                                             <span>
-                                                {shipping_cost === 0 ? 'Free' : formatCurrency(shipping_cost)}
+                                                {calculatedShippingCost === 0 ? 'Free' : formatCurrency(calculatedShippingCost)}
                                             </span>
                                         </div>
 
@@ -714,7 +860,7 @@ export default function CheckoutPage({
 
                                     <div className="flex justify-between text-lg font-bold">
                                         <span>Total</span>
-                                        <span>{formatCurrency(total_amount)}</span>
+                                        <span>{formatCurrency(subtotal + calculatedShippingCost + tax_amount - discount_amount)}</span>
                                     </div>
 
                                     {/* Security Info */}
@@ -751,7 +897,12 @@ export default function CheckoutPage({
                                     {!isFormValid() && (
                                         <div className="flex items-center text-orange-600 text-sm">
                                             <AlertCircle className="h-4 w-4 mr-2" />
-                                            Please complete all required fields
+                                            {availablePaymentMethods.size === 0 
+                                                ? 'No payment methods available for cart items'
+                                                : !availablePaymentMethods.has(paymentMethod)
+                                                ? 'Selected payment method not supported'
+                                                : 'Please complete all required fields'
+                                            }
                                         </div>
                                     )}
 
