@@ -13,7 +13,8 @@ import {
     LogOut,
     Shield,
     DollarSign,
-    ChevronRight
+    ChevronRight,
+    Crown
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -21,9 +22,21 @@ interface AdminLayoutProps {
     children: React.ReactNode;
 }
 
+interface NavigationItem {
+    name: string;
+    href: string;
+    icon?: React.ComponentType<any>;
+    hasSubMenu?: boolean;
+    subItems?: Array<{
+        name: string;
+        href: string;
+    }>;
+}
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
     const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
-        marketplace: window.location.pathname.startsWith('/admin/marketplace')
+        marketplace: window.location.pathname.startsWith('/admin/marketplace'),
+        subscriptions: window.location.pathname.startsWith('/admin/marketplace/subscription-plans')
     });
 
     const toggleSection = (section: string) => {
@@ -40,17 +53,33 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         { name: 'Users', href: '/admin/users', icon: Users },
     ];
 
-    const marketplaceNavigation = [
+    const subscriptionSubNavigation = [
+        { name: 'Dashboard', href: '/admin/marketplace/subscriptions' },
+        { name: 'Manage Plans', href: '/admin/marketplace/subscription-plans' },
+        { name: 'User Subscriptions', href: '/admin/marketplace/subscription-plans/user-subscriptions' },
+        { name: 'Analytics', href: '/admin/marketplace/subscription-plans/analytics' },
+    ];
+
+    const marketplaceNavigation: NavigationItem[] = [
         { name: 'Overview', href: '/admin/marketplace' },
         { name: 'Products', href: '/admin/marketplace/products' },
         { name: 'Vendors', href: '/admin/marketplace/vendors' },
         { name: 'Orders', href: '/admin/marketplace/orders' },
         { name: 'Categories', href: '/admin/marketplace/categories' },
         { name: 'Payments', href: '/admin/marketplace/payments' },
+        {
+            name: 'Subscriptions',
+            href: '/admin/marketplace/subscriptions',
+            icon: Crown,
+            subItems: subscriptionSubNavigation,
+        },
         { name: 'Analytics', href: '/admin/marketplace/analytics' },
-    ];
-
-    return (
+        { 
+            name: 'Settings', 
+            href: '/admin/marketplace/settings',
+            icon: Settings 
+        },
+    ];    return (
         <div className="min-h-screen bg-gray-50">
             {/* Sidebar */}
             <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
@@ -125,6 +154,55 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                             const isSubActive = window.location.pathname === subItem.href ||
                                                 (subItem.href !== '/admin/marketplace' && window.location.pathname.startsWith(subItem.href));
 
+                                            if (subItem.subItems && subItem.name === 'Subscriptions') {
+                                                const SubItemIcon = subItem.icon || Crown;
+                                                return (
+                                                    <div key={subItem.name} className="space-y-1">
+                                                        <button
+                                                            onClick={() => toggleSection('subscriptions')}
+                                                            className={cn(
+                                                                'group flex w-full items-center px-2 py-2 text-sm font-medium rounded-md',
+                                                                window.location.pathname.startsWith('/admin/marketplace/subscription')
+                                                                    ? 'bg-gray-100 text-gray-900'
+                                                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                                            )}
+                                                        >
+                                                            <SubItemIcon className="mr-3 h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-gray-500" />
+                                                            <span className="flex-1 text-left">{subItem.name}</span>
+                                                            <ChevronRight
+                                                                className={cn(
+                                                                    'ml-auto h-3 w-3 transform transition-transform duration-200',
+                                                                    expandedSections.subscriptions ? 'rotate-90' : ''
+                                                                )}
+                                                            />
+                                                        </button>
+
+                                                        {expandedSections.subscriptions && (
+                                                            <div className="ml-6 space-y-1">
+                                                                {subItem.subItems.map((subSubItem) => {
+                                                                    const isSubSubActive = window.location.pathname === subSubItem.href;
+
+                                                                    return (
+                                                                        <Link
+                                                                            key={subSubItem.name}
+                                                                            href={subSubItem.href}
+                                                                            className={cn(
+                                                                                'group flex items-center px-2 py-1 text-xs font-medium rounded-md',
+                                                                                isSubSubActive
+                                                                                    ? 'bg-gray-100 text-gray-900'
+                                                                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                                                            )}
+                                                                        >
+                                                                            <span className="ml-7">{subSubItem.name}</span>
+                                                                        </Link>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+
                                             return (
                                                 <Link
                                                     key={subItem.name}
@@ -163,10 +241,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         </Button>
 
                         <div className="flex items-center space-x-4">
-                            <Link href="/logout" method="post" as="button">
-                                <Button variant="ghost" size="icon">
-                                    <LogOut className="h-5 w-5" />
-                                </Button>
+                            <Link 
+                                href="/logout" 
+                                method="post" 
+                                as="button"
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9"
+                            >
+                                <LogOut className="h-5 w-5" />
                             </Link>
                         </div>
                     </div>
@@ -182,7 +263,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </main>
             </div>
 
-            <Toaster position="top-right" richColors />
+            <Toaster position="bottom-right" richColors />
         </div>
     );
 }

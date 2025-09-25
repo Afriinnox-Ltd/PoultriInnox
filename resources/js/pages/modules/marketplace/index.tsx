@@ -83,7 +83,7 @@ export default function MarketplaceIndex({
         >
             <Head title="Marketplace" />
 
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between lg:flex-row flex-col gap-4 lg:items-center">
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
                     Marketplace
                 </h2>

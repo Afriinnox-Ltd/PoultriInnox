@@ -5,6 +5,8 @@ namespace App\Modules\Marketplace\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Marketplace\Models\Payment;
 use App\Modules\Marketplace\Models\Order;
+use App\Services\MarketplaceSettingsService;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
 class VendorPaymentController extends Controller
 {
     /**
-     * Display vendor payments and earnings dashboard
+     * Display vendor payout request dashboard
      */
     public function index(Request $request)
     {
@@ -22,52 +24,78 @@ class VendorPaymentController extends Controller
             return redirect()->route('marketplace.vendor.register');
         }
 
-        // Get vendor's orders with payments
-        $query = Order::where('vendor_id', $vendor->id)
-            ->with(['payment', 'user', 'items.product'])
-            ->orderBy('created_at', 'desc');
+        // Get marketplace settings
+        $settingsService = new MarketplaceSettingsService();
+        $formattedSettings = $settingsService->getFormattedSettings();
+        $minPayoutAmount = $formattedSettings['payout']['min_payout_amount'];
 
-        // Filter by payment status if requested
-        if ($request->filled('payment_status')) {
-            if ($request->payment_status === 'paid') {
-                $query->whereHas('payment');
-            } elseif ($request->payment_status === 'unpaid') {
-                $query->whereDoesntHave('payment');
-            }
-        }
+        // Get orders that need buyer confirmation (delivered but not confirmed by buyer)
+        $ordersAwaitingConfirmation = Order::where('vendor_id', $vendor->id)
+            ->where('status', 'delivered')
+            ->where('payment_status', 'pending_confirmation')
+            ->whereDoesntHave('deliveryConfirmation', function($q) {
+                $q->where('confirmed', true);
+            })
+            ->with(['user', 'items.product', 'payment', 'deliveryConfirmation'])
+            ->orderBy('delivered_at', 'desc')
+            ->get();
 
-        $orders = $query->paginate(15);
+        // Calculate available earnings (from buyer confirmed delivered orders)
+        $confirmedEarnings = Payment::whereHas('order', function($q) use ($vendor) {
+            $q->where('vendor_id', $vendor->id)
+              ->where('status', 'delivered')
+              ->where('payment_status', 'completed')
+              ->whereHas('deliveryConfirmation', function($dc) {
+                  $dc->where('confirmed', true);
+              });
+        })->where('vendor_paid', false)
+          ->where('payout_requested', false)
+          ->sum('vendor_amount');
 
-        // Calculate vendor statistics
+        // Get pending payout requests (requested but not yet paid)
+        $pendingPayouts = Payment::whereHas('order', function($q) use ($vendor) {
+            $q->where('vendor_id', $vendor->id)
+              ->where('status', 'delivered')
+              ->where('payment_status', 'completed')
+              ->whereHas('deliveryConfirmation', function($dc) {
+                  $dc->where('confirmed', true);
+              });
+        })->where('vendor_paid', false)
+          ->where('payout_requested', true)
+          ->with(['order.user'])
+          ->latest('payout_requested_at')
+          ->get();
+
+        // Get completed payouts history
+        $completedPayouts = Payment::whereHas('order', function($q) use ($vendor) {
+            $q->where('vendor_id', $vendor->id);
+        })->where('vendor_paid', true)
+          ->with(['order'])
+          ->latest()
+          ->limit(10)
+          ->get();
+
+        // Calculate statistics
         $stats = [
-            'total_earnings' => Payment::whereHas('order', function($q) use ($vendor) {
-                $q->where('vendor_id', $vendor->id);
-            })->sum('vendor_amount'),
-
-            'pending_payouts' => Payment::whereHas('order', function($q) use ($vendor) {
-                $q->where('vendor_id', $vendor->id);
-            })->where('vendor_paid', false)->sum('vendor_amount'),
-
-            'completed_payouts' => Payment::whereHas('order', function($q) use ($vendor) {
+            'available_earnings' => $confirmedEarnings,
+            'pending_confirmations' => $ordersAwaitingConfirmation->count(),
+            'pending_payout_amount' => $pendingPayouts->sum(function($payment) {
+                return $payment->vendor_amount;
+            }),
+            'total_paid_out' => Payment::whereHas('order', function($q) use ($vendor) {
                 $q->where('vendor_id', $vendor->id);
             })->where('vendor_paid', true)->sum('vendor_amount'),
-
-            'total_orders' => Order::where('vendor_id', $vendor->id)->count(),
-
-            'paid_orders' => Order::where('vendor_id', $vendor->id)
-                ->whereHas('payment')->count(),
+            'can_request_payout' => $confirmedEarnings >= $minPayoutAmount,
+            'orders_awaiting_confirmation' => $ordersAwaitingConfirmation->count(),
         ];
 
-        // Recent payments
-        $recentPayments = Payment::whereHas('order', function($q) use ($vendor) {
-            $q->where('vendor_id', $vendor->id);
-        })->with(['order.user'])->latest()->take(10)->get();
-
-        return Inertia::render('Marketplace/Vendor/Payments/Index', [
-            'orders' => $orders,
+        return Inertia::render('modules/marketplace/vendor/payments/Index', [
             'stats' => $stats,
-            'recentPayments' => $recentPayments,
-            'filters' => $request->only(['payment_status']),
+            'ordersAwaitingConfirmation' => $ordersAwaitingConfirmation,
+            'pendingPayouts' => $pendingPayouts,
+            'completedPayouts' => $completedPayouts,
+            'marketplaceSettings' => $formattedSettings,
+            'minPayoutAmount' => $minPayoutAmount,
         ]);
     }
 
@@ -131,10 +159,100 @@ class VendorPaymentController extends Controller
             ->take(10)
             ->values();
 
-        return Inertia::render('Marketplace/Vendor/Payments/Analytics', [
+        // Get marketplace settings for commission calculations
+        $settingsService = new MarketplaceSettingsService();
+        $formattedSettings = $settingsService->getFormattedSettings();
+
+        return Inertia::render('modules/marketplace/vendor/payments/Analytics', [
             'monthlyEarnings' => $monthlyEarnings,
             'paymentMethods' => $paymentMethods,
             'topProducts' => $topProducts,
+            'marketplaceSettings' => $formattedSettings,
         ]);
+    }
+
+    /**
+     * Show delivery confirmation reminder (buyers confirm delivery, not vendors)
+     */
+    public function remindBuyerConfirmation(Request $request, Order $order)
+    {
+        $vendor = Auth::user()->vendor;
+
+        // Verify the order belongs to the vendor
+        if ($order->vendor_id !== $vendor->id) {
+            return back()->with('error', 'Unauthorized action.');
+        }
+
+        // Send reminder notification to buyer
+        if ($order->user) {
+            $order->user->notify(new \App\Notifications\DeliveryConfirmationRequestNotification($order));
+        }
+
+        return back()->with('success', 'Reminder sent to buyer to confirm delivery.');
+    }
+
+    /**
+     * Request payout for available earnings
+     */
+    public function requestPayout(Request $request)
+    {
+        $vendor = Auth::user()->vendor;
+        $settingsService = new MarketplaceSettingsService();
+        $minPayoutAmount = $settingsService->getFormattedSettings()['payout']['min_payout_amount'];
+
+        // Calculate available earnings (from buyer-confirmed deliveries)
+        $availableEarnings = Payment::whereHas('order', function($q) use ($vendor) {
+            $q->where('vendor_id', $vendor->id)
+              ->where('status', 'delivered')
+              ->where('payment_status', 'completed')
+              ->whereHas('deliveryConfirmation', function($dc) {
+                  $dc->where('confirmed', true);
+              });
+        })->where('vendor_paid', false)
+          ->where('payout_requested', false)
+          ->sum('vendor_amount');
+
+        // Check if minimum payout amount is met
+        if ($availableEarnings < $minPayoutAmount) {
+            return back()->with('error', "Minimum payout amount is {$settingsService->getCurrencySymbol()}{$minPayoutAmount}. Your available earnings: {$settingsService->getCurrencySymbol()}{$availableEarnings}");
+        }
+
+        // Mark payments as payout requested
+        $affectedPayments = Payment::whereHas('order', function($q) use ($vendor) {
+            $q->where('vendor_id', $vendor->id)
+              ->where('status', 'delivered')
+              ->where('payment_status', 'completed')
+              ->whereHas('deliveryConfirmation', function($dc) {
+                  $dc->where('confirmed', true);
+              });
+        })->where('vendor_paid', false)
+          ->where('payout_requested', false)
+          ->update([
+              'payout_requested' => true,
+              'payout_requested_at' => now(),
+              'payout_requested_by' => Auth::id(),
+          ]);
+
+        // Notify admin about the payout request
+        $adminUsers = User::where('role', 'admin')->get();
+        foreach ($adminUsers as $admin) {
+            $admin->notify(new \App\Notifications\VendorPayoutRequestNotification(
+                $vendor,
+                $availableEarnings,
+                $affectedPayments,
+                $settingsService->getCurrencySymbol()
+            ));
+        }
+
+        // Send confirmation to vendor
+        $vendor->user->notify(new \App\Notifications\VendorPayoutRequestConfirmationNotification(
+            $availableEarnings,
+            $affectedPayments,
+            $settingsService->getCurrencySymbol(),
+            $vendor->business_name,
+            $settingsService->getFormattedSettings()['payout']['payment_hold_days']
+        ));
+
+        return back()->with('success', "Payout request submitted for {$settingsService->getCurrencySymbol()}{$availableEarnings}. We will process your request within {$settingsService->getFormattedSettings()['payout']['payment_hold_days']} business days.");
     }
 }

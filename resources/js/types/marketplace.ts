@@ -97,9 +97,11 @@ export interface ProductReview {
     product_id: number;
     user_id: number;
     rating: number;
-    review?: string;
+    title?: string;
+    comment?: string;
     is_verified_purchase: boolean;
     is_approved: boolean;
+    helpful_count: number;
     created_at: string;
     updated_at: string;
     user?: User;
@@ -142,6 +144,7 @@ export interface CartItem {
     updated_at: string;
     product?: Product;
     variant?: ProductVariant;
+    
 }
 
 export interface Order {

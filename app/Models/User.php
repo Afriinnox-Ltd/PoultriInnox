@@ -6,10 +6,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Modules\BatchIncubator\Models\UserReminderPreference;
 use App\Modules\Marketplace\Models\Vendor;
+use App\Modules\Marketplace\Models\Subscription;
 
 class User extends Authenticatable
 {
@@ -131,5 +133,45 @@ class User extends Authenticatable
     public function isApprovedVendor(): bool
     {
         return $this->vendor()->where('verification_status', 'verified')->exists();
+    }
+
+    /**
+     * Get user's current subscription through vendor
+     */
+    public function subscription(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Subscription::class,
+            Vendor::class,
+            'user_id', // Foreign key on vendors table
+            'vendor_id', // Foreign key on subscriptions table
+            'id', // Local key on users table
+            'id' // Local key on vendors table
+        )->where('marketplace_subscriptions.is_active', true);
+    }
+
+    /**
+     * Get user's current active subscription
+     */
+    public function getCurrentSubscription(): ?Subscription
+    {
+        return $this->subscription ? $this->subscription : null;
+    }
+
+    /**
+     * Check if user has an active subscription
+     */
+    public function hasActiveSubscription(): bool
+    {
+        return $this->subscription()->exists();
+    }
+
+    /**
+     * Check if user's subscription allows COD
+     */
+    public function canUseCOD(): bool
+    {
+        $subscription = $this->getCurrentSubscription();
+        return $subscription && $subscription->allowsCOD();
     }
 }

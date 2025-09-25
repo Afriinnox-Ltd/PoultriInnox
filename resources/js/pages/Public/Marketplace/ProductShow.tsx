@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Product, ProductReview, ProductVariant } from '@/types/marketplace';
 import { Toaster } from "@/components/ui/sonner"
+import ReviewsList from '@/components/ReviewsList';
 
 import {
     ShoppingCart,
@@ -33,7 +34,7 @@ import { toast } from 'sonner';
 interface ProductShowProps {
     product: Product & {
         images: Array<{ id: number; image_path: string; alt_text?: string; is_primary: boolean }>;
-        reviews: ProductReview[];
+        reviews: (ProductReview & { user: { id: number; name: string } })[];
         variants: ProductVariant[];
         vendor: {
             id: number;
@@ -53,19 +54,21 @@ interface ProductShowProps {
     user_review?: ProductReview;
     is_in_wishlist: boolean;
     relatedProducts: Product[];
+    currentUser?: {
+        id: number;
+        name: string;
+    } | null;
 }
 
-export default function ProductShow({ product, user_review, is_in_wishlist, relatedProducts }: ProductShowProps) {
+export default function ProductShow({ product, user_review, is_in_wishlist, relatedProducts, currentUser }: ProductShowProps) {
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [isInWishlist, setIsInWishlist] = useState(is_in_wishlist);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
-    const [reviewRating, setReviewRating] = useState(user_review?.rating || 0);
-    const [reviewText, setReviewText] = useState(user_review?.review || '');
 
     const images = product.images?.length > 0 ? product.images : [
-        { id: 0, image_url: '/placeholder-product.jpg', alt_text: product.name, is_primary: true }
+        { id: 0, image_path: '/placeholder-product.jpg', alt_text: product.name, is_primary: true }
     ];
 
     const currentPrice = selectedVariant
@@ -79,11 +82,27 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
         }).format(amount);
     };
 
+    const renderStars = (rating: number) => {
+        return Array.from({ length: 5 }, (_, i) => (
+            <Star
+                key={i}
+                className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+            />
+        ));
+    };
+
     const maxQuantity = selectedVariant
         ? product.variants?.find(v => v.id === selectedVariant)?.stock_quantity || 0
         : product.stock_quantity;
 
     const handleAddToCart = async () => {
+        // Check if user is authenticated
+        if (!auth?.user) {
+            const currentUrl = window.location.pathname + window.location.search;
+            window.location.href = `/login?intended=${encodeURIComponent(currentUrl)}`;
+            return;
+        }
+
         try {
             setIsAddingToCart(true);
             router.post('/cart/add', {
@@ -110,6 +129,13 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
     };
 
     const handleToggleWishlist = async () => {
+        // Check if user is authenticated
+        if (!auth?.user) {
+            const currentUrl = window.location.pathname + window.location.search;
+            window.location.href = `/login?intended=${encodeURIComponent(currentUrl)}`;
+            return;
+        }
+
         try {
             const response = await fetch(`/marketplace/wishlist/${product.id}`, {
                 method: isInWishlist ? 'DELETE' : 'POST',
@@ -126,38 +152,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
         }
     };
 
-    const handleSubmitReview = async () => {
-        try {
 
-            router.post('/marketplace/products/1/reviews', {
-                rating: reviewRating,
-                review: reviewText,
-            }, {
-                onSuccess: () => {
-                    toast.success('Review submitted successfully!');
-                    window.location.reload();
-                },
-                onError: (errors) => {
-                    toast.error('Failed to submit review. Please check the form for errors.');
-                    console.error('Error submitting review:', errors);
-                }
-            });
-        } catch (error) {
-            console.error('Error submitting review:', error);
-            toast.error('Failed to submit review. Please try again.');
-        }
-    };
-
-    const renderStars = (rating: number, interactive = false) => {
-        return Array.from({ length: 5 }, (_, i) => (
-            <Star
-                key={i}
-                className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'} ${interactive ? 'cursor-pointer hover:text-yellow-400' : ''
-                    }`}
-                onClick={interactive ? () => setReviewRating(i + 1) : undefined}
-            />
-        ));
-    };
 
 
     const { auth } = usePage<SharedData>().props;
@@ -168,7 +163,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
             <Head title={product.name} />
             <WelcomeNav auth={auth} />
             <div className="flex  pt-18 ">
-                <div className="max-w-7xl  sm:px-6 lg:px-8">
+                <div className="max-w-7xl sm:px-6 lg:px-8">
                     <div className="flex items-center">
                         <Button
                             variant="ghost"
@@ -220,14 +215,14 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                             </>
                                         )}
                                         <div className="absolute top-4 right-4 flex gap-2">
-                                            <Button
+                                            {/* <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 className="bg-white/80 hover:bg-white"
                                                 onClick={handleToggleWishlist}
                                             >
                                                 <Heart className={`h-4 w-4 ${isInWishlist ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
-                                            </Button>
+                                            </Button> */}
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -477,72 +472,14 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                         </TabsContent>
 
                         <TabsContent value="reviews" className="mt-6">
-                            <div className="space-y-6">
-                                {/* Submit Review */}
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            {user_review ? 'Update Your Review' : 'Write a Review'}
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-2">Rating</label>
-                                            <div className="flex">
-                                                {renderStars(reviewRating, true)}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-2">Review</label>
-                                            <Textarea
-                                                value={reviewText}
-                                                onChange={(e) => setReviewText(e.target.value)}
-                                                placeholder="Share your experience with this product..."
-                                                rows={4}
-                                            />
-                                        </div>
-                                        <Button onClick={handleSubmitReview} disabled={reviewRating === 0}>
-                                            {user_review ? 'Update Review' : 'Submit Review'}
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-
-                                {/* Existing Reviews */}
-                                <div className="space-y-4">
-                                    {product.reviews && product.reviews.length > 0 ? (
-                                        product.reviews.map((review) => (
-                                            <Card key={review.id}>
-                                                <CardContent className="p-4">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <div>
-                                                            <div className="flex">
-                                                                {renderStars(review.rating)}
-                                                            </div>
-                                                            <span className="text-sm text-gray-600">
-                                                                by {review.user?.name} on {new Date(review.created_at).toLocaleDateString()}
-                                                            </span>
-                                                            {review.is_verified_purchase && (
-                                                                <Badge variant="secondary" className="ml-2 text-xs">
-                                                                    Verified Purchase
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {review.review && (
-                                                        <p className="text-gray-700">{review.review}</p>
-                                                    )}
-                                                </CardContent>
-                                            </Card>
-                                        ))
-                                    ) : (
-                                        <Card>
-                                            <CardContent className="p-6 text-center">
-                                                <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
-                                            </CardContent>
-                                        </Card>
-                                    )}
-                                </div>
-                            </div>
+                            <ReviewsList
+                                productId={product.id}
+                                productSlug={product.slug}
+                                reviews={product.reviews || []}
+                                currentUser={currentUser}
+                                averageRating={product.rating || 0}
+                                totalReviews={product.total_reviews || 0}
+                            />
                         </TabsContent>
                     </Tabs>
 
@@ -562,7 +499,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                                 <div className="aspect-square bg-gray-100">
                                                     {relatedProduct.images && relatedProduct.images.length > 0 ? (
                                                         <img
-                                                            src={relatedProduct.images[0].image_url}
+                                                            src={relatedProduct.images[0].image_path}
                                                             alt={relatedProduct.name}
                                                             className="w-full h-full object-cover"
                                                         />
@@ -603,7 +540,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
             </div>
 
 
-            <Toaster position="top-right" richColors />
+            <Toaster position="bottom-right" richColors />
         </>
     );
 }

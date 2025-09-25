@@ -50,6 +50,13 @@ interface Category {
     image: string | null;
     is_active: boolean;
     products_count: number;
+    children_count: number;
+    parent_id: number | null;
+    parent?: {
+        id: number;
+        name: string;
+    };
+    children?: Category[];
     created_at: string;
     updated_at: string;
 }
@@ -69,19 +76,23 @@ interface CategoryAdminProps {
     filters: {
         search?: string;
         status?: string;
+        type?: string;
     };
+    parent_categories: Category[];
 }
 
-export default function CategoryAdmin({ categories, filters }: CategoryAdminProps) {
+export default function CategoryAdmin({ categories, filters, parent_categories }: CategoryAdminProps) {
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
+    const [typeFilter, setTypeFilter] = useState(filters.type || 'all');
 
     const [formData, setFormData] = useState({
         name: '',
         description: '',
+        parent_id: '',
         is_active: true,
     });
 
@@ -89,6 +100,7 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
         router.get('/admin/marketplace/categories', {
             search: searchTerm,
             status: statusFilter !== 'all' ? statusFilter : undefined,
+            type: typeFilter !== 'all' ? typeFilter : undefined,
         }, {
             preserveState: true,
             replace: true,
@@ -96,10 +108,15 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
     };
 
     const handleCreate = () => {
-        router.post('/admin/marketplace/categories', formData, {
+        const dataToSubmit = {
+            ...formData,
+            parent_id: formData.parent_id || null,
+        };
+        
+        router.post('/admin/marketplace/categories', dataToSubmit, {
             onSuccess: () => {
                 setShowCreateDialog(false);
-                setFormData({ name: '', description: '', is_active: true });
+                setFormData({ name: '', description: '', parent_id: '', is_active: true });
             },
         });
     };
@@ -109,6 +126,7 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
         setFormData({
             name: category.name,
             description: category.description,
+            parent_id: category.parent_id?.toString() || '',
             is_active: category.is_active,
         });
         setShowEditDialog(true);
@@ -117,11 +135,16 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
     const handleUpdate = () => {
         if (!editingCategory) return;
 
-        router.put(`/admin/marketplace/categories/${editingCategory.id}`, formData, {
+        const dataToSubmit = {
+            ...formData,
+            parent_id: formData.parent_id || null,
+        };
+
+        router.put(`/admin/marketplace/categories/${editingCategory.id}`, dataToSubmit, {
             onSuccess: () => {
                 setShowEditDialog(false);
                 setEditingCategory(null);
-                setFormData({ name: '', description: '', is_active: true });
+                setFormData({ name: '', description: '', parent_id: '', is_active: true });
             },
         });
     };
@@ -181,6 +204,22 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="Enter category name"
                                     />
+                                </div>
+                                <div>
+                                    <Label htmlFor="parent_category">Parent Category (Optional)</Label>
+                                    <select
+                                        id="parent_category"
+                                        value={formData.parent_id}
+                                        onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="">No Parent (Main Category)</option>
+                                        {parent_categories.map((category) => (
+                                            <option key={category.id} value={category.id}>
+                                                {category.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <Label htmlFor="description">Description</Label>
@@ -246,6 +285,19 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
                                     <option value="inactive">Inactive</option>
                                 </select>
                             </div>
+                            <div>
+                                <Label htmlFor="type">Type</Label>
+                                <select
+                                    id="type"
+                                    value={typeFilter}
+                                    onChange={(e) => setTypeFilter(e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="all">All Types</option>
+                                    <option value="parent">Main Categories</option>
+                                    <option value="subcategory">Subcategories</option>
+                                </select>
+                            </div>
                             <Button onClick={handleSearch}>
                                 <Filter className="h-4 w-4 mr-2" />
                                 Apply Filters
@@ -267,8 +319,10 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Name</TableHead>
+                                    <TableHead>Parent Category</TableHead>
                                     <TableHead>Description</TableHead>
                                     <TableHead>Products</TableHead>
+                                    <TableHead>Subcategories</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Created</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
@@ -280,6 +334,9 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
                                         <TableRow key={category.id}>
                                             <TableCell>
                                                 <div className="flex items-center space-x-3">
+                                                    {category.parent_id && (
+                                                        <div className="w-4 h-4 border-l border-b border-gray-300 ml-4"></div>
+                                                    )}
                                                     {category.image ? (
                                                         <img
                                                             src={category.image}
@@ -292,12 +349,28 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <div className="font-medium">{category.name}</div>
+                                                        <div className="font-medium">
+                                                            {category.name}
+                                                            {category.parent_id && (
+                                                                <Badge variant="outline" className="ml-2 text-xs">
+                                                                    Subcategory
+                                                                </Badge>
+                                                            )}
+                                                        </div>
                                                         <div className="text-sm text-muted-foreground">
                                                             /{category.slug}
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {category.parent ? (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        {category.parent.name}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-sm">Main Category</span>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="max-w-xs truncate">
@@ -307,6 +380,11 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
                                             <TableCell>
                                                 <Badge variant="outline">
                                                     {category.products_count} products
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline">
+                                                    {category.children_count} subcategories
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
@@ -359,7 +437,7 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8">
+                                        <TableCell colSpan={8} className="text-center py-8">
                                             <div className="text-muted-foreground">
                                                 No categories found. Create your first category to get started.
                                             </div>
@@ -410,6 +488,22 @@ export default function CategoryAdmin({ categories, filters }: CategoryAdminProp
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="Enter category name"
                                 />
+                            </div>
+                            <div>
+                                <Label htmlFor="edit-parent_category">Parent Category (Optional)</Label>
+                                <select
+                                    id="edit-parent_category"
+                                    value={formData.parent_id}
+                                    onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="">No Parent (Main Category)</option>
+                                    {parent_categories.filter(cat => cat.id !== editingCategory?.id).map((category) => (
+                                        <option key={category.id} value={category.id}>
+                                            {category.name}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <Label htmlFor="edit-description">Description</Label>

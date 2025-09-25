@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,13 +13,11 @@ import {
 } from '@/components/ui/select';
 import {
   DollarSign,
-  CreditCard,
   TrendingUp,
   Clock,
   CheckCircle,
   XCircle,
   Users,
-  Calendar,
 } from 'lucide-react';
 
 interface Payment {
@@ -52,13 +50,6 @@ interface DashboardStats {
   success_rate: number;
 }
 
-interface RevenueStats {
-  total_revenue: number;
-  total_commission: number;
-  total_vendor_amount: number;
-  payment_count: number;
-}
-
 interface MonthlyTrend {
   month: string;
   month_number: number;
@@ -72,8 +63,14 @@ interface PaymentMethodStat {
   transaction_count: number;
 }
 
+interface MarketplaceSettings {
+  general?: {
+    currency?: string;
+    currency_symbol?: string;
+  };
+}
+
 interface Props {
-  revenueStats: RevenueStats;
   dashboardStats: DashboardStats;
   monthlyTrend: MonthlyTrend[];
   paymentMethodStats: PaymentMethodStat[];
@@ -84,7 +81,6 @@ interface Props {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export default function PaymentsIndex({
-  revenueStats,
   dashboardStats,
   monthlyTrend,
   paymentMethodStats,
@@ -92,6 +88,9 @@ export default function PaymentsIndex({
   currentPeriod,
 }: Props) {
   const [selectedPeriod, setSelectedPeriod] = useState(currentPeriod);
+  
+  const { props } = usePage();
+  const marketplaceSettings = props.marketplaceSettings as MarketplaceSettings;
 
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period);
@@ -99,10 +98,14 @@ export default function PaymentsIndex({
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    const currency = marketplaceSettings?.general?.currency || 'RWF';
+    const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+    
+    return new Intl.NumberFormat('rw-RW', {
       style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+      currency: currency,
+      currencyDisplay: 'symbol'
+    }).format(amount).replace(currency, symbol);
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -237,7 +240,7 @@ export default function PaymentsIndex({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {monthlyTrend.slice(-6).map((month, index) => (
+                {monthlyTrend.slice(-6).map((month) => (
                   <div key={month.month_number} className="flex justify-between items-center">
                     <span className="text-sm font-medium">{month.month}</span>
                     <div className="text-right">
@@ -287,9 +290,7 @@ export default function PaymentsIndex({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Recent Payments</CardTitle>
-            <Button variant="outline" asChild>
-              <a href="/marketplace/admin/payments/list">View All</a>
-            </Button>
+           
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -347,47 +348,13 @@ export default function PaymentsIndex({
                 Manage pending vendor payouts and payment schedules
               </p>
               <Button className="w-full" asChild>
-                <a href="/marketplace/admin/payments/vendor-payouts">
+                <a href="/admin/marketplace/payments/vendor-payouts">
                   <Users className="mr-2 h-4 w-4" />
                   Manage Payouts
                 </a>
               </Button>
             </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Payment Analytics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                View detailed analytics and payment reports
-              </p>
-              <Button variant="outline" className="w-full" asChild>
-                <a href="/marketplace/admin/payments/analytics">
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  View Analytics
-                </a>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Export Reports</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Download payment data and financial reports
-              </p>
-              <Button variant="outline" className="w-full" asChild>
-                <a href="/marketplace/admin/payments/export">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Export Data
-                </a>
-              </Button>
-            </CardContent>
-          </Card>
+          </Card> 
         </div>
       </div>
     </AdminLayout>

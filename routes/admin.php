@@ -188,9 +188,45 @@ Route::prefix('admin')->middleware(['auth', 'admin.access'])->name('admin.')->gr
             Route::get('/list', [App\Modules\Marketplace\Controllers\Admin\PaymentController::class, 'payments'])->name('list');
             Route::get('/vendor-payouts', [App\Modules\Marketplace\Controllers\Admin\PaymentController::class, 'vendorPayouts'])->name('vendor-payouts');
             Route::post('/{payment}/mark-vendor-paid', [App\Modules\Marketplace\Controllers\Admin\PaymentController::class, 'markVendorPaid'])->name('mark-vendor-paid');
+            Route::post('/batch-process-payouts', [App\Modules\Marketplace\Controllers\Admin\PaymentController::class, 'batchProcessPayouts'])->name('batch-process-payouts');
             Route::get('/analytics', [App\Modules\Marketplace\Controllers\Admin\PaymentController::class, 'analytics'])->name('analytics');
             Route::get('/export', [App\Modules\Marketplace\Controllers\Admin\PaymentController::class, 'export'])->name('export');
         });
+
+        // Subscription Management Dashboard
+        Route::get('/subscriptions', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'dashboard'])->name('subscriptions.dashboard');
+
+        // Subscription Plan Management
+        Route::prefix('subscription-plans')->name('subscription-plans.')->group(function () {
+            Route::get('/', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'index'])->name('index');
+            Route::get('/create', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'create'])->name('create');
+            Route::post('/', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'store'])->name('store');
+            Route::get('/{subscriptionPlan}/edit', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'edit'])->name('edit');
+            Route::put('/{subscriptionPlan}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'update'])->name('update');
+            Route::delete('/{subscriptionPlan}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'destroy'])->name('destroy');
+            Route::patch('/{subscriptionPlan}/toggle-status', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'toggleStatus'])->name('toggle-status');
+            
+            // User subscription management
+            Route::get('/user-subscriptions', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'userSubscriptions'])->name('user-subscriptions');
+            Route::post('/assign-plan', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'assignPlan'])->name('assign-plan');
+            Route::delete('/subscriptions/{subscription}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'removeUserSubscription'])->name('remove-subscription');
+            
+            // Analytics
+            Route::get('/analytics', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'analytics'])->name('analytics');
+        });
+
+        // Settings Management
+        Route::prefix('settings')->name('settings.')->group(function () {
+            Route::get('/', [App\Modules\Marketplace\Controllers\Admin\SettingsAdminController::class, 'index'])->name('index');
+            Route::put('/', [App\Modules\Marketplace\Controllers\Admin\SettingsAdminController::class, 'update'])->name('update');
+            Route::put('/{key}', [App\Modules\Marketplace\Controllers\Admin\SettingsAdminController::class, 'updateSingle'])->name('update-single');
+            Route::post('/reset', [App\Modules\Marketplace\Controllers\Admin\SettingsAdminController::class, 'reset'])->name('reset');
+            Route::get('/export', [App\Modules\Marketplace\Controllers\Admin\SettingsAdminController::class, 'export'])->name('export');
+            Route::post('/import', [App\Modules\Marketplace\Controllers\Admin\SettingsAdminController::class, 'import'])->name('import');
+            Route::get('/api', [App\Modules\Marketplace\Controllers\Admin\SettingsAdminController::class, 'getSettings'])->name('api');
+        });
     });
+
+
 
 });

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,8 +36,7 @@ import {
   Eye,
   CheckCircle,
   XCircle,
-  Clock,
-  ArrowUpDown
+  Clock
 } from 'lucide-react';
 
 interface Payment {
@@ -226,7 +225,7 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All statuses</SelectItem>
+                      <SelectItem value=" ">All statuses</SelectItem>
                       {filterOptions.statuses.map((status) => (
                         <SelectItem key={status} value={status}>
                           {status}
@@ -246,7 +245,7 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
                       <SelectValue placeholder="All methods" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All methods</SelectItem>
+                      <SelectItem value=" ">All methods</SelectItem>
                       {filterOptions.payment_methods.map((method) => (
                         <SelectItem key={method} value={method}>
                           {method}

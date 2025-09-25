@@ -49,6 +49,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/confirmation', [CheckoutController::class, 'confirmation'])->name('confirmation');
         Route::get('/{order}', [OrderController::class, 'show'])->name('show');
         Route::post('/{order}/cancel', [OrderController::class, 'cancel'])->name('cancel');
+        
+        // Delivery confirmation routes
+        Route::get('/{order}/confirm-delivery', [OrderController::class, 'showDeliveryConfirmation'])->name('confirm-delivery');
+        Route::post('/{order}/confirm-delivery', [OrderController::class, 'confirmDelivery'])->name('confirm-delivery.submit');
+    });
+
+    // Payment simulation routes
+    Route::prefix('payment')->name('payment.')->group(function () {
+        Route::get('/simulation/{order}', [CheckoutController::class, 'paymentSimulation'])->name('simulation');
+        Route::post('/process/{order}', [CheckoutController::class, 'processPayment'])->name('process');
     });
 });
 
@@ -65,8 +75,14 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
     Route::prefix('products')->name('products.')->group(function () {
         Route::get('/', [ProductController::class, 'index'])->name('index');
         Route::get('/{product:slug}', [ProductController::class, 'show'])->name('show');
-        // Note: ReviewController doesn't exist yet, commenting out for now
-        // Route::post('/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+
+        // Review routes (require authentication)
+        Route::middleware('auth')->group(function () {
+            Route::post('/{product:slug}/reviews', [App\Modules\Marketplace\Controllers\ReviewController::class, 'store'])->name('reviews.store');
+            Route::put('/{product:slug}/reviews/{review}', [App\Modules\Marketplace\Controllers\ReviewController::class, 'update'])->name('reviews.update');
+            Route::delete('/{product:slug}/reviews/{review}', [App\Modules\Marketplace\Controllers\ReviewController::class, 'destroy'])->name('reviews.destroy');
+            Route::post('/{product:slug}/reviews/{review}/helpful', [App\Modules\Marketplace\Controllers\ReviewController::class, 'toggleHelpful'])->name('reviews.helpful');
+        });
     });
 
     // Category routes
@@ -96,6 +112,7 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
             Route::get('/dashboard', [VendorController::class, 'dashboard'])->name('dashboard');
             Route::get('/profile', [VendorController::class, 'edit'])->name('profile');
             Route::put('/profile', [VendorController::class, 'update'])->name('profile.update');
+            Route::delete('/profile', [VendorController::class, 'destroy'])->name('profile.destroy');
 
             // Vendor product management
             Route::prefix('products')->name('products.')->group(function () {
@@ -114,20 +131,35 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
                 Route::get('/', [OrderController::class, 'vendorOrders'])->name('index');
                 Route::get('/{order}', [OrderController::class, 'show'])->name('show');
                 Route::patch('/{order}/status', [OrderController::class, 'updateStatus'])->name('status');
+                Route::post('/{order}/confirm', [OrderController::class, 'confirmOrder'])->name('confirm');
             });
 
             // Vendor payment management
             Route::prefix('payments')->name('payments.')->group(function () {
                 Route::get('/', [App\Modules\Marketplace\Controllers\VendorPaymentController::class, 'index'])->name('index');
                 Route::get('/analytics', [App\Modules\Marketplace\Controllers\VendorPaymentController::class, 'analytics'])->name('analytics');
+                Route::post('/remind-buyer/{order}', [App\Modules\Marketplace\Controllers\VendorPaymentController::class, 'remindBuyerConfirmation'])->name('remind-buyer');
+                Route::post('/request-payout', [App\Modules\Marketplace\Controllers\VendorPaymentController::class, 'requestPayout'])->name('request-payout');
             });
 
-            // Vendor analytics - commenting out until analytics methods are added
-            // Route::get('/analytics', [VendorController::class, 'analytics'])->name('analytics');
+            // Vendor analytics
+            Route::get('/analytics', [VendorController::class, 'analytics'])->name('analytics');
         });
 
         // Public vendor profile (accessible to all)
         Route::get('/{vendor:slug}', [VendorController::class, 'show'])->name('show');
+    });
+
+    // Subscription management routes
+    Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
+        Route::get('/', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'index'])->name('index');
+        Route::get('/upgrade', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'upgrade'])->name('upgrade');
+        Route::get('/plans/{plan}', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'selectPlan'])->name('select-plan');
+        Route::post('/upgrade', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'processUpgrade'])->name('process-upgrade');
+        Route::get('/success/{subscription}', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'success'])->name('success');
+        Route::post('/cancel', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'cancel'])->name('cancel');
+        Route::post('/reactivate', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'reactivate'])->name('reactivate');
+        Route::get('/usage', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'usage'])->name('usage');
     });
 
     // Payment routes - commenting out until PaymentController is created
@@ -149,6 +181,9 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
         // Cart API
         Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
         Route::get('/cart/total', [CartController::class, 'total'])->name('cart.total');
+        
+        // Subscription API
+        Route::get('/subscription/usage', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'usageApi'])->name('subscription.usage');
     });
 
 });

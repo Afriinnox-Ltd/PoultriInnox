@@ -225,24 +225,39 @@ export function ModularAppSidebar({ enabledModules = [] }: ModularAppSidebarProp
                                 icon: BarChart3,
                             },
                             {
-                                title: 'My Products',
+                                title: 'Products',
                                 href: '/marketplace/vendor/products',
                                 icon: Package,
                             },
                             {
-                                title: 'My Orders',
+                                title: 'Add Product',
+                                href: '/marketplace/vendor/products/create',
+                                icon: Plus,
+                            },
+                            {
+                                title: 'Orders',
                                 href: '/marketplace/vendor/orders',
                                 icon: ShoppingCart,
                             },
                             {
-                                title: 'Payments & Earnings',
+                                title: 'Analytics',
+                                href: '/marketplace/vendor/analytics',
+                                icon: BarChart3,
+                            },
+                            {
+                                title: 'Earnings',
                                 href: '/marketplace/vendor/payments',
                                 icon: DollarSign,
                             },
                             {
-                                title: 'Profile',
+                                title: 'Store Settings',
                                 href: '/marketplace/vendor/profile',
                                 icon: Settings,
+                            },
+                            {
+                                title: 'Browse Marketplace',
+                                href: '/marketplace',
+                                icon: Store,
                             },
                         ];
                     } else {
