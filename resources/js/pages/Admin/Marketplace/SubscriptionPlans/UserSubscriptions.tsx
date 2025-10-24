@@ -319,7 +319,7 @@ export default function UserSubscriptions({ subscriptions, plans, users, filters
               <CardTitle className="text-sm font-medium text-gray-600">Active Subscriptions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.active_subscriptions}</div>
+              <div className="text-2xl font-bold text-emerald-600">{stats.active_subscriptions}</div>
             </CardContent>
           </Card>
 

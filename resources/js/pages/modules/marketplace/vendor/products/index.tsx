@@ -105,17 +105,44 @@ interface VendorProductsProps {
     subscriptionUsage: any;
     needsUpgrade: boolean;
     upgradeReason?: string;
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+        };
+        tax: {
+            tax_rate: number;
+            tax_enabled: boolean;
+            tax_inclusive: boolean;
+        };
+        general: {
+            currency: string;
+            currency_symbol: string;
+            auto_approve_products: boolean;
+        };
+    };
 }
 
-export default function VendorProducts({ products, categories, stats, filters, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason }: VendorProductsProps) {
+export default function VendorProducts({ products, categories, stats, filters, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason, marketplaceSettings }: VendorProductsProps) {
     const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('rw-RW', {
-            style: 'currency',
-            currency: 'RWF'
-        }).format(amount);
+        const currency = marketplaceSettings?.general?.currency || 'RWF';
+        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+        
+        if (currency === 'RWF') {
+            return new Intl.NumberFormat('rw-RW', {
+                style: 'currency',
+                currency: 'RWF'
+            }).format(amount);
+        }
+        
+        return `${symbol}${amount.toLocaleString()}`;
     };
 
     const formatDate = (dateString: string) => {
@@ -144,7 +171,7 @@ export default function VendorProducts({ products, categories, stats, filters, v
                 );
             case 'pending':
                 return (
-                    <Badge className="bg-yellow-100 text-yellow-800">
+                    <Badge className="bg-emerald-100 text-emerald-800">
                         <Clock className="h-3 w-3 mr-1" />
                         Pending
                     </Badge>
@@ -176,16 +203,7 @@ export default function VendorProducts({ products, categories, stats, filters, v
             page: 1
         }, { preserveState: true });
     };
-
-    const handleSort = (sortBy: string) => {
-        const direction = filters.sort === sortBy && filters.direction === 'asc' ? 'desc' : 'asc';
-        router.get('/marketplace/vendor/products', {
-            ...filters,
-            sort: sortBy,
-            direction: direction
-        }, { preserveState: true });
-    };
-
+ 
     const confirmDelete = (product: Product) => {
         setDeleteProduct(product);
         setShowDeleteDialog(true);
@@ -303,7 +321,7 @@ export default function VendorProducts({ products, categories, stats, filters, v
                     )}
 
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4 sm:px-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4 sm:px-1">
                         <Card>
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
@@ -311,7 +329,7 @@ export default function VendorProducts({ products, categories, stats, filters, v
                                         <p className="text-sm font-medium text-gray-600">Total Products</p>
                                         <p className="text-2xl font-bold text-gray-900">{stats?.total}</p>
                                     </div>
-                                    <Package className="h-8 w-8 text-blue-500" />
+                                    <Package className="h-8 w-8 text-emerald-500" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -334,7 +352,7 @@ export default function VendorProducts({ products, categories, stats, filters, v
                                         <p className="text-sm font-medium text-gray-600">Draft</p>
                                         <p className="text-2xl font-bold text-gray-600">{stats?.draft}</p>
                                     </div>
-                                    <Edit className="h-8 w-8 text-gray-500" />
+                                    <Edit className="h-8 w-8 text-emerald-500" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -344,9 +362,9 @@ export default function VendorProducts({ products, categories, stats, filters, v
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm font-medium text-gray-600">Pending</p>
-                                        <p className="text-2xl font-bold text-yellow-600">{stats?.pending}</p>
+                                        <p className="text-2xl font-bold text-emerald-600">{stats?.pending}</p>
                                     </div>
-                                    <Clock className="h-8 w-8 text-yellow-500" />
+                                    <Clock className="h-8 w-8 text-emerald-500" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -363,6 +381,45 @@ export default function VendorProducts({ products, categories, stats, filters, v
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Marketplace Settings Info */}
+                    {marketplaceSettings && (
+                        <Card className="mx-4 sm:mx-1">
+                            <CardHeader>
+                                <CardTitle className="flex items-center">
+                                    <DollarSign className="h-5 w-5 mr-2" />
+                                    Marketplace Settings
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                                        <div className="text-lg font-bold text-emerald-900">
+                                            {marketplaceSettings.commission.commission_type === 'percentage' 
+                                                ? `${marketplaceSettings.commission.default_commission_rate}%`
+                                                : formatCurrency(marketplaceSettings.commission.default_commission_rate)
+                                            }
+                                        </div>
+                                        <div className="text-sm font-medium text-emerald-700">Commission Rate</div>
+                                        <div className="text-xs text-emerald-600 mt-1">
+                                            Per sale commission
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                                        <div className="text-lg font-bold text-emerald-900">
+                                            {marketplaceSettings.general.currency}
+                                        </div>
+                                        <div className="text-sm font-medium text-emerald-700">Currency</div>
+                                        <div className="text-xs text-emerald-600 mt-1">
+                                            Product pricing currency
+                                        </div>
+                                    </div> 
+                                     
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Filters */}
                     <Card>

@@ -623,7 +623,7 @@ export default function FeedConsumptionIndex({
 
                     <div>
                       <Label htmlFor="batch_id">
-                        Batch (Auto-fills bird count, weight, temperature, humidity)
+                        Batch (Auto-fills bird count, weight, temperature)
                         <span className="text-sm text-gray-500 ml-2">• Select to auto-populate data</span>
                       </Label>
                       <Select value={newConsumption.batch_id} onValueChange={handleBatchChange} disabled={isLoadingBatchData}>
@@ -789,29 +789,6 @@ export default function FeedConsumptionIndex({
                           value={newConsumption.temperature}
                           onChange={(e) => setNewConsumption({...newConsumption, temperature: e.target.value})}
                           placeholder="Average temperature"
-                          disabled={isLoadingBatchData}
-                        />
-                        {isLoadingBatchData && (
-                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="humidity">
-                        Humidity (%)
-                        <span className="text-xs text-emerald-600 ml-2">• Auto-filled from incubator</span>
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="humidity"
-                          type="number"
-                          step="0.1"
-                          value={newConsumption.humidity}
-                          onChange={(e) => setNewConsumption({...newConsumption, humidity: e.target.value})}
-                          placeholder="Average humidity"
                           disabled={isLoadingBatchData}
                         />
                         {isLoadingBatchData && (

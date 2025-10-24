@@ -20,11 +20,11 @@ const sidebarNavItems: NavItem[] = [
         href: editPassword(),
         icon: null,
     },
-    {
-        title: 'Appearance',
-        href: appearance(),
-        icon: null,
-    },
+    // {
+    //     title: 'Appearance',
+    //     href: appearance(),
+    //     icon: null,
+    // },
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {

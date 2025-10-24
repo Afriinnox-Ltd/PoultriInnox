@@ -31,14 +31,48 @@ class CheckoutController extends Controller
         }
 
         $cartItems = CartItem::with([
-            'product.images', 
+            'product.images',
             'product.vendor.user',
+            'product.vendor.activeSubscription',
             'product' => function($query) {
                 $query->select('id', 'name', 'price', 'vendor_id', 'payment_methods', 'shipping_option', 'extra_fee', 'delivery_time', 'return_policy', 'stock_quantity', 'status');
             }
         ])
             ->where('user_id', $user->id)
             ->get();
+
+        // Filter payment methods based on vendor active subscription
+        $cartItems->each(function ($item) {
+            if ($item->product && $item->product->vendor) {
+                $vendor = $item->product->vendor;
+                $subscription = $vendor->activeSubscription;
+
+                // Check if vendor has an active subscription with COD access
+                // Only vendors with active subscriptions that include allow_cod=true can offer COD
+                $hasCODAccess = $subscription && $subscription->allowsCOD();
+
+                // Parse payment methods
+                $paymentMethods = $item->product->payment_methods;
+                if (is_string($paymentMethods)) {
+                    try {
+                        $paymentMethods = json_decode($paymentMethods, true) ?? explode(',', $paymentMethods);
+                    } catch (\Exception $e) {
+                        $paymentMethods = explode(',', $paymentMethods);
+                    }
+                }
+
+                // Filter out COD if vendor doesn't have access
+                if (is_array($paymentMethods) && !$hasCODAccess) {
+                    $paymentMethods = array_filter($paymentMethods, function($method) {
+                        $method = trim($method);
+                        return $method !== 'cod' && $method !== 'cash_on_delivery';
+                    });
+                    $item->product->payment_methods = array_values($paymentMethods);
+                } else {
+                    $item->product->payment_methods = is_array($paymentMethods) ? $paymentMethods : [];
+                }
+            }
+        });
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('cart.index')
@@ -60,8 +94,18 @@ class CheckoutController extends Controller
             return $item->quantity * $item->unit_price;
         });
 
-        $tax =  0;
-        $shippingCost = $this->calculateShippingCost($cartItems);
+        // Calculate tax (16% VAT on subtotal)
+        $taxRate = 0.16;
+        $tax = $subtotal * $taxRate;
+
+        // Calculate shipping based on vendor settings (use max shipping from products)
+        $shippingCost = 0;
+        foreach ($cartItems as $item) {
+            if ($item->product && $item->product->shipping_option === 'paid' && $item->product->extra_fee) {
+                $shippingCost = max($shippingCost, $item->product->extra_fee);
+            }
+        }
+
         $total = $subtotal + $tax + $shippingCost;
 
         return Inertia::render('Public/Marketplace/checkout/index', [
@@ -106,10 +150,11 @@ class CheckoutController extends Controller
             'billing_address.state' => 'required|string|max:255',
             'billing_address.country' => 'required|string|max:255',
             'payment_method' => 'required|in:cash_on_delivery,online',
+            'payment_phone_number' => 'required_if:payment_method,online|nullable|string|regex:/^[0-9]{9,12}$/',
             'notes' => 'nullable|string|max:500'
         ]);
 
-        $cartItems = CartItem::with(['product.vendor'])
+        $cartItems = CartItem::with(['product.vendor.activeSubscription'])
             ->where('user_id', $user->id)
             ->get();
 
@@ -121,6 +166,26 @@ class CheckoutController extends Controller
         $validationErrors = $this->validateCartItems($cartItems);
         if (!empty($validationErrors)) {
             return response()->json(['errors' => $validationErrors], 400);
+        }
+
+        // If payment method is COD, validate that all vendors support it
+        if ($validated['payment_method'] === 'cash_on_delivery') {
+            foreach ($cartItems as $item) {
+                $vendor = $item->product->vendor;
+                $subscription = $vendor->activeSubscription;
+
+                if (!$subscription) {
+                    return response()->json([
+                        'error' => 'Cash on Delivery is not available. Vendor "' . $vendor->business_name . '" does not have an active subscription plan.'
+                    ], 400);
+                }
+
+                if (!$subscription->allowsCOD()) {
+                    return response()->json([
+                        'error' => 'Cash on Delivery is not available. Vendor "' . $vendor->business_name . '" subscription plan does not include COD payment option.'
+                    ], 400);
+                }
+            }
         }
 
         DB::beginTransaction();
@@ -139,15 +204,18 @@ class CheckoutController extends Controller
 
             // Handle different payment methods
             if ($validated['payment_method'] === 'online') {
-                // For online payments, redirect to payment simulation
+                // For online payments, redirect to payment page with phone number
                 // Don't clear cart yet - will be cleared after successful payment
                 $firstOrder = $orders[0]; // For now, handle first order (can be expanded for multiple)
-                
-                return redirect()->route('payment.simulation', $firstOrder->id);
+
+                return redirect()->route('payment.show', [
+                    'order' => $firstOrder->id,
+                    'phone' => $validated['payment_phone_number'] ?? ''
+                ]);
             } else {
                 // For COD, clear cart and go to confirmation
                 CartItem::where('user_id', $user->id)->delete();
-                
+
                 return redirect()->route('orders.confirmation', [
                     'orders' => collect($orders)->pluck('id')->join(',')
                 ])->with('success', 'Orders created successfully');
@@ -202,21 +270,21 @@ class CheckoutController extends Controller
     {
         // Get vendor and check subscription limits
         $vendor = \App\Modules\Marketplace\Models\Vendor::find($vendorId);
-        
+
         if ($vendor) {
             // Get active subscription
             $subscription = $vendor->subscriptions()
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->first();
-            
+
             if ($subscription && $subscription->order_limit !== null) {
                 // Count orders this month for this vendor
                 $ordersThisMonth = Order::where('vendor_id', $vendorId)
                     ->whereMonth('created_at', now()->month)
                     ->whereYear('created_at', now()->year)
                     ->count();
-                
+
                 // Check if vendor has reached their monthly order limit
                 if ($ordersThisMonth >= $subscription->order_limit) {
                     throw new \Exception(
@@ -226,7 +294,7 @@ class CheckoutController extends Controller
                 }
             }
         }
-        
+
         // Calculate order totals
         $subtotal = $items->sum(function ($item) {
             return $item->quantity * $item->unit_price;
@@ -253,6 +321,9 @@ class CheckoutController extends Controller
             'billing_address' => json_encode($validated['billing_address']),
             'notes' => $validated['notes'] ?? null
         ]);
+
+
+        $order->markAsAdminConfirmed($user->id);
 
         // Create order items
         foreach ($items as $cartItem) {
@@ -287,24 +358,30 @@ class CheckoutController extends Controller
             'status' => 'pending'
         ]);
 
-        // Generate unique transaction ID for the payment
-        $transactionId = 'TXN-' . strtoupper(uniqid()) . '-' . $order->id;
+        // Create payment record only for COD (online payments will be created when initiated)
+        if ($validated['payment_method'] === 'cash_on_delivery') {
+            $transactionId = 'TXN-' . strtoupper(uniqid()) . '-' . $order->id;
 
-        // Create payment record
-        Payment::create([
-            'order_id' => $order->id,
-            'transaction_id' => $transactionId,
-            'payment_method' => $validated['payment_method'],
-            'gateway' => $validated['payment_method'] === 'cash_on_delivery' ? 'cash' : 'cash',
-            'type' => 'payment',
-            'status' => $validated['payment_method'] === 'cash_on_delivery' ? 'pending' : 'pending',
-            'amount' => $totalAmount,
-            'currency' => 'RWF',
-            'fees' => 0,
-            'net_amount' => $totalAmount,
-            'vendor_amount' => $totalAmount * 0.9, // 90% to vendor
-            'commission_amount' => $totalAmount * 0.1, // 10% commission
-        ]);
+            // Get commission rate from settings
+            $commissionRate = config('modules.marketplace.config.commission_rate', 5.0) / 100;
+            $commissionAmount = $totalAmount * $commissionRate;
+            $vendorAmount = $totalAmount - $commissionAmount;
+
+            Payment::create([
+                'order_id' => $order->id,
+                'transaction_id' => $transactionId,
+                'payment_method' => 'cash_on_delivery',
+                'gateway' => 'cash',
+                'type' => 'payment',
+                'status' => 'pending',
+                'amount' => $totalAmount,
+                'currency' => 'RWF',
+                'fees' => 0,
+                'net_amount' => $totalAmount,
+                'vendor_amount' => $vendorAmount,
+                'commission_amount' => $commissionAmount,
+            ]);
+        }
 
         return $order;
     }
@@ -357,17 +434,22 @@ class CheckoutController extends Controller
 
     /**
      * Calculate shipping cost for items from a specific vendor.
+     * Uses the vendor's configured shipping settings from products.
      */
     private function calculateShippingCostForVendor($items)
     {
-        $totalWeight = $items->sum(function ($item) {
-            return ($item->product->weight ?? 1) * $item->quantity;
-        });
+        $maxShippingCost = 0;
 
-        $baseShippingCost = 5.00; // Base cost per vendor
-        $weightCost = $totalWeight * 0.50; // $0.50 per kg
+        foreach ($items as $item) {
+            $product = $item->product;
 
-        return $baseShippingCost + $weightCost;
+            // Check if product has paid shipping option with extra fee
+            if ($product && $product->shipping_option === 'paid' && $product->extra_fee) {
+                $maxShippingCost = max($maxShippingCost, $product->extra_fee);
+            }
+        }
+
+        return $maxShippingCost;
     }
 
     /**

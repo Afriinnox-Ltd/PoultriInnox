@@ -4,8 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Product, ProductReview, ProductVariant } from '@/types/marketplace';
 import { Toaster } from "@/components/ui/sonner"
@@ -160,35 +158,63 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
 
     return (
         <>
-            <Head title={product.name} />
+            <Head title={`${product.name} - ${product.vendor?.business_name} | Poultry Marketplace`}>
+                <meta name="description" content={product.short_description || product.description?.substring(0, 160) || `Buy ${product.name} from ${product.vendor?.business_name}. Quality poultry equipment and supplies.`} />
+                <meta name="keywords" content={`${product.name}, ${product.category?.name}, poultry equipment, ${product.vendor?.business_name}, buy poultry supplies`} />
+                <meta property="og:title" content={`${product.name} - ${product.vendor?.business_name}`} />
+                <meta property="og:description" content={product.short_description || product.description?.substring(0, 200)} />
+                <meta property="og:image" content={product.images?.[0]?.image_path || '/placeholder-product.jpg'} />
+                <meta property="og:type" content="product" />
+                <meta property="product:price:amount" content={product.price.toString()} />
+                <meta property="product:price:currency" content="RWF" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={`${product.name} - ${product.vendor?.business_name}`} />
+                <meta name="twitter:description" content={product.short_description || product.description?.substring(0, 200)} />
+                <meta name="twitter:image" content={product.images?.[0]?.image_path || '/placeholder-product.jpg'} />
+                <link rel="canonical" href={`https://agriinnox.com/store/products/${product.slug}`} />
+            </Head>
             <WelcomeNav auth={auth} />
-            <div className="flex  pt-18 ">
-                <div className="max-w-7xl sm:px-6 lg:px-8">
-                    <div className="flex items-center">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.history.back()}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Back
-                        </Button>
-                    </div>
-
-                </div>
-            </div>
-            <div className="py-6">
+            <div className="py-6 pt-20 bg-gradient-to-b from-gray-50 to-white">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    {/* Breadcrumbs for SEO */}
+                    <nav className="flex mb-4 text-sm" aria-label="Breadcrumb">
+                        <ol className="inline-flex items-center space-x-1 md:space-x-3">
+                            <li className="inline-flex items-center">
+                                <Link href="/" className="text-gray-600 hover:text-emerald-600">Home</Link>
+                            </li>
+                            <li>
+                                <div className="flex items-center">
+                                    <span className="mx-2 text-gray-400">/</span>
+                                    <Link href="/store" className="text-gray-600 hover:text-emerald-600">Store</Link>
+                                </div>
+                            </li>
+                            {product.category && (
+                                <li>
+                                    <div className="flex items-center">
+                                        <span className="mx-2 text-gray-400">/</span>
+                                        <Link href={`/store?category=${product.category.id}`} className="text-gray-600 hover:text-emerald-600">{product.category.name}</Link>
+                                    </div>
+                                </li>
+                            )}
+                            <li>
+                                <div className="flex items-center">
+                                    <span className="mx-2 text-gray-400">/</span>
+                                    <span className="text-gray-900 font-medium">{product.name}</span>
+                                </div>
+                            </li>
+                        </ol>
+                    </nav>
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                         {/* Product Images */}
                         <div>
-                            <Card className='py-0 '>
+                            <Card className='py-0 bg-transparent border-0 shadow-none'>
                                 <CardContent className="p-0">
-                                    <div className="aspect-square relative bg-gray-100">
+                                    <div className="aspect-square relative ">
                                         <img
                                             src={images[selectedImageIndex].image_path}
                                             alt={images[selectedImageIndex].alt_text || product.name}
-                                            className="w-full h-full object-contain"
+                                            className="w-full h-full rounded object-contain"
                                         />
                                         {images.length > 1 && (
                                             <>
@@ -235,35 +261,17 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                     </div>
                                 </CardContent>
                             </Card>
-
-                            {/* Thumbnail Images */}
-                            {images.length > 1 && (
-                                <div className="flex gap-2 mt-4 overflow-x-auto">
-                                    {images.map((image, index) => (
-                                        <button
-                                            key={image.id}
-                                            className={`flex-shrink-0 w-20 h-20 border-2 rounded-lg overflow-hidden ${index === selectedImageIndex ? 'border-blue-500' : 'border-gray-200'
-                                                }`}
-                                            onClick={() => setSelectedImageIndex(index)}
-                                        >
-                                            <img
-                                                src={image.image_path}
-                                                alt={image.alt_text || product.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                         </div>
 
                         {/* Product Details */}
                         <div className="space-y-6">
                             <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Badge variant="outline">{product.category?.name}</Badge>
-                                    {product.is_featured && <Badge>Featured</Badge>}
-
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Badge variant="outline" className="border-emerald-200 text-emerald-700">{product.category?.name}</Badge>
+                                    {product.is_featured && <Badge className="bg-gradient-to-r from-emerald-300 to-emerald-600">⭐ Featured</Badge>}
+                                    {product.stock_quantity > 0 && (
+                                        <Badge variant="outline" className="border-green-200 text-green-700">✓ In Stock</Badge>
+                                    )}
                                 </div>
                                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
                                 <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -275,8 +283,9 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                 </div>
                             </div>
 
-                            <div>
-                                <div className="text-3xl font-bold text-emerald-600 mb-2">
+                            <div className="">
+                                <div className="text-sm text-gray-600 mb-1">Price</div>
+                                <div className="text-4xl font-extrabold text-emerald-600 mb-2">
                                     {formatCurrency(currentPrice)}
                                 </div>
                                 {product.min_order_quantity && (
@@ -362,8 +371,9 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                 <Button
                                     onClick={handleAddToCart}
                                     disabled={maxQuantity === 0 || isAddingToCart}
-                                    className="w-full"
+                                    className="w-full cursor-pointer"
                                     size="lg"
+
 
                                 >
                                 {isAddingToCart && 'Adding...'}
@@ -384,8 +394,8 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                             </div>
 
                             {/* Vendor Info */}
-                            <Card>
-                                <CardContent className="p-4">
+                            <Card className="shadow-none border ">
+                                <CardContent className="p-5">
                                     <div className="flex items-start justify-between">
                                         <div>
                                             <h3 className="font-semibold">{product.vendor?.business_name}</h3>
@@ -423,7 +433,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                         </TabsList>
 
                         <TabsContent value="description" className="mt-6">
-                            <Card>
+                            <Card className='shadow-none'>
                                 <CardContent className="p-6">
                                     {product.description ? (
                                         <div className="prose max-w-none">
@@ -441,7 +451,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                         </TabsContent>
 
                         <TabsContent value="specifications" className="mt-6">
-                            <Card>
+                            <Card className='shadow-none'>
                                 <CardContent className="p-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>

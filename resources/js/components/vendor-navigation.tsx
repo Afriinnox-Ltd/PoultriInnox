@@ -26,6 +26,8 @@ interface VendorNavigationItem {
     isActive?: boolean;
 }
 
+import { MarketplaceSettings } from '@/types/marketplace';
+
 interface VendorNavigationProps {
     currentPath?: string;
     variant?: 'horizontal' | 'vertical';
@@ -36,6 +38,7 @@ interface VendorNavigationProps {
         plan_name: string;
         is_active: boolean;
     } | null;
+    marketplaceSettings?: MarketplaceSettings;
 }
 
 export function VendorNavigation({ 
@@ -44,7 +47,8 @@ export function VendorNavigation({
     className = '',
     showLabels = true,
     needsUpgrade = false,
-    currentSubscription
+    currentSubscription,
+    marketplaceSettings
 }: VendorNavigationProps) {
     const page = usePage();
     const currentUrl = currentPath || page.url;

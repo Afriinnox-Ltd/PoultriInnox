@@ -304,7 +304,7 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
             </head>
             <body>
                 <div class="header">
-                    <div class="company-name">PoultriInnox Marketplace</div>
+                    <div class="company-name">Agriinnox Marketplace</div>
                     <div class="order-title">Order Invoice #${order.order_number}</div>
                     <div>Date: ${formatDate(order.created_at)}</div>
                 </div>
@@ -413,7 +413,7 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
 
                 <div class="footer">
                     <p>Thank you for your business!</p>
-                    <p>PoultriInnox Marketplace - Your trusted partner in poultry solutions</p>
+                    <p>Agriinnox Marketplace - Your trusted partner in poultry solutions</p>
                     <p>This is a computer-generated invoice. For any questions, please contact our support team.</p>
                 </div>
             </body>
@@ -479,7 +479,7 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
                         <Card>
                             <CardContent className="p-4">
                                 <div className="flex items-center">
-                                    <CheckCircle className="h-8 w-8 text-green-600" />
+                                    <CheckCircle className="h-8 w-8 text-emerald-600" />
                                     <div className="ml-4">
                                         <p className="text-sm font-medium text-gray-600">Completed</p>
                                         <p className="text-2xl font-bold text-gray-900">{stats.completed_orders}</p>
@@ -723,7 +723,7 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
                                                 <Button
                                                     size="sm"
                                                     onClick={() => window.location.href = `/orders/${order.id}/confirm-delivery`}
-                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                                 >
                                                     <CheckCircle className="h-4 w-4 mr-1" />
                                                     Confirm Delivery
@@ -732,7 +732,7 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
 
                                             {/* Show delivery confirmation status */}
                                             {order.delivery_confirmation?.confirmed && (
-                                                <div className="flex items-center gap-2 text-sm text-green-600 px-3 py-1 bg-green-50 rounded-md">
+                                                <div className="flex items-center gap-2 text-sm text-emerald-600 px-3 py-1 bg-emerald-50 rounded-md">
                                                     <CheckCircle className="h-4 w-4" />
                                                     <span>Delivery Confirmed {order.delivery_confirmation.confirmed_at && `on ${formatDate(order.delivery_confirmation.confirmed_at)}`}</span>
                                                 </div>

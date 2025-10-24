@@ -20,7 +20,8 @@ import {
     Info,
     X,
     Upload,
-    Truck
+    Truck,
+    Crown
 } from 'lucide-react';
 import VendorLayout from '@/layouts/vendor-layout';
 import { toast } from 'sonner';
@@ -53,9 +54,28 @@ interface CreateProductProps {
     subscriptionUsage: any;
     needsUpgrade: boolean;
     upgradeReason?: string;
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+        };
+        tax: {
+            tax_rate: number;
+            tax_enabled: boolean;
+            tax_inclusive: boolean;
+        };
+        general: {
+            currency: string;
+            currency_symbol: string;
+        };
+    };
 }
 
-export default function CreateProduct({ categories, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason }: CreateProductProps) {
+export default function CreateProduct({ categories, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason, marketplaceSettings }: CreateProductProps) {
     console.log('Subscription Data:', { currentSubscription, subscriptionUsage, allowsCOD: subscriptionUsage?.allows_cod });
     console.log(categories)
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -108,6 +128,47 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
         if (!isFirstTab) {
             setCurrentTab(tabs[currentTabIndex - 1].value);
         }
+    };
+
+    // Format currency based on marketplace settings
+    const formatCurrency = (amount: number) => {
+        const currency = marketplaceSettings?.general?.currency || 'RWF';
+        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+
+        if (currency === 'RWF') {
+            return new Intl.NumberFormat('rw-RW', {
+                style: 'currency',
+                currency: 'RWF'
+            }).format(amount);
+        }
+
+        return `${symbol}${amount.toLocaleString()}`;
+    };
+
+    // Calculate vendor earnings from price
+    const calculateVendorEarnings = (price: number) => {
+        if (!marketplaceSettings || !price) return { earnings: 0, breakdown: [] };
+
+        const commission = marketplaceSettings.commission.commission_type === 'percentage'
+            ? (price * marketplaceSettings.commission.default_commission_rate) / 100
+            : marketplaceSettings.commission.default_commission_rate;
+
+        const platformFee = (price * marketplaceSettings.fees.platform_fee_rate) / 100;
+        const transactionFee = (price * marketplaceSettings.fees.transaction_fee_rate) / 100;
+
+        const totalFees = commission + platformFee + transactionFee;
+        const earnings = price - totalFees;
+
+        return {
+            earnings,
+            breakdown: [
+                { label: 'Product Price', amount: price, type: 'positive' },
+                { label: 'Commission', amount: -commission, type: 'negative' },
+                { label: 'Platform Fee', amount: -platformFee, type: 'negative' },
+                { label: 'Transaction Fee', amount: -transactionFee, type: 'negative' },
+                { label: 'Your Earnings', amount: earnings, type: 'positive', isTotal: true }
+            ]
+        };
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -265,7 +326,7 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
 
             <div className="py-2 sm:py-6">
                 <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-6">
-                    
+
                     {subscriptionUsage && subscriptionUsage.products_limit !== undefined && (
                         <Alert className="mb-6" variant={subscriptionUsage.can_create_more ? "default" : "destructive"}>
                             <AlertCircle className="h-4 w-4" />
@@ -286,8 +347,8 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                 ) : (
                                     <p>
                                         You've reached your product limit (<strong>{subscriptionUsage.products_limit}</strong> products).{' '}
-                                        <Link 
-                                            href="/marketplace/subscriptions/upgrade" 
+                                        <Link
+                                            href="/marketplace/subscriptions/upgrade"
                                             className="font-semibold underline hover:no-underline"
                                         >
                                             Upgrade your plan
@@ -393,7 +454,7 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <Label htmlFor="price">Price (RWF) *</Label>
+                                                <Label htmlFor="price">Price ({marketplaceSettings?.general?.currency || 'RWF'}) *</Label>
                                                 <Input
                                                     type="number"
                                                     id="price"
@@ -406,6 +467,23 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                 />
                                                 {errors.price && (
                                                     <p className="text-sm text-red-500 mt-1">{errors.price}</p>
+                                                )}
+
+                                                {/* Earnings Calculator */}
+                                                {data.price && marketplaceSettings && parseFloat(data.price) > 0 && (
+                                                    <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                                        <h4 className="font-medium text-emerald-900 text-sm mb-2">Your Earnings Breakdown</h4>
+                                                        {calculateVendorEarnings(parseFloat(data.price)).breakdown.map((item, index) => (
+                                                            <div key={index} className={`flex justify-between text-xs ${item.isTotal ? 'font-bold border-t pt-1 mt-1' : ''}`}>
+                                                                <span className={item.type === 'negative' ? 'text-red-700' : 'text-emerald-700'}>
+                                                                    {item.label}:
+                                                                </span>
+                                                                <span className={item.type === 'negative' ? 'text-red-700' : 'text-emerald-700'}>
+                                                                    {item.amount >= 0 ? formatCurrency(item.amount) : `-${formatCurrency(Math.abs(item.amount))}`}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </div>
 
@@ -650,7 +728,7 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                         </div>
                                     </CardContent>
                                 </Card>
-                            </TabsContent> 
+                            </TabsContent>
                             {/* Payment Tab */}
                             <TabsContent value="payment">
                                 <Card>
@@ -662,6 +740,25 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                     </CardHeader>
 
                                     <CardContent className="space-y-4 p-4 sm:p-6">
+                        {/* Subscription Requirement Alert */}
+                        {(!currentSubscription || !currentSubscription.is_active) && (
+                            <Alert className="mb-4 bg-amber-50 border-amber-200">
+                                <Crown className="h-4 w-4 text-amber-600" />
+                                <AlertDescription className="text-amber-900">
+                                    <p className="font-medium mb-2">No Active Subscription</p>
+                                    <p className="text-sm mb-3">
+                                        You need an active subscription to enable payment methods for your products.
+                                    </p>
+                                    <Link href="/marketplace/subscriptions">
+                                        <Button size="sm" variant="outline" className="border-amber-600 text-amber-700 hover:bg-amber-100">
+                                            <Crown className="h-3 w-3 mr-2" />
+                                            View Subscription Plans
+                                        </Button>
+                                    </Link>
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
                         <Alert className="mb-4">
                             <Info className="h-4 w-4 mr-2" />
                             <AlertDescription>
@@ -676,6 +773,7 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                     <Checkbox
                                                         id="online"
                                                         checked={data.payment_methods.includes("online")}
+                                                        disabled={!currentSubscription || !currentSubscription.is_active}
                                                         onCheckedChange={(checked) => {
                                                             if (checked) {
                                                                 setData("payment_methods", [...data.payment_methods, "online"]);
@@ -687,8 +785,13 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                             }
                                                         }}
                                                     />
-                                                    <Label htmlFor="online" className="ml-2">
+                                                    <Label htmlFor="online" className={`ml-2 ${(!currentSubscription || !currentSubscription.is_active) ? 'text-gray-400' : ''}`}>
                                                         Online Payment
+                                                        {(!currentSubscription || !currentSubscription.is_active) && (
+                                                            <span className="text-xs text-red-500 ml-2">
+                                                                (Requires active subscription)
+                                                            </span>
+                                                        )}
                                                     </Label>
                                                 </div>
 
@@ -697,6 +800,7 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                     <Checkbox
                                                         id="cod"
                                                         checked={data.payment_methods.includes("cod")}
+                                                        disabled={!subscriptionUsage?.allows_cod || !currentSubscription?.is_active}
                                                         onCheckedChange={(checked) => {
                                                             if (checked) {
                                                                 // ✅ Restrict to plans that allow COD
@@ -716,11 +820,16 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                             }
                                                         }}
                                                     />
-                                                    <Label htmlFor="cod" className="ml-2">
+                                                    <Label htmlFor="cod" className={`ml-2 ${(!subscriptionUsage?.allows_cod || !currentSubscription?.is_active) ? 'text-gray-400' : ''}`}>
                                                         Cash on Delivery (COD)
-                                                        {!subscriptionUsage?.allows_cod && (
+                                                        {!currentSubscription?.is_active && (
                                                             <span className="text-xs text-red-500 ml-2">
-                                                                (Not available for your plan)
+                                                                (Requires active subscription)
+                                                            </span>
+                                                        )}
+                                                        {currentSubscription?.is_active && !subscriptionUsage?.allows_cod && (
+                                                            <span className="text-xs text-orange-500 ml-2">
+                                                                (Upgrade to premium plan)
                                                             </span>
                                                         )}
                                                     </Label>

@@ -77,8 +77,8 @@ class ScheduleReminderNotification extends Notification implements ShouldQueue
         }
 
         $mailMessage->action('View Schedule', $actionUrl)
-                   ->line('Thank you for using PoultriInnox!')
-                   ->salutation('Best regards, The PoultriInnox Team');
+                   ->line('Thank you for using Agriinnox!')
+                   ->salutation('Best regards, The Agriinnox Team');
 
         return $mailMessage;
     }

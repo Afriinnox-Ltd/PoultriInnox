@@ -221,11 +221,7 @@ export default function Dashboard({
                         <div className="flex items-center gap-1">
                           <Thermometer className="h-3 w-3" />
                           <span className="text-sm">{incubatorStats?.average_temperature?.toFixed(1) || 0}°C</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Droplet className="h-3 w-3" />
-                          <span className="text-sm">{incubatorStats?.average_humidity?.toFixed(1) || 0}%</span>
-                        </div>
+                        </div> 
                       </div>
                     </div>
                   </div>

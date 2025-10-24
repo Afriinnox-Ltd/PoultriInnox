@@ -4,16 +4,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Order, OrderItem } from '@/types/marketplace';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Order } from '@/types/marketplace';
+
+interface ShippingAddress {
+    city?: string;
+    state?: string;
+    country?: string;
+    address_line_1?: string;
+    address_line_2?: string;
+    name?: string;
+    phone?: string;
+    postal_code?: string;
+}
+
 import {
     Package,
     Truck,
     MapPin,
     Calendar,
     DollarSign,
-    User,
     Phone,
     Mail,
     Clock,
@@ -23,7 +40,8 @@ import {
     Filter,
     Download,
     Eye,
-    MessageSquare
+    MessageSquare,
+    Users
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { formatCurrency } from '@/utils/formatters';
@@ -36,9 +54,16 @@ interface OrdersPageProps {
                 id: number;
                 name: string;
                 email: string;
+                phone?: string;
             };
-            items: Array<OrderItem & {
-                product: {
+            items: Array<{
+                id: number;
+                product_name: string;
+                product_sku?: string;
+                quantity: number;
+                unit_price: number;
+                total_price: number;
+                product?: {
                     id: number;
                     name: string;
                     slug: string;
@@ -65,6 +90,16 @@ interface OrdersPageProps {
                 delivery_requested_at: string;
             };
             payment_status: string;
+            subtotal?: number;
+            tax_amount?: number;
+            shipping_amount?: number;
+            discount_amount?: number;
+            total_weight?: number;
+            transaction_id?: string;
+            delivery_instructions?: string;
+            notes?: string;
+            billing_address?: ShippingAddress | string;
+            shipping_address?: ShippingAddress | string;
         }>;
         current_page: number;
         last_page: number;
@@ -86,6 +121,8 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
     const [paymentStatusFilter, setPaymentStatusFilter] = useState(filters.payment_status || '');
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
+    const [selectedOrder, setSelectedOrder] = useState<OrdersPageProps['orders']['data'][0] | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -120,6 +157,16 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
         }
     };
 
+
+    const formatPaymentMethod = (method: string) => {
+        switch (method) {
+            case 'credit_card': return 'Credit Card';
+            case 'paypal': return 'PayPal';
+            case 'bank_transfer': return 'Bank Transfer';
+            case 'cash_on_delivery': return 'Cash on Delivery';
+            default: return method || 'Online Payment';
+        }
+    };
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -164,9 +211,12 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                     onSuccess: () => {
                         toast.success('Order status updated successfully!');
                     },
-                    onError: (error) => {
-                        toast.error(error.response?.data?.error || 'Failed to update order status. Please try again.');
-                        console.error('Error updating order status:', error);
+                    onError: (errors) => {
+                        const errorMessage = typeof errors === 'object' && errors !== null && 'error' in errors
+                            ? String((errors as Record<string, unknown>).error)
+                            : 'Failed to update order status. Please try again.';
+                        toast.error(errorMessage);
+                        console.error('Error updating order status:', errors);
                     }
                 }
             );
@@ -177,7 +227,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
         }
     };
 
-    const printOrder = (order: any) => {
+    const printOrder = (order: OrdersPageProps['orders']['data'][0]) => {
         // Create a new window for printing
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
@@ -309,7 +359,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
             </head>
             <body>
                 <div class="header">
-                    <div class="company-name">PoultriInnox Marketplace</div>
+                    <div class="company-name">Agriinnox Marketplace</div>
                     <div class="order-title">Order Invoice #${order.order_number}</div>
                     <div>Date: ${formatDate(order.created_at)}</div>
                 </div>
@@ -336,25 +386,25 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                 <div class="addresses">
                     <div class="address-section">
                         <h3>Shipping Address</h3>
-                        ${order.shipping_address ? `
-                            <p>${order.shipping_address.name || ''}</p>
-                            <p>${order.shipping_address.phone || ''}</p>
-                            <p>${order.shipping_address.address_line_1 || ''}</p>
-                            ${order.shipping_address.address_line_2 ? `<p>${order.shipping_address.address_line_2}</p>` : ''}
-                            <p>${order.shipping_address.city || ''}, ${order.shipping_address.state || ''}</p>
-                            <p>${order.shipping_address.country || ''}</p>
+                        ${order.shipping_address && typeof order.shipping_address === 'object' ? `
+                            <p>${(order.shipping_address as ShippingAddress).name || ''}</p>
+                            <p>${(order.shipping_address as ShippingAddress).phone || ''}</p>
+                            <p>${(order.shipping_address as ShippingAddress).address_line_1 || ''}</p>
+                            ${(order.shipping_address as ShippingAddress).address_line_2 ? `<p>${(order.shipping_address as ShippingAddress).address_line_2}</p>` : ''}
+                            <p>${(order.shipping_address as ShippingAddress).city || ''}, ${(order.shipping_address as ShippingAddress).state || ''}</p>
+                            <p>${(order.shipping_address as ShippingAddress).country || ''}</p>
                         ` : '<p>No shipping address available</p>'}
                     </div>
 
                     <div class="address-section">
                         <h3>Billing Address</h3>
-                        ${order.billing_address ? `
-                            <p>${order.billing_address.name || ''}</p>
-                            <p>${order.billing_address.phone || ''}</p>
-                            <p>${order.billing_address.address_line_1 || ''}</p>
-                            ${order.billing_address.address_line_2 ? `<p>${order.billing_address.address_line_2}</p>` : ''}
-                            <p>${order.billing_address.city || ''}, ${order.billing_address.state || ''}</p>
-                            <p>${order.billing_address.country || ''}</p>
+                        ${order.billing_address && typeof order.billing_address === 'object' ? `
+                            <p>${(order.billing_address as ShippingAddress).name || ''}</p>
+                            <p>${(order.billing_address as ShippingAddress).phone || ''}</p>
+                            <p>${(order.billing_address as ShippingAddress).address_line_1 || ''}</p>
+                            ${(order.billing_address as ShippingAddress).address_line_2 ? `<p>${(order.billing_address as ShippingAddress).address_line_2}</p>` : ''}
+                            <p>${(order.billing_address as ShippingAddress).city || ''}, ${(order.billing_address as ShippingAddress).state || ''}</p>
+                            <p>${(order.billing_address as ShippingAddress).country || ''}</p>
                         ` : '<p>No billing address available</p>'}
                     </div>
                 </div>
@@ -370,7 +420,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                         </tr>
                     </thead>
                     <tbody>
-                        ${order.items.map((item: any) => `
+                        ${order.items.map((item) => `
                             <tr>
                                 <td>
                                     <strong>${item.product_name}</strong>
@@ -426,7 +476,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
 
                 <div class="footer">
                     <p>Thank you for your business!</p>
-                    <p>PoultriInnox Marketplace - Your trusted partner in poultry solutions</p>
+                    <p>Agriinnox Marketplace - Your trusted partner in poultry solutions</p>
                     <p>This is a computer-generated invoice. For any questions, please contact our support team.</p>
                 </div>
             </body>
@@ -565,14 +615,6 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                         </CardContent>
                     </Card>
 
-                    {/* Results Summary */}
-                    <Card className="mb-4">
-                        <CardContent className="p-4">
-                            <p className="text-sm text-gray-600">
-                                Showing {orders.data.length} of {orders.total} orders
-                            </p>
-                        </CardContent>
-                    </Card>
 
                     {/* Orders List */}
                     <div className="space-y-4">
@@ -600,7 +642,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                     <CardContent className="p-6">
                                         {/* Order Header */}
                                         <div className="flex justify-between items-start mb-4">
-                                            <div>
+                                            <div className="flex-1">
                                                 <h3 className="text-lg font-semibold">
                                                     Order #{order.order_number}
                                                 </h3>
@@ -609,15 +651,55 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                         <Calendar className="h-4 w-4 mr-1" />
                                                         {formatDate(order.created_at)}
                                                     </div>
-                                                    {user_type !== 'customer' && order.user && (
+                                                    {order.payment_method && (
                                                         <div className="flex items-center">
-                                                            <User className="h-4 w-4 mr-1" />
-                                                            {order.user.name}
+                                                            <DollarSign className="h-4 w-4 mr-1" />
+                                                            {order.payment_method === 'cash_on_delivery' ? 'COD' :
+                                                             order.payment_method === 'credit_card' ? 'Credit Card' :
+                                                             order.payment_method === 'paypal' ? 'PayPal' :
+                                                             order.payment_method === 'bank_transfer' ? 'Bank Transfer' : 'Online'}
                                                         </div>
                                                     )}
                                                 </div>
+
+                                                {/* Minimized Customer Details for Vendor/Admin */}
+                                                {user_type !== 'customer' && order.user && (
+                                                    <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                                                        <div className="flex items-center gap-4 text-sm">
+                                                            <div className="flex items-center">
+                                                                <Users className="h-4 w-4 mr-1 text-gray-500" />
+                                                                <span className="font-medium">{order.user.name}</span>
+                                                            </div>
+                                                            <div className="flex items-center">
+                                                                <Mail className="h-4 w-4 mr-1 text-gray-500" />
+                                                                <span className="text-gray-600">{order.user.email}</span>
+                                                            </div>
+                                                            {order.user.phone && (
+                                                                <div className="flex items-center">
+                                                                    <Phone className="h-4 w-4 mr-1 text-gray-500" />
+                                                                    <span className="text-gray-600">{order.user.phone}</span>
+                                                                </div>
+                                                            )}
+                                                            {order.shipping_address && (
+                                                                <div className="flex items-center">
+                                                                    <MapPin className="h-4 w-4 mr-1 text-gray-500" />
+                                                                    <span className="text-gray-600">
+                                                                        {typeof order.shipping_address === 'object' && order.shipping_address !== null
+                                                                            ? (() => {
+                                                                                const addr = order.shipping_address as ShippingAddress;
+                                                                                return `${addr.city || ''}${addr.state ? `, ${addr.state}` : ''}`.trim() || 'Address Available';
+                                                                            })()
+                                                                            : 'Delivery Address Provided'
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="text-right">
+
+                                            <div className="text-right ml-4">
                                                 <div className="flex gap-2 mb-2">
                                                     <Badge className={getStatusColor(order.status)}>
                                                         {order.status}
@@ -625,7 +707,6 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                     <Badge className={getPaymentStatusColor(order.payment_status)}>
                                                         {formatPaymentStatus(order.payment_status)}
                                                     </Badge>
-                                                    
                                                 </div>
                                                 <p className="text-xl font-bold">
                                                     {formatCurrency(order.total_amount)}
@@ -672,6 +753,78 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                             ))}
                                         </div>
 
+                                        {/* Buyer Address Information */}
+                                        {(order.shipping_address || order.billing_address) && (
+                                            <>
+                                                <Separator className="mb-4" />
+                                                <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                                                    <h4 className="font-medium mb-3 flex items-center">
+                                                        <MapPin className="h-4 w-4 mr-2" />
+                                                        Delivery Address
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        {/* Shipping Address */}
+                                                        {order.shipping_address && (
+                                                            <div className="border-l-4 border-blue-500 pl-3">
+                                                                <p className="text-xs text-gray-500 uppercase font-medium mb-2">Shipping Address</p>
+                                                                {(() => {
+                                                                    try {
+                                                                        const addr = typeof order.shipping_address === 'string'
+                                                                            ? JSON.parse(order.shipping_address)
+                                                                            : order.shipping_address;
+                                                                        return (
+                                                                            <div className="text-sm space-y-1">
+                                                                                {addr.name && <p className="font-medium">{addr.name}</p>}
+                                                                                {addr.phone && <p className="text-gray-600">{addr.phone}</p>}
+                                                                                {addr.address_line_1 && <p>{addr.address_line_1}</p>}
+                                                                                {addr.address_line_2 && <p>{addr.address_line_2}</p>}
+                                                                                <p>
+                                                                                    {[addr.city, addr.state].filter(Boolean).join(', ')}
+                                                                                    {addr.postal_code && ` - ${addr.postal_code}`}
+                                                                                </p>
+                                                                                {addr.country && <p className="font-medium">{addr.country}</p>}
+                                                                            </div>
+                                                                        );
+                                                                    } catch (e) {
+                                                                        return <p className="text-sm text-gray-500 italic">Invalid address format</p>;
+                                                                    }
+                                                                })()}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Billing Address */}
+                                                        {order.billing_address && (
+                                                            <div className="border-l-4 border-emerald-500 pl-3">
+                                                                <p className="text-xs text-gray-500 uppercase font-medium mb-2">Billing Address</p>
+                                                                {(() => {
+                                                                    try {
+                                                                        const addr = typeof order.billing_address === 'string'
+                                                                            ? JSON.parse(order.billing_address)
+                                                                            : order.billing_address;
+                                                                        return (
+                                                                            <div className="text-sm space-y-1">
+                                                                                {addr.name && <p className="font-medium">{addr.name}</p>}
+                                                                                {addr.phone && <p className="text-gray-600">{addr.phone}</p>}
+                                                                                {addr.address_line_1 && <p>{addr.address_line_1}</p>}
+                                                                                {addr.address_line_2 && <p>{addr.address_line_2}</p>}
+                                                                                <p>
+                                                                                    {[addr.city, addr.state].filter(Boolean).join(', ')}
+                                                                                    {addr.postal_code && ` - ${addr.postal_code}`}
+                                                                                </p>
+                                                                                {addr.country && <p className="font-medium">{addr.country}</p>}
+                                                                            </div>
+                                                                        );
+                                                                    } catch (e) {
+                                                                        return <p className="text-sm text-gray-500 italic">Invalid address format</p>;
+                                                                    }
+                                                                })()}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
                                         {/* Shipping Information */}
                                         {order.shipping && (
                                             <>
@@ -710,6 +863,17 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
 
                                         {/* Order Actions */}
                                         <div className="flex gap-2 flex-wrap">
+                                            {/* <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setSelectedOrder(order);
+                                                    setIsModalOpen(true);
+                                                }}
+                                            >
+                                                <Eye className="h-4 w-4 mr-1" />
+                                                View Details
+                                            </Button>
                                             {/* <Button
                                                 size="sm"
                                                 variant="outline"
@@ -807,23 +971,9 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                 </Button>
                                             )}
 
-                                            {/* Customer Delivery Confirmation */}
-                                            {user_type === 'customer' && order.status === 'delivered' && order.payment_status === 'pending_confirmation' && !order.delivery_confirmation?.confirmed && (
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        router.visit(`/orders/${order.id}/confirm-delivery`);
-                                                    }}
-                                                    className="bg-green-600 hover:bg-green-700 text-white"
-                                                >
-                                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                                    Confirm Delivery
-                                                </Button>
-                                            )}
-
                                             {/* Show delivery confirmation status */}
                                             {order.delivery_confirmation?.confirmed && (
-                                                <div className="flex items-center gap-2 text-sm text-green-600">
+                                                <div className="flex items-center gap-2 text-sm text-emerald-600">
                                                     <CheckCircle className="h-4 w-4" />
                                                     <span>Delivery Confirmed {order.delivery_confirmation.confirmed_at && `on ${formatDate(order.delivery_confirmation.confirmed_at)}`}</span>
                                                 </div>
@@ -858,6 +1008,317 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                             ))
                         )}
                     </div>
+
+                    {/* Order Details Modal */}
+                    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                        <DialogContent className="max-w-6xl min-w-5xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>
+                                    Order Details #{selectedOrder?.order_number}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Complete order information and checkout details
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            {selectedOrder && (
+                                <div className="space-y-6">
+                                    {/* Order Summary */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-3">Order Information</h3>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Order Number:</span>
+                                                    <span className="font-medium">{selectedOrder.order_number}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Date:</span>
+                                                    <span>{formatDate(selectedOrder.created_at)}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Status:</span>
+                                                    <Badge className={getStatusColor(selectedOrder.status)}>
+                                                        {selectedOrder.status}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Payment Status:</span>
+                                                    <Badge className={getPaymentStatusColor(selectedOrder.payment_status)}>
+                                                        {formatPaymentStatus(selectedOrder.payment_status)}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Payment Method:</span>
+                                                    <span>{formatPaymentMethod(selectedOrder.payment_method)}</span>
+                                                </div>
+                                                {selectedOrder.transaction_id && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-600">Transaction ID:</span>
+                                                        <span className="font-mono text-xs">{selectedOrder.transaction_id}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-3">Customer Information</h3>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Name:</span>
+                                                    <span className="font-medium">{selectedOrder.user.name}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Email:</span>
+                                                    <span>{selectedOrder.user.email}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Addresses */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Shipping Address */}
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-3 flex items-center">
+                                                <MapPin className="h-5 w-5 mr-2" />
+                                                Shipping Address
+                                            </h3>
+                                            {selectedOrder.shipping_address &&  JSON.parse( selectedOrder.shipping_address) ? (
+                                                <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
+                                                    {(() => {
+                                                        const addr = JSON.parse(selectedOrder.shipping_address) as ShippingAddress;
+                                                        return (
+                                                            <>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Name:</span>
+                                                                    <span className={`font-medium ${!addr.name ? 'text-red-500 italic' : ''}`}>
+                                                                        {addr.name || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Phone:</span>
+                                                                    <span className={`flex items-center ${!addr.phone ? 'text-red-500 italic' : ''}`}>
+                                                                        <Phone className="h-3 w-3 mr-1" />
+                                                                        {addr.phone || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Address Line 1:</span>
+                                                                    <span className={!addr.address_line_1 ? 'text-red-500 italic' : ''}>
+                                                                        {addr.address_line_1 || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                {addr.address_line_2 && (
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Address Line 2:</span>
+                                                                        <span>{addr.address_line_2}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">City:</span>
+                                                                    <span className={!addr.city ? 'text-red-500 italic' : ''}>
+                                                                        {addr.city || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">State:</span>
+                                                                    <span className={!addr.state ? 'text-red-500 italic' : ''}>
+                                                                        {addr.state || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                {addr.postal_code && (
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Postal Code:</span>
+                                                                        <span>{addr.postal_code}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Country:</span>
+                                                                    <span className={`font-medium ${!addr.country ? 'text-red-500 italic' : ''}`}>
+                                                                        {addr.country || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            ) : (
+                                                <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-500 italic">
+                                                    No shipping address provided
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Billing Address */}
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-3 flex items-center">
+                                                <DollarSign className="h-5 w-5 mr-2" />
+                                                Billing Address
+                                            </h3>
+                                            {selectedOrder.billing_address && typeof  JSON.parse(selectedOrder.billing_address) === 'object' ? (
+                                                <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
+                                                    {(() => {
+                                                        const addr =  JSON.parse(selectedOrder.billing_address) as ShippingAddress;
+                                                        return (
+                                                            <>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Name:</span>
+                                                                    <span className={`font-medium ${!addr.name ? 'text-red-500 italic' : ''}`}>
+                                                                        {addr.name || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Phone:</span>
+                                                                    <span className={`flex items-center ${!addr.phone ? 'text-red-500 italic' : ''}`}>
+                                                                        <Phone className="h-3 w-3 mr-1" />
+                                                                        {addr.phone || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Address Line 1:</span>
+                                                                    <span className={!addr.address_line_1 ? 'text-red-500 italic' : ''}>
+                                                                        {addr.address_line_1 || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                {addr.address_line_2 && (
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Address Line 2:</span>
+                                                                        <span>{addr.address_line_2}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">City:</span>
+                                                                    <span className={!addr.city ? 'text-red-500 italic' : ''}>
+                                                                        {addr.city || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">State:</span>
+                                                                    <span className={!addr.state ? 'text-red-500 italic' : ''}>
+                                                                        {addr.state || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                                {addr.postal_code && (
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Postal Code:</span>
+                                                                        <span>{addr.postal_code}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Country:</span>
+                                                                    <span className={`font-medium ${!addr.country ? 'text-red-500 italic' : ''}`}>
+                                                                        {addr.country || 'Not provided'}
+                                                                    </span>
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            ) : (
+                                                <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-500 italic">
+                                                    No billing address provided
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Order Items */}
+                                    <div>
+                                        <h3 className="font-semibold text-lg mb-3">Order Items</h3>
+                                        <div className="space-y-3">
+                                            {selectedOrder.items.map((item) => (
+                                                <div key={item.id} className="flex gap-4 p-4 border rounded-lg">
+                                                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                                        {item.product && item.product.images && item.product.images.length > 0 ? (
+                                                            <img
+                                                                src={item.product.images[0].image_path}
+                                                                alt={item.product.images[0].alt_text || item.product.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                <Package className="h-6 w-6" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-grow">
+                                                        <h4 className="font-medium">{item.product_name}</h4>
+                                                        <p className="text-sm text-gray-600">
+                                                            SKU: {item.product_sku || 'N/A'} • Quantity: {item.quantity}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-semibold">{formatCurrency(item.total_price)}</p>
+                                                        <p className="text-sm text-gray-600">{formatCurrency(item.unit_price)} each</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Order Totals */}
+                                    <div>
+                                        <h3 className="font-semibold text-lg mb-3">Order Summary</h3>
+                                        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                                            <div className="flex justify-between text-sm">
+                                                <span>Subtotal:</span>
+                                                <span>{formatCurrency(selectedOrder.subtotal || 0)}</span>
+                                            </div>
+                                            {selectedOrder.tax_amount && selectedOrder.tax_amount > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span>Tax:</span>
+                                                    <span>{formatCurrency(selectedOrder.tax_amount)}</span>
+                                                </div>
+                                            )}
+                                            {selectedOrder.shipping_amount && selectedOrder.shipping_amount > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span>Shipping:</span>
+                                                    <span>{formatCurrency(selectedOrder.shipping_amount)}</span>
+                                                </div>
+                                            )}
+                                            {selectedOrder.discount_amount && selectedOrder.discount_amount > 0 && (
+                                                <div className="flex justify-between text-sm text-emerald-600">
+                                                    <span>Discount:</span>
+                                                    <span>-{formatCurrency(selectedOrder.discount_amount)}</span>
+                                                </div>
+                                            )}
+                                            <Separator />
+                                            <div className="flex justify-between font-semibold text-lg">
+                                                <span>Total:</span>
+                                                <span>{formatCurrency(selectedOrder.total_amount)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Additional Information */}
+                                    {(selectedOrder.delivery_instructions || selectedOrder.notes) && (
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-3">Additional Information</h3>
+                                            <div className="space-y-3">
+                                                {selectedOrder.delivery_instructions && (
+                                                    <div>
+                                                        <h4 className="font-medium text-gray-900 mb-1">Delivery Instructions</h4>
+                                                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">
+                                                            {selectedOrder.delivery_instructions}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {selectedOrder.notes && (
+                                                    <div>
+                                                        <h4 className="font-medium text-gray-900 mb-1">Order Notes</h4>
+                                                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">
+                                                            {selectedOrder.notes}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </DialogContent>
+                    </Dialog>
 
                     {/* Pagination */}
                     {orders.last_page > 1 && (

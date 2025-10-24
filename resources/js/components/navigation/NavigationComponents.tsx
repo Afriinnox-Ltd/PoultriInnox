@@ -112,7 +112,7 @@ export const EntityLink: React.FC<EntityLinkProps> = ({
   description
 }) => {
   return (
-    <div>
+    <div className='flex gap-1'>
       <NavigationLink
         onClick={() => onClick(id)}
         className={`font-medium ${className}`}

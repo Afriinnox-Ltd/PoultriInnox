@@ -855,7 +855,7 @@ export default function FeedInventoryIndex({
                                                             </div>
                                                         }
                                                         tooltip={`Expires on: ${item.formatted_expiry_date || item.expiry_date}. ${item.days_until_expiry} days remaining. ${item.days_until_expiry < 7 ? 'URGENT: Use immediately or discard.' : item.days_until_expiry < 30 ? 'CAUTION: Use soon to avoid waste.' : 'GOOD: Fresh stock with adequate shelf life.'} Feed quality degrades after expiry.`}
-                                                      
+
                                                         className={item.days_until_expiry < 7 ? 'text-red-600' : item.days_until_expiry < 30 ? 'text-orange-600' : 'text-emerald-600'}
                                                     />
                                                 </TableCell>
@@ -869,7 +869,7 @@ export default function FeedInventoryIndex({
                                                                 )}
                                                             </div>
                                                         }
-                                                        tooltip={`Stored at: ${item.storage_location}${item.warehouse_section ? `, Section: ${item.warehouse_section}` : ''}. This helps locate the feed quickly and maintain proper storage conditions. Ensure proper temperature and humidity for feed quality.`}
+                                                        tooltip={`Stored at: ${item.storage_location}${item.warehouse_section ? `, Section: ${item.warehouse_section}` : ''}. This helps locate the feed quickly and maintain proper storage conditions. Ensure proper temperature  for feed quality.`}
 
                                                     />
                                                 </TableCell>

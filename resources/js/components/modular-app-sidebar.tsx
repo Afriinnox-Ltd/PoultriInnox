@@ -81,7 +81,7 @@ const footerNavItems: NavItem[] = [
 
     {
         title: 'Help',
-        href: 'https://laravel.com/docs/starter-kits#react',
+        href: '/help',
         icon: HelpCircle,
     },
 ];
@@ -100,11 +100,11 @@ export function ModularAppSidebar({ enabledModules = [] }: ModularAppSidebarProp
             switch (module.slug) {
                 case 'batch-incubator':
                     subItems = [
-                        {
-                            title: 'Overview',
-                            href: '/batch-incubator',
-                            icon: Eye,
-                        },
+                        // {
+                        //     title: 'Overview',
+                        //     href: '/batch-incubator',
+                        //     icon: Eye,
+                        // },
                         {
                             title: 'Incubators',
                             href: '/batch-incubator/incubators',

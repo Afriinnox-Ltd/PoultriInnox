@@ -50,10 +50,10 @@ interface Props {
 
 export default function Index({ plans, currentSubscription, subscriptionHistory, hasVendorProfile }: Props) {
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('rw-RW', { 
-      style: 'currency', 
+    return new Intl.NumberFormat('rw-RW', {
+      style: 'currency',
       currency: 'RWF',
-      minimumFractionDigits: 0 
+      minimumFractionDigits: 0
     }).format(price);
   };
 
@@ -105,21 +105,21 @@ export default function Index({ plans, currentSubscription, subscriptionHistory,
 
         {/* Current Subscription */}
         {currentSubscription && (
-          <Card className="mb-8 border-green-200 bg-green-50">
+          <Card className="mb-8 border-emerald-200 bg-emerald-50">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <span>Current Plan: {currentSubscription.plan_name}</span>
                 <Badge variant="default">Active</Badge>
               </CardTitle>
               <CardDescription>
-                {currentSubscription.price > 0 
-                  ? `${formatPrice(currentSubscription.price)} / ${currentSubscription.billing_cycle}` 
+                {currentSubscription.price > 0
+                  ? `${formatPrice(currentSubscription.price)} / ${currentSubscription.billing_cycle}`
                   : 'Free Plan'
-                } • 
-                {currentSubscription.days_remaining > 0 
+                } •
+                {currentSubscription.days_remaining > 0
                   ? ` ${currentSubscription.days_remaining} days remaining`
                   : ' Expired'
-                } • 
+                } •
                 Auto-renew: {currentSubscription.auto_renew ? 'On' : 'Off'}
               </CardDescription>
             </CardHeader>
@@ -141,10 +141,10 @@ export default function Index({ plans, currentSubscription, subscriptionHistory,
           {plans.map((plan) => {
             const isCurrentPlan = currentSubscription?.plan_name === plan.name;
             const isUpgrade = currentSubscription && plan.price > currentSubscription.price;
-            
+
             return (
-              <Card 
-                key={plan.id} 
+              <Card
+                key={plan.id}
                 className={`relative ${
                   plan.name === 'Premium' ? 'ring-2 ring-yellow-400 ring-offset-2' : ''
                 } ${isCurrentPlan ? 'opacity-60' : ''}`}
@@ -154,7 +154,7 @@ export default function Index({ plans, currentSubscription, subscriptionHistory,
                     <Badge className="bg-yellow-400 text-yellow-900">Most Popular</Badge>
                   </div>
                 )}
-                
+
                 <CardHeader className="text-center">
                   <div className="flex justify-center mb-4">
                     {getPlanIcon(plan.name)}
@@ -177,7 +177,7 @@ export default function Index({ plans, currentSubscription, subscriptionHistory,
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-center space-x-2">
-                        <Check className="w-4 h-4 text-green-500" />
+                        <Check className="w-4 h-4 text-emerald-500" />
                         <span className="text-sm">{feature}</span>
                       </li>
                     ))}
@@ -186,15 +186,15 @@ export default function Index({ plans, currentSubscription, subscriptionHistory,
                   <div className="space-y-2 mb-6 text-sm text-gray-600">
                     <div>Products: {plan.product_limit || 'Unlimited'}</div>
                     <div>Orders: {plan.order_limit || 'Unlimited'}/month</div>
-                    <div>COD: {plan.allow_cod ? 'Yes' : 'No'}</div>
+                    <div>Cash on Delivery: {plan.allow_cod ? 'Yes' : 'No'}</div>
                   </div>
 
                   {isCurrentPlan ? (
                     <Button disabled className="w-full">Current Plan</Button>
                   ) : (
                     <Link href={`/marketplace/subscriptions/plans/${plan.id}`}>
-                      <Button 
-                        className="w-full" 
+                      <Button
+                        className="w-full"
                         variant={plan.name === 'Premium' ? 'default' : 'outline'}
                       >
                         {isUpgrade ? 'Upgrade to' : 'Select'} {plan.name}
@@ -232,7 +232,7 @@ export default function Index({ plans, currentSubscription, subscriptionHistory,
                         <td className="py-2 font-medium">{subscription.plan_name}</td>
                         <td className="py-2">{formatPrice(subscription.price)}</td>
                         <td className="py-2">
-                          {new Date(subscription.start_date).toLocaleDateString()} - 
+                          {new Date(subscription.start_date).toLocaleDateString()} -
                           {new Date(subscription.end_date).toLocaleDateString()}
                         </td>
                         <td className="py-2">

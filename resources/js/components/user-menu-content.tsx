@@ -5,7 +5,7 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings } from 'lucide-react';
+import { Link2, LogOut, Settings } from 'lucide-react';
 
 interface UserMenuContentProps {
     user: User;
@@ -28,12 +28,23 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+
                 <DropdownMenuItem asChild>
                     <Link className="block w-full" href={edit()} as="button" prefetch onClick={cleanup}>
                         <Settings className="mr-2" />
                         Settings
                     </Link>
                 </DropdownMenuItem>
+                {
+                    user.role == 'admin' ? (
+
+                        <DropdownMenuItem asChild>
+                            <Link className="block w-full" href={'/admin'} as="button" prefetch onClick={cleanup}>
+                                <Link2 className="mr-2" />
+                                Admin
+                            </Link>
+                        </DropdownMenuItem>
+                    ) : null}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

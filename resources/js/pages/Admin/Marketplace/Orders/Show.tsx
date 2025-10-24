@@ -258,7 +258,7 @@ export default function OrderShow({ order, timeline }: OrderShowProps) {
                                         </div>
                                     )}
                                     {order.discount_amount && order.discount_amount > 0 && (
-                                        <div className="flex justify-between text-green-600">
+                                        <div className="flex justify-between text-emerald-600">
                                             <span>Discount:</span>
                                             <span>-{formatCurrency(order.discount_amount)}</span>
                                         </div>
@@ -286,7 +286,7 @@ export default function OrderShow({ order, timeline }: OrderShowProps) {
                                         <div key={index} className="flex items-start space-x-3">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                                                 item.completed
-                                                    ? 'bg-green-100 text-green-600'
+                                                    ? 'bg-emerald-100 text-emerald-600'
                                                     : 'bg-gray-100 text-gray-400'
                                             }`}>
                                                 {item.completed ? (

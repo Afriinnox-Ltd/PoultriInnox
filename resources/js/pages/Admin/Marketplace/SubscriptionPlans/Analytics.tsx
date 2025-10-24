@@ -79,7 +79,7 @@ export default function Analytics({
   };
 
   const getGrowthColor = (rate: number) => {
-    if (rate > 0) return 'text-green-600';
+    if (rate > 0) return 'text-emerald-600';
     if (rate < 0) return 'text-red-600';
     return 'text-gray-600';
   };
@@ -336,7 +336,7 @@ export default function Analytics({
                   </div>
                   <div className="flex items-center space-x-6">
                     <div className="text-right">
-                      <div className="text-sm font-medium text-green-600">+{trend.new_subscriptions}</div>
+                      <div className="text-sm font-medium text-emerald-600">+{trend.new_subscriptions}</div>
                       <div className="text-xs text-gray-500">New</div>
                     </div>
                     <div className="text-right">
@@ -378,8 +378,8 @@ export default function Analytics({
                 </div>
               </div>
 
-              <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+              <div className="flex items-start space-x-3 p-3 bg-emerald-50 rounded-lg">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2"></div>
                 <div>
                   <p className="text-sm">
                     <strong>Popular Plan:</strong> "{totalStats.most_popular_plan}" is your most popular subscription plan.

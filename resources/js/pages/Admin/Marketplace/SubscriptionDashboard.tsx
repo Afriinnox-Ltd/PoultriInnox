@@ -205,8 +205,8 @@ export default function SubscriptionDashboard({ stats }: Props) {
                 <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
                   <CardContent className="pt-6">
                     <div className="flex items-start space-x-3">
-                      <div className="p-3 bg-green-100 rounded-lg">
-                        <Plus className="w-6 h-6 text-green-600" />
+                      <div className="p-3 bg-emerald-100 rounded-lg">
+                        <Plus className="w-6 h-6 text-emerald-600" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-lg">Create New Plan</h3>
@@ -242,8 +242,8 @@ export default function SubscriptionDashboard({ stats }: Props) {
                 <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
                   <CardContent className="pt-6">
                     <div className="flex items-start space-x-3">
-                      <div className="p-3 bg-green-100 rounded-lg">
-                        <Users className="w-6 h-6 text-green-600" />
+                      <div className="p-3 bg-emerald-100 rounded-lg">
+                        <Users className="w-6 h-6 text-emerald-600" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-lg">Manage Subscriptions</h3>

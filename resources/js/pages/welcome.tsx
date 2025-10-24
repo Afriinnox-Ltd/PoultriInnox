@@ -1,10 +1,7 @@
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import React from 'react';
 import {
     Heart,
-    TrendingUp,
-    Shield,
     BarChart3,
     Thermometer,
     Bell,
@@ -14,19 +11,11 @@ import {
     Star,
     Monitor,
     Wifi,
-    Package,
-    Zap,
-    Award,
-    Globe,
     ArrowRight,
-    Play,
     ChevronDown,
     Droplets,
-    AlertTriangle,
     Lightbulb,
     DollarSign,
-    Calculator,
-    PieChart,
     Utensils
 } from 'lucide-react';
 import WelcomeNav from '@/components/navigation/WelcomeNav';
@@ -34,38 +23,6 @@ export default function Welcome() {
     const { auth } = usePage<SharedData>().props;
 
 
-    const features = [
-        {
-            icon: <Thermometer className="w-12 h-12 text-emerald-600" />,
-            title: "Smart Temperature Control",
-            description: "Automated temperature monitoring and control system ensures optimal brooding conditions 24/7 with real-time adjustments."
-        },
-        {
-            icon: <Heart className="w-12 h-12 text-emerald-500" />,
-            title: "Health Monitoring",
-            description: "Advanced health tracking system monitors chick behavior, feeding patterns, and vital signs to detect issues early."
-        },
-        {
-            icon: <BarChart3 className="w-12 h-12 text-emerald-600" />,
-            title: "Growth Analytics",
-            description: "Comprehensive growth tracking with detailed analytics, weight monitoring, and performance metrics for optimal development."
-        },
-        {
-            icon: <Bell className="w-12 h-12 text-emerald-600" />,
-            title: "Smart Alerts",
-            description: "Instant notifications for temperature changes, feeding schedules, health concerns, and maintenance requirements."
-        },
-        {
-            icon: <Shield className="w-12 h-12 text-emerald-600" />,
-            title: "Safety Features",
-            description: "Built-in safety protocols with emergency shutoffs, backup systems, and fail-safe mechanisms for maximum protection."
-        },
-        {
-            icon: <Monitor className="w-12 h-12 text-indigo-600" />,
-            title: "Remote Monitoring",
-            description: "Access your brooder data from anywhere with our mobile-friendly dashboard and real-time monitoring capabilities."
-        }
-    ];
 
     const benefits = [
         "✔ Simplifies daily farm operations",
@@ -109,7 +66,7 @@ export default function Welcome() {
 
                                     <video
                                         className="w-full h-auto" autoPlay loop muted playsInline>
-                                        <source src="/assets/4124024-uhd_4096_2160_25fps.mp4" type="video/mp4" />
+                                        <source src="/assets/10685-226624850_tiny.mp4" type="video/mp4" />
                                         Your browser does not support the video tag.
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
@@ -137,10 +94,10 @@ export default function Welcome() {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center mb-20">
                             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                                What is Poultriinnox?
+                                What is Agriinnox?
                             </h2>
                             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                                Poultriinnox is a digital solution built for livestock farmers, service providers, and consumers.
+                                Agriinnox is a digital solution built for livestock farmers, service providers, and consumers.
                                 Our platform connects the livestock ecosystem — enabling farmers to sell products, track farm performance,
                                 manage feeding, and even brood livestock remotely through smart technology.
                             </p>
@@ -249,7 +206,7 @@ export default function Welcome() {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                             <div>
-                                <h2 className="text-4xl font-bold text-gray-900 mb-6">Why Choose Poultriinnox?</h2>
+                                <h2 className="text-4xl font-bold text-gray-900 mb-6">Why Choose Agriinnox?</h2>
                                 <p className="text-lg text-gray-600 mb-8">
                                     Join thousands of successful livestock farmers who have revolutionized their farming operations with our comprehensive digital platform.
                                 </p>
@@ -264,7 +221,7 @@ export default function Welcome() {
                                 </div>
                             </div>
                             <div className="">
-                                <img src='/assets/pexels-photo-4124024.jpeg' alt='Real-time Monitoring Dashboard' className="w-full h-auto mb-4" />
+                                <img src='/assets/aja-island-CY1NVUsZoLE-unsplash.jpg' alt='Real-time Monitoring Dashboard' className="w-full h-auto mb-4" />
                             </div>
                         </div>
                     </div>
@@ -295,10 +252,7 @@ export default function Welcome() {
                                             <div className="text-2xl font-bold text-emerald-600">32.5°C</div>
                                             <div className="text-sm text-gray-600">Temperature</div>
                                         </div>
-                                        <div className="text-center">
-                                            <div className="text-2xl font-bold text-emerald-600">65%</div>
-                                            <div className="text-sm text-gray-600">Humidity</div>
-                                        </div>
+
                                     </div>
                                 </div>
 
@@ -446,10 +400,7 @@ export default function Welcome() {
                                     <Thermometer className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                                     <p className="text-sm font-medium text-gray-900">Temperature Sensors</p>
                                 </div>
-                                <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                                    <Monitor className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                                    <p className="text-sm font-medium text-gray-900">Humidity Monitors</p>
-                                </div>
+
                                 <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                                     <Bell className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                                     <p className="text-sm font-medium text-gray-900">Motion Detectors</p>
@@ -469,7 +420,7 @@ export default function Welcome() {
                         <div className="text-center mb-16">
                             <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Users Say</h2>
                             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                                Hear from successful livestock farmers who have transformed their operations with Poultriinnox
+                                Hear from successful livestock farmers who have transformed their operations with Agriinnox
                             </p>
                         </div>
 
@@ -481,7 +432,7 @@ export default function Welcome() {
                                     ))}
                                 </div>
                                 <p className="text-gray-600 mb-6 italic">
-                                    "Since I started using Poultriinnox, I can track every expense and finally understand where my money goes. It's a game-changer!"
+                                    "Since I started using Agriinnox, I can track every expense and finally understand where my money goes. It's a game-changer!"
                                 </p>
                                 <div className="flex items-center">
                                     <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mr-4">
@@ -525,7 +476,7 @@ export default function Welcome() {
                         </h2>
                         <p className="text-xl text-emerald-100 mb-12">
                             Join the digital farming revolution and connect your livestock ecosystem
-                            with Poultriinnox technology. Start your journey today.
+                            with Agriinnox technology. Start your journey today.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-6">
                             <Link href="/register" className="group bg-white text-emerald-600 px-8 py-4 rounded-full hover:bg-gray-100 transition-all duration-300 font-semibold flex items-center justify-center shadow-lg hover:shadow-xl transform hover:-translate-y-1">
@@ -546,7 +497,7 @@ export default function Welcome() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                             <div className="col-span-1 md:col-span-2">
                                 <div className="flex items-center mb-6">
-                                    <span className="text-2xl font-bold">PoultriInnox</span>
+                                    <span className="text-2xl font-bold">Agriinnox</span>
                                 </div>
                                 <p className="text-white mb-6 max-w-md">
                                     Connecting the livestock ecosystem across Africa with smart digital solutions.
@@ -581,8 +532,8 @@ export default function Welcome() {
                                 <h3 className="text-lg font-semibold mb-6">Contact Info</h3>
                                 <ul className="space-y-4">
                                     <li>
-                                        <a href="mailto:info@poultriinnox.com" className="text-gray-200 hover:text-white transition-colors flex items-center">
-                                            📧 info@poultriinnox.com
+                                        <a href="mailto:info@agriinnox.com" className="text-gray-200 hover:text-white transition-colors flex items-center">
+                                            📧 info@agriinnox.com
                                         </a>
                                     </li>
                                     <li>
@@ -605,7 +556,7 @@ export default function Welcome() {
                         <div className="border-t border-gray-800 mt-12 pt-8">
                             <div className="flex flex-col md:flex-row justify-between items-center">
                                 <p className="text-gray-200 text-sm">
-                                    © 2025 Poultriinnox. All rights reserved. Empowering African livestock farming through technology.
+                                    © {new Date().getFullYear()} agriinnox . All rights reserved. Empowering African livestock farming through technology.
                                 </p>
                                 <div className="flex items-center space-x-6 mt-4 md:mt-0">
                                     <a href="#" className="text-gray-200 hover:text-white text-sm transition-colors">Privacy Policy</a>

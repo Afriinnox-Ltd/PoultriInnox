@@ -100,7 +100,7 @@ export default function Index({ products, categories, vendors, filters, sort }: 
 
     return (
         <AppLayout>
-            <Head title="Marketplace - PoultriInnox" />
+            <Head title="Marketplace - Agriinnox" />
 
             <div className="container mx-auto px-4 py-6">
                 {/* Hero Section */}

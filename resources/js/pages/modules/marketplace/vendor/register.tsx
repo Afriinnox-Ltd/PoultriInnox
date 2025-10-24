@@ -9,11 +9,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
     Store,
-    FileText,
-    Mail,
-    Phone,
-    MapPin,
-    Globe,
+    FileText, 
+    Phone, 
     CreditCard,
     Shield,
     CheckCircle,
@@ -43,10 +40,11 @@ interface VendorRegistrationProps {
         status: 'pending' | 'approved' | 'rejected' | 'suspended';
         is_verified: boolean;
         created_at: string;
-    };
+    }; 
 }
 
 export default function VendorRegistration({ user, existing_application }: VendorRegistrationProps) {
+ 
     const [formData, setFormData] = useState({
         business_name: existing_application?.business_name || '',
         business_registration_number: '',
@@ -186,7 +184,7 @@ export default function VendorRegistration({ user, existing_application }: Vendo
             });
 
             router.post('/marketplace/vendor/register', formDataToSend , {
-                onSuccess: (response) => {
+                onSuccess: () => {
                     toast.success("Registration successful! Your application is under review.")
                 },
                 onError:(error) =>{ 
@@ -622,10 +620,10 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                     )}
 
                                     <div className="bg-blue-50 p-3 rounded-lg">
-                                        <p className="text-sm text-green-700">
+                                        <p className="text-sm text-emerald-700">
                                             <strong>Helpful documents to include:</strong>
                                         </p>
-                                        <ul className="text-xs text-green-600 mt-1 list-disc list-inside">
+                                        <ul className="text-xs text-emerald-600 mt-1 list-disc list-inside">
                                             <li>Business license or registration</li>
                                             <li>Tax identification documents</li>
                                             <li>Product catalogs or brochures</li>
@@ -650,11 +648,11 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                         <div className="text-sm">
                                             <Label htmlFor="terms" className="cursor-pointer">
                                                 I agree to the{' '}
-                                                <a href="/terms" target="_blank" className="text-green-600 hover:underline">
+                                                <a href="/terms" target="_blank" className="text-emerald-600 hover:underline">
                                                     Terms of Service
                                                 </a>{' '}
                                                 and{' '}
-                                                <a href="/privacy" target="_blank" className="text-green-600 hover:underline">
+                                                <a href="/privacy" target="_blank" className="text-emerald-600 hover:underline">
                                                     Privacy Policy
                                                 </a>
                                                 , and understand that my application will be reviewed before approval.

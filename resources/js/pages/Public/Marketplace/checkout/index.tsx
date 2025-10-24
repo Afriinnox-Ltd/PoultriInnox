@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,16 +32,8 @@ import { formatCurrency } from '@/utils/formatters';
 interface CheckoutPageProps {
     cart?: Cart & {
         items?: Array<CartItem & {
-            product: {
-                id: number;
-                name: string;
-                price: number;
-                images: Array<{ image_url: string; alt_text?: string }>;
-                vendor: {
-                    id: number;
-                    business_name: string;
-                };
-                payment_methods?: string[];
+            product: CartItem['product'] & {
+                payment_methods?: string[] | string;
                 shipping_option?: string;
                 extra_fee?: number;
                 delivery_time?: string;
@@ -105,7 +97,8 @@ export default function CheckoutPage({
         country: ''
     });
 
-    const [paymentMethod, setPaymentMethod] = useState<'online' | 'cash_on_delivery'>('cash_on_delivery');
+    const [paymentMethod, setPaymentMethod] = useState<'online' | 'cash_on_delivery'>('online');
+    const [paymentPhoneNumber, setPaymentPhoneNumber] = useState('');
     const [sameBillingAddress, setSameBillingAddress] = useState(true);
     const [selectedShippingAddress, setSelectedShippingAddress] = useState<number | null>(
         user_addresses.find(addr => addr.is_default)?.id || null
@@ -119,7 +112,17 @@ export default function CheckoutPage({
     const [serverError, setServerError] = useState<string>('');
 
     // Safe access to cart items with proper null checks
-    const cartItems = cart?.items || [];
+    type ExtendedCartItem = CartItem & {
+        product: CartItem['product'] & {
+            payment_methods?: string[] | string;
+            shipping_option?: string;
+            extra_fee?: number;
+            delivery_time?: string;
+            return_policy?: string;
+        };
+    };
+
+    const cartItems = (cart?.items || []) as ExtendedCartItem[];
     const subtotal = cartItems.reduce((sum, item) => sum + (item.total_price || 0), 0);
 
 
@@ -137,15 +140,17 @@ export default function CheckoutPage({
         }
         groups[vendorId].items.push(item);
         return groups;
-    }, {} as Record<number, { vendor: any; items: typeof cartItems }>);
+    }, {} as Record<number, { vendor: any; items: ExtendedCartItem[] }>);
 
     // Calculate available payment methods across all products
     const availablePaymentMethods = new Set<string>();
+    const vendorsWithoutCOD: string[] = [];
+
     cartItems.forEach(item => {
         console.log('Processing item for payment methods:', item);
         if (item.product?.payment_methods) {
             let methods: string[] = [];
-            
+
             if (typeof item.product.payment_methods === 'string') {
                 try {
                     // Try to parse as JSON first
@@ -157,12 +162,20 @@ export default function CheckoutPage({
             } else if (Array.isArray(item.product.payment_methods)) {
                 methods = item.product.payment_methods;
             }
-            
+
             methods.forEach(method => {
                 // Map "cod" to "cash_on_delivery" for consistency
                 const normalizedMethod = method === 'cod' ? 'cash_on_delivery' : method;
                 availablePaymentMethods.add(normalizedMethod);
             });
+
+            // Track vendors without COD
+            const hasCOD = methods.some(m => m === 'cod' || m === 'cash_on_delivery');
+            if (!hasCOD && item.product?.vendor?.business_name) {
+                if (!vendorsWithoutCOD.includes(item.product.vendor.business_name)) {
+                    vendorsWithoutCOD.push(item.product.vendor.business_name);
+                }
+            }
         }
     });
 
@@ -175,6 +188,17 @@ export default function CheckoutPage({
         typeof_payment_methods: typeof item.product?.payment_methods
     })));
     console.log('Raw cart items:', cartItems);
+
+    // Auto-select the first available payment method
+    useEffect(() => {
+        if (availablePaymentMethods.size > 0) {
+            if (availablePaymentMethods.has('online')) {
+                setPaymentMethod('online');
+            } else if (availablePaymentMethods.has('cash_on_delivery')) {
+                setPaymentMethod('cash_on_delivery');
+            }
+        }
+    }, [availablePaymentMethods.size]);
 
     // Calculate total shipping costs
     const calculateShippingCosts = () => {
@@ -277,6 +301,13 @@ export default function CheckoutPage({
             if (!finalBillingAddress.country) validationErrors['billing.country'] = 'Country is required';
         }
 
+        // Validate payment phone number for online payment
+        if (paymentMethod === 'online') {
+            if (!paymentPhoneNumber || paymentPhoneNumber.length < 9) {
+                validationErrors['payment_phone'] = 'Please enter a valid MTN Mobile Money number';
+            }
+        }
+
         if (Object.keys(validationErrors).length > 0) {
             console.log('Validation errors found:', validationErrors);
             setErrors(validationErrors);
@@ -289,6 +320,7 @@ export default function CheckoutPage({
             shipping_address: finalShippingAddress,
             billing_address: finalBillingAddress,
             payment_method: paymentMethod,
+            payment_phone_number: paymentPhoneNumber,
             notes: notes,
         }, {
             onSuccess: (page) => {
@@ -424,7 +456,7 @@ export default function CheckoutPage({
                                                     <div
                                                         key={address.id}
                                                         className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedShippingAddress === address.id && !useCustomShipping
-                                                                ? 'border-blue-500 bg-blue-50'
+                                                            ? 'border-emerald-500 bg-emerald-50'
                                                                 : 'border-gray-200 hover:border-gray-300'
                                                             }`}
                                                         onClick={() => handleAddressSelect(address.id, 'shipping')}
@@ -564,7 +596,7 @@ export default function CheckoutPage({
                                             {/* Saved Billing Addresses */}
                                             {user_addresses.length > 0 && (
                                                 <div>
-                                                    <Label className="text-sm font-medium mb-2 block">
+                                                    <Label className="text-sm font-medium mb-2 block text-emerald-900">
                                                         Saved Addresses
                                                     </Label>
                                                     <div className="space-y-2">
@@ -572,7 +604,7 @@ export default function CheckoutPage({
                                                             <div
                                                                 key={address.id}
                                                                 className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedBillingAddress === address.id && !useCustomBilling
-                                                                        ? 'border-blue-500 bg-blue-50'
+                                                                    ? 'border-emerald-500 bg-emerald-50'
                                                                         : 'border-gray-200 hover:border-gray-300'
                                                                     }`}
                                                                 onClick={() => handleAddressSelect(address.id, 'billing')}
@@ -698,34 +730,34 @@ export default function CheckoutPage({
                                             {/* Online Payment - only show if supported */}
                                             {availablePaymentMethods.has('online') && (
                                                 <div
-                                                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
                                                         paymentMethod === 'online'
-                                                            ? 'border-blue-500 bg-blue-50'
-                                                            : 'border-gray-200 hover:border-gray-300'
+                                                        ? 'border-emerald-500 bg-emerald-50 scale-[1.02]'
+                                                        : 'border-gray-300 hover:border-emerald-400 hover:shadow-lg hover:scale-[1.02] hover:bg-emerald-50/30'
                                                     }`}
                                                     onClick={() => setPaymentMethod('online')}
                                                 >
                                                     <div className="flex items-center">
-                                                        <CreditCard className="h-5 w-5 mr-3 text-blue-600" />
-                                                        <span className="font-medium text-blue-700">Online Payment</span>
+                                                        <CreditCard className="h-5 w-5 mr-3 text-emerald-600" />
+                                                        <span className="font-semibold text-emerald-700">Online Payment</span>
                                                     </div>
-                                                    <p className="text-sm text-blue-600 mt-1">Pay securely with card or mobile money</p>
+                                                    <p className="text-sm text-emerald-600 mt-1">Pay securely with card or mobile money</p>
                                                 </div>
                                             )}
-                                            
+
                                             {/* Cash on Delivery - only show if supported */}
                                             {availablePaymentMethods.has('cash_on_delivery') && (
                                                 <div
-                                                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
                                                         paymentMethod === 'cash_on_delivery'
-                                                            ? 'border-emerald-500 bg-emerald-50'
-                                                            : 'border-gray-200 hover:border-gray-300'
+                                                            ? 'border-emerald-500 bg-emerald-50 shadow-md scale-[1.02]'
+                                                            : 'border-gray-300 hover:border-emerald-400 hover:shadow-lg hover:scale-[1.02] hover:bg-emerald-50/30'
                                                     }`}
                                                     onClick={() => setPaymentMethod('cash_on_delivery')}
                                                 >
                                                     <div className="flex items-center">
                                                         <Truck className="h-5 w-5 mr-3 text-emerald-600" />
-                                                        <span className="font-medium text-emerald-700">Cash on Delivery</span>
+                                                        <span className="font-semibold text-emerald-700">Cash on Delivery</span>
                                                     </div>
                                                     <p className="text-sm text-emerald-600 mt-1">Pay when you receive your order</p>
                                                 </div>
@@ -741,6 +773,30 @@ export default function CheckoutPage({
                                             </div>
                                             <p className="text-sm text-gray-500">
                                                 Payment methods have not been configured for the items in your cart. Please contact the vendor for payment options.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Phone Number Input for Online Payment */}
+                                    {paymentMethod === 'online' && availablePaymentMethods.has('online') && (
+                                        <div className="mt-4 p-4  border  rounded-lg">
+                                            <Label htmlFor="payment-phone" className="text-emerald-900 font-semibold mb-2 block">
+                                                MTN Mobile Money Number
+                                            </Label>
+                                            <Input
+                                                id="payment-phone"
+                                                type="tel"
+                                                placeholder="078XXXXXXX"
+                                                
+                                                value={paymentPhoneNumber}
+                                                onChange={(e) => setPaymentPhoneNumber(e.target.value)}
+                                                className={`text-lg ${errors['payment_phone'] ? 'border-red-500' : ''}`}
+                                            />
+                                            {errors['payment_phone'] && (
+                                                <p className="text-red-500 text-sm mt-1">{errors['payment_phone']}</p>
+                                            )}
+                                            <p className="text-sm text-emerald-700 mt-2">
+                                                ℹ You will receive a payment prompt on this number to complete your purchase
                                             </p>
                                         </div>
                                     )}
@@ -777,7 +833,7 @@ export default function CheckoutPage({
                                             let vendorShipping = 0;
                                             let hasShippingInfo = false;
                                             let deliveryTime = '';
-                                            
+
                                             items.forEach(item => {
                                                 if (item.product?.shipping_option === 'paid' && item.product?.extra_fee) {
                                                     vendorShipping = Math.max(vendorShipping, item.product.extra_fee);
@@ -801,7 +857,7 @@ export default function CheckoutPage({
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    
+
                                                     {items.map((item) => (
                                                         <div key={item.id} className="flex justify-between text-sm pl-6">
                                                             <div className="flex-1">
@@ -813,7 +869,7 @@ export default function CheckoutPage({
                                                                 )}
                                                                 <div className="text-gray-600">Qty: {item.quantity}</div>
                                                                 {item.product?.delivery_time && (
-                                                                    <div className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                                                                    <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
                                                                         <Clock className="h-3 w-3" />
                                                                         {item.product.delivery_time}
                                                                     </div>
@@ -897,7 +953,7 @@ export default function CheckoutPage({
                                     {!isFormValid() && (
                                         <div className="flex items-center text-orange-600 text-sm">
                                             <AlertCircle className="h-4 w-4 mr-2" />
-                                            {availablePaymentMethods.size === 0 
+                                            {availablePaymentMethods.size === 0
                                                 ? 'No payment methods available for cart items'
                                                 : !availablePaymentMethods.has(paymentMethod)
                                                 ? 'Selected payment method not supported'

@@ -299,7 +299,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Module Management</h1>
         <p className="text-gray-600">
-          Manage your PoultriInnox modules. Some modules have dependencies that must be enabled first.
+          Manage your Agriinnox modules. Some modules have dependencies that must be enabled first.
         </p>
       </div>
 

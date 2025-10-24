@@ -11,21 +11,16 @@ import {
   Activity,
   TrendingUp,
   Users,
-  Thermometer,
-  Droplet,
   AlertTriangle,
   Calendar,
   Clock,
   Eye,
   Plus,
-  ArrowRight,
   Settings,
   BarChart3,
   CheckCircle,
   XCircle,
-  PlayCircle,
   PauseCircle,
-  Bell,
   Target,
   Zap,
   RefreshCw,
@@ -36,8 +31,6 @@ import {
 } from 'lucide-react';
 import { Head } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
-import { NavigationHelper, navigateToFeedConsumption, navigateToFeedManagement } from '@/utils/navigation';
-import { NavigationLink, QuickNavigation, EntityLink } from '@/components/navigation/NavigationComponents';
 
 // Simple Progress component
 const Progress = ({ value, className }: { value: number; className?: string }) => (
@@ -151,6 +144,14 @@ export default function BatchIncubatorIndex({
     ? Math.round((incubatorStats.current_utilization / incubatorStats.total_capacity) * 100)
     : 0;
 
+  const survivalRate = batchStats?.average_survival_rate || 0;
+  const totalBirds = batchStats?.total_birds || 0;
+  const dailyProduction = batchStats?.daily_production || 0;
+  const activeBatches = batchStats?.active_batches || 0;
+  const totalBatches = batchStats?.total_batches || 0;
+  const activeIncubators = incubatorStats?.active_incubators || 0;
+  const totalIncubators = incubatorStats?.total_incubators || 0;
+
   const handleRefresh = () => {
     setRefreshing(true);
     router.get(window.location.pathname, {}, {
@@ -248,9 +249,9 @@ export default function BatchIncubatorIndex({
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{batchStats.active_batches}</div>
+                    <div className="text-2xl font-bold">{activeBatches}</div>
                     <p className="text-xs text-muted-foreground">
-                      Total: {batchStats.total_batches} batches
+                      Total: {totalBatches} batches
                     </p>
                     <div className="absolute bottom-0 right-0 p-2">
                       <Button asChild size="sm" variant="ghost">
@@ -268,9 +269,9 @@ export default function BatchIncubatorIndex({
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold ">{batchStats.total_birds?.toLocaleString() || 0}</div>
+                    <div className="text-2xl font-bold">{totalBirds.toLocaleString()}</div>
                     <p className="text-xs text-muted-foreground">
-                      Survival rate: {batchStats.average_survival_rate?.toFixed(1) || 0}%
+                      Survival rate: {survivalRate.toFixed(1)}%
                     </p>
                     <div className="absolute bottom-0 right-0 p-2">
                       <Button asChild size="sm" variant="ghost">
@@ -288,7 +289,7 @@ export default function BatchIncubatorIndex({
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold ">{batchStats.daily_production || 0}</div>
+                    <div className="text-2xl font-bold">{Math.round(dailyProduction)}</div>
                     <p className="text-xs text-muted-foreground">
                       Eggs per day
                     </p>
@@ -308,10 +309,10 @@ export default function BatchIncubatorIndex({
                     <Activity className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-orange-600">{utilizationRate}%</div>
+                    <div className="text-2xl font-bold">{utilizationRate}%</div>
                     <Progress value={utilizationRate} className="mt-2" />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {incubatorStats?.active_incubators || 0}/{incubatorStats?.total_incubators || 0} active
+                      {activeIncubators}/{totalIncubators} active
                     </p>
                     <div className="absolute bottom-0 right-0 p-2">
                       <Button asChild size="sm" variant="ghost">
@@ -324,6 +325,52 @@ export default function BatchIncubatorIndex({
                 </Card>
               </div>
             )}
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                <Link href="/batch-incubator/batches" className="block">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Package className="h-5 w-5 text-emerald-600" />
+                      Manage Batches
+                    </CardTitle>
+                    <CardDescription>
+                      View and manage all your poultry batches
+                    </CardDescription>
+                  </CardHeader>
+                </Link>
+              </Card>
+
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                <Link href="/batch-incubator/incubators" className="block">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Activity className="h-5 w-5 text-blue-600" />
+                      Manage Incubators
+                    </CardTitle>
+                    <CardDescription>
+                      Monitor and control your incubators
+                    </CardDescription>
+                  </CardHeader>
+                </Link>
+              </Card>
+
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                <Link href="/batch-incubator/schedules" className="block">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Calendar className="h-5 w-5 text-purple-600" />
+                      View Schedules
+                    </CardTitle>
+                    <CardDescription>
+                      Manage tasks and maintenance schedules
+                    </CardDescription>
+                  </CardHeader>
+                </Link>
+              </Card>
+            </div>
+
 
           </TabsContent>
 
@@ -353,14 +400,9 @@ export default function BatchIncubatorIndex({
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(batch.status?.value)}`}>
+                            <Badge className={`${getStatusColor(batch.status?.value)}`}>
                               {typeof batch.status === 'object' ? batch.status.label : batch.status}
-                            </span>
-                            <Button asChild size="sm" variant="ghost" title="Smart Recommendations">
-                              <Link href={`/batch-incubator/smart-scheduling/batches/${batch.id}/recommendations`}>
-                                <Brain className="h-3 w-3" />
-                              </Link>
-                            </Button>
+                            </Badge>
                             <Button asChild size="sm" variant="ghost" title="View Details">
                               <Link href={`/batch-incubator/batches/${batch.id}`}>
                                 <Eye className="h-3 w-3" />
@@ -412,9 +454,9 @@ export default function BatchIncubatorIndex({
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(incubator.status?.value)}`}>
+                            <Badge className={`${getStatusColor(incubator.status?.value)}`}>
                               {typeof incubator.status === 'object' ? incubator.status.label : incubator.status}
-                            </span>
+                            </Badge>
                             <Button asChild size="sm" variant="ghost">
                               <Link href={`/batch-incubator/incubators/${incubator.id}`}>
                                 <Eye className="h-3 w-3" />
@@ -510,40 +552,24 @@ export default function BatchIncubatorIndex({
                   <div className="space-y-4">
                     <div>
                       <div className="flex justify-between text-sm mb-1">
-                        <span>Hatch Success Rate</span>
-                        <span>{batchStats?.average_survival_rate?.toFixed(1) || 0}%</span>
+                        <span>Survival Rate</span>
+                        <span>{survivalRate.toFixed(1)}%</span>
                       </div>
-                      <Progress value={batchStats?.average_survival_rate || 0} className="h-2" />
+                      <Progress value={survivalRate} className="h-2" />
                     </div>
 
                     <div>
                       <div className="flex justify-between text-sm mb-1">
-                        <span>Incubator Utilization</span>
+                        <span>Capacity Utilization</span>
                         <span>{utilizationRate}%</span>
                       </div>
                       <Progress value={utilizationRate} className="h-2" />
                     </div>
 
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Feed Efficiency</span>
-                        <span>85%</span>
-                      </div>
-                      <Progress value={85} className="h-2" />
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>System Uptime</span>
-                        <span>99.2%</span>
-                      </div>
-                      <Progress value={99.2} className="h-2" />
-                    </div>
-
                     <Button asChild variant="outline" className="w-full mt-4">
                       <Link href="/batch-incubator/reports">
                         <BarChart3 className="h-4 w-4 mr-2" />
-                        Detailed Reports
+                        View Detailed Reports
                       </Link>
                     </Button>
                   </div>
@@ -578,9 +604,9 @@ export default function BatchIncubatorIndex({
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(schedule.priority)}`}>
+                            <Badge className={`${getStatusColor(schedule.priority)}`}>
                               {schedule.priority}
-                            </span>
+                            </Badge>
                             <Button asChild size="sm" variant="ghost">
                               <Link href={`/batch-incubator/schedules/${schedule.id}`}>
                                 <Eye className="h-3 w-3" />
@@ -622,17 +648,23 @@ export default function BatchIncubatorIndex({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <Button asChild className=" flex  items-center">
-                        <Link className='flex items-center' href="/batch-incubator/schedules/create">
-                          <Plus className="h-6 w-6" />
-                          <span className="text-sm">New Schedule</span>
+                    <div className="grid grid-cols-1 gap-3">
+                      <Button asChild className="w-full">
+                        <Link href="/batch-incubator/schedules/create">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create New Schedule
                         </Link>
-                      </Button> 
+                      </Button>
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href="/batch-incubator/schedules">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          View All Schedules
+                        </Link>
+                      </Button>
                     </div>
 
                     <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">Quick Templates</h4>
+                      <h4 className="font-medium mb-3 text-sm">Quick Templates</h4>
                       <div className="space-y-2">
                         <Button asChild variant="ghost" size="sm" className="w-full justify-start">
                           <Link href="/batch-incubator/schedules/create?template=feeding">

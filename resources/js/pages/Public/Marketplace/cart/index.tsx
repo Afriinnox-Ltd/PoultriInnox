@@ -246,7 +246,7 @@ export default function CartIndex({ cartItems, cartByVendor, subtotal, totalItem
                                                         </Badge>
                                                     )}
                                                     {item.product.shipping_option === 'free' ? (
-                                                        <Badge variant="outline" className="text-xs text-green-600">
+                                                        <Badge variant="outline" className="text-xs text-emerald-600">
                                                             Free Shipping
                                                         </Badge>
                                                     ) : item.product.extra_fee && (

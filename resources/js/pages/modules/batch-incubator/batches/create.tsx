@@ -162,6 +162,7 @@ export default function CreateBatch({ incubators, statuses }: CreateBatchProps) 
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="planned">Planned</SelectItem>
+                                            <SelectItem value="brooding">Brooding</SelectItem>
                                             <SelectItem value="incubating">Incubating</SelectItem>
                                             <SelectItem value="growing">Growing</SelectItem>
                                         </SelectContent>

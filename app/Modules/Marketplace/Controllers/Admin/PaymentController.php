@@ -7,6 +7,7 @@ use App\Modules\Marketplace\Models\Payment;
 use App\Modules\Marketplace\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -62,8 +63,16 @@ class PaymentController extends Controller
      */
     public function payments(Request $request): Response
     {
-        $query = Payment::with(['order.user', 'order.vendor'])
-            ->where('type', 'payment');
+        $query = Payment::with([
+            'order.user',
+            'order.vendor',
+            'subscription.vendor.user'
+        ]);
+
+        // Apply type filter
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
 
         // Apply filters
         if ($request->filled('status')) {
@@ -74,16 +83,20 @@ class PaymentController extends Controller
             $query->where('payment_method', $request->payment_method);
         }
 
+        if ($request->filled('gateway')) {
+            $query->where('gateway', $request->gateway);
+        }
+
         if ($request->filled('vendor_id')) {
             $query->byVendor($request->vendor_id);
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('processed_at', '>=', $request->date_from);
+            $query->whereDate('created_at', '>=', $request->date_from);
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('processed_at', '<=', $request->date_to);
+            $query->whereDate('created_at', '<=', $request->date_to);
         }
 
         // Search
@@ -91,68 +104,46 @@ class PaymentController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('transaction_id', 'like', "%{$search}%")
+                  ->orWhere('reference', 'like', "%{$search}%")
+                  ->orWhere('gateway_transaction_id', 'like', "%{$search}%")
                   ->orWhereHas('order', function ($orderQuery) use ($search) {
                       $orderQuery->where('order_number', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('subscription.vendor.user', function ($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
                   });
             });
         }
 
-        $payments = $query->orderByDesc('processed_at')
+        $payments = $query->orderByDesc('created_at')
             ->paginate(20)
             ->withQueryString();
 
+        // Get statistics
+        $stats = [
+            'total_payments' => Payment::count(),
+            'total_amount' => Payment::where('status', 'completed')->sum('amount'),
+            'order_payments' => Payment::where('type', 'payment')->count(),
+            'subscription_payments' => Payment::where('type', 'subscription')->count(),
+            'completed_payments' => Payment::where('status', 'completed')->count(),
+            'pending_payments' => Payment::where('status', 'pending')->count(),
+            'failed_payments' => Payment::where('status', 'failed')->count(),
+        ];
+
         // Get filter options
         $filterOptions = [
+            'types' => ['payment', 'subscription'],
             'statuses' => ['pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded'],
             'payment_methods' => Payment::distinct()->pluck('payment_method')->filter()->values(),
+            'gateways' => Payment::distinct()->pluck('gateway')->filter()->values(),
         ];
 
         return Inertia::render('Admin/Payments/List', [
             'payments' => $payments,
-            'filters' => $request->only(['status', 'payment_method', 'vendor_id', 'date_from', 'date_to', 'search']),
+            'stats' => $stats,
+            'filters' => $request->only(['type', 'status', 'payment_method', 'gateway', 'vendor_id', 'date_from', 'date_to', 'search']),
             'filterOptions' => $filterOptions,
-        ]);
-    }
-
-    /**
-     * Display vendor payouts management
-     */
-    public function vendorPayouts(Request $request): Response
-    {
-        $query = Payment::with(['order.user', 'order.vendor'])
-            ->where('type', 'payment')
-            ->where('status', 'completed');
-
-        // Filter by payout status
-        if ($request->filled('payout_status')) {
-            if ($request->payout_status === 'pending') {
-                $query->where('vendor_paid', false);
-            } elseif ($request->payout_status === 'completed') {
-                $query->where('vendor_paid', true);
-            }
-        }
-
-        // Filter by vendor
-        if ($request->filled('vendor_id')) {
-            $query->byVendor($request->vendor_id);
-        }
-
-        $payouts = $query->orderByDesc('processed_at')
-            ->paginate(20)
-            ->withQueryString();
-
-        // Get summary stats
-        $payoutStats = [
-            'pending_amount' => Payment::getPendingVendorPayouts(),
-            'completed_amount' => Payment::getCompletedVendorPayouts(),
-            'pending_count' => Payment::pendingVendorPayout()->count(),
-            'completed_count' => Payment::where('vendor_paid', true)->count(),
-        ];
-
-        return Inertia::render('Admin/Payments/VendorPayouts', [
-            'payouts' => $payouts,
-            'payoutStats' => $payoutStats,
-            'filters' => $request->only(['payout_status', 'vendor_id']),
         ]);
     }
 
@@ -169,17 +160,215 @@ class PaymentController extends Controller
             return back()->with('error', 'Vendor has already been paid for this transaction.');
         }
 
+        // Mark as processing first if not already
+        if (!$payment->payout_processing) {
+            $payment->update([
+                'payout_processing' => true,
+                'payout_processing_at' => now(),
+                'payout_processing_by' => Auth::id(),
+            ]);
+        }
+
         $payment->markVendorPaid();
 
         // Add note to payment metadata if provided
+        $note = null;
         if ($request->filled('note')) {
+            $note = $request->note;
             $metadata = $payment->metadata ?? [];
-            $metadata['payout_note'] = $request->note;
+            $metadata['payout_note'] = $note;
             $metadata['payout_processed_by'] = Auth::user()->name;
+            $metadata['payout_processed_at'] = now()->toISOString();
             $payment->update(['metadata' => $metadata]);
         }
 
-        return back()->with('success', 'Vendor payout marked as completed successfully.');
+        // Load relationships for notification
+        $payment->load('order.vendor.user');
+
+        // Send notification to vendor
+        if ($payment->order && $payment->order->vendor && $payment->order->vendor->user) {
+            $payment->order->vendor->user->notify(
+                new \App\Notifications\VendorPayoutCompletedNotification(
+                    $payment,
+                    $payment->order->vendor->business_name,
+                    $note
+                )
+            );
+        }
+
+        return back()->with('success', 'Vendor payout marked as completed and vendor has been notified.');
+    }
+
+    /**
+     * Batch process vendor payouts
+     */
+    public function vendorPayouts(Request $request): Response
+    {
+        $query = Payment::with(['order.user', 'order.vendor.user'])
+            ->where('type', 'payment')
+            ->where('status', 'completed');
+
+        // Filter by payout status
+        if ($request->filled('payout_status')) {
+            switch ($request->payout_status) {
+                case 'pending':
+                    $query->where('vendor_paid', false)
+                          ->where('payout_requested', false);
+                    break;
+                case 'requested':
+                    $query->where('vendor_paid', false)
+                          ->where('payout_requested', true)
+                          ->where('payout_processing', false);
+                    break;
+                case 'processing':
+                    $query->where('vendor_paid', false)
+                          ->where('payout_processing', true);
+                    break;
+                case 'completed':
+                    $query->where('vendor_paid', true);
+                    break;
+            }
+        }
+
+        // Filter by payout requested
+        if ($request->filled('payout_requested')) {
+            if ($request->payout_requested === 'yes') {
+                $query->where('payout_requested', true);
+            } elseif ($request->payout_requested === 'no') {
+                $query->where('payout_requested', false);
+            }
+        }
+
+        // Filter by vendor
+        if ($request->filled('vendor_id')) {
+            $query->byVendor($request->vendor_id);
+        }
+
+        $payouts = $query->orderByDesc('payout_requested_at')
+            ->orderByDesc('processed_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        // Get enhanced summary stats
+        $payoutStats = [
+            'pending_amount' => Payment::where('status', 'completed')
+                ->where('vendor_paid', false)
+                ->where('payout_requested', false)
+                ->sum('vendor_amount'),
+            'requested_amount' => Payment::where('status', 'completed')
+                ->where('vendor_paid', false)
+                ->where('payout_requested', true)
+                ->where('payout_processing', false)
+                ->sum('vendor_amount'),
+            'processing_amount' => Payment::where('status', 'completed')
+                ->where('vendor_paid', false)
+                ->where('payout_processing', true)
+                ->sum('vendor_amount'),
+            'completed_amount' => Payment::getCompletedVendorPayouts(),
+            'pending_count' => Payment::where('status', 'completed')
+                ->where('vendor_paid', false)
+                ->where('payout_requested', false)
+                ->count(),
+            'requested_count' => Payment::where('status', 'completed')
+                ->where('vendor_paid', false)
+                ->where('payout_requested', true)
+                ->where('payout_processing', false)
+                ->count(),
+            'processing_count' => Payment::where('status', 'completed')
+                ->where('vendor_paid', false)
+                ->where('payout_processing', true)
+                ->count(),
+            'completed_count' => Payment::where('vendor_paid', true)->count(),
+        ];
+
+        // Get vendor summaries
+        $vendorSummaries = \DB::table('marketplace_payments as p')
+            ->join('marketplace_orders as o', 'p.order_id', '=', 'o.id')
+            ->join('marketplace_vendors as v', 'o.vendor_id', '=', 'v.id')
+            ->join('users as u', 'v.user_id', '=', 'u.id')
+            ->select(
+                'v.id as vendor_id',
+                'v.business_name as vendor_name',
+                'u.email as vendor_email',
+                \DB::raw('SUM(CASE WHEN p.vendor_paid = false AND p.payout_requested = false THEN p.vendor_amount ELSE 0 END) as total_pending'),
+                \DB::raw('SUM(CASE WHEN p.vendor_paid = false AND p.payout_requested = true THEN p.vendor_amount ELSE 0 END) as total_requested'),
+                \DB::raw('COUNT(CASE WHEN p.vendor_paid = false THEN 1 END) as payment_count'),
+                \DB::raw('MAX(p.payout_requested_at) as last_request_date')
+            )
+            ->where('p.status', 'completed')
+            ->where('p.vendor_paid', false)
+            ->groupBy('v.id', 'v.business_name', 'u.email')
+            ->having('payment_count', '>', 0)
+            ->orderByDesc('total_requested')
+            ->orderByDesc('total_pending')
+            ->get();
+
+        return Inertia::render('Admin/Payments/VendorPayouts', [
+            'payouts' => $payouts,
+            'payoutStats' => $payoutStats,
+            'vendorSummaries' => $vendorSummaries,
+            'filters' => $request->only(['payout_status', 'vendor_id', 'payout_requested']),
+        ]);
+    }
+
+    /**
+     * Batch process vendor payouts
+     */
+    public function batchProcessPayouts(Request $request)
+    {
+        $request->validate([
+            'selected_payments' => 'required|array|min:1',
+            'selected_payments.*' => 'exists:marketplace_payments,id',
+            'batch_id' => 'nullable|string|max:100',
+            'processing_note' => 'nullable|string|max:1000',
+        ]);
+
+        $batchId = $request->batch_id ?: 'BATCH_' . now()->format('YmdHis') . '_' . uniqid();
+        $userId = Auth::id();
+        $processedCount = 0;
+        $totalAmount = 0;
+
+        \DB::transaction(function () use ($request, $batchId, $userId, &$processedCount, &$totalAmount) {
+            $payments = Payment::with(['order.vendor.user'])
+                ->whereIn('id', $request->selected_payments)
+                ->where('status', 'completed')
+                ->where('vendor_paid', false)
+                ->where('payout_requested', true)
+                ->get();
+
+            foreach ($payments as $payment) {
+                // Mark as processing first
+                $payment->update([
+                    'payout_processing' => true,
+                    'payout_processing_at' => now(),
+                    'payout_processing_by' => $userId,
+                    'payout_batch_id' => $batchId,
+                    'payout_notes' => $request->processing_note,
+                ]);
+
+                // Then mark as paid (in real scenario, this would be after actual payment)
+                $payment->markVendorPaid();
+
+                // Send notification to vendor
+                if ($payment->order && $payment->order->vendor && $payment->order->vendor->user) {
+                    $payment->order->vendor->user->notify(
+                        new \App\Notifications\VendorPayoutCompletedNotification(
+                            $payment,
+                            $payment->order->vendor->business_name,
+                            $request->processing_note
+                        )
+                    );
+                }
+
+                $processedCount++;
+                $totalAmount += $payment->vendor_amount;
+            }
+        });
+
+        return back()->with('success',
+            "Successfully processed {$processedCount} payouts totaling " .
+            number_format($totalAmount, 2) . " in batch {$batchId}. All vendors have been notified."
+        );
     }
 
     /**

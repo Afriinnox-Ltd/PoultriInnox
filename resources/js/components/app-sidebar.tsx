@@ -37,10 +37,9 @@ const mainNavItems: NavItem[] = [
 ];
 
 const footerNavItems: NavItem[] = [
-
     {
         title: 'Help',
-        href: 'https://laravel.com/docs/starter-kits#react',
+        href: '/help',
         icon: HelpCircle,
     },
 ];

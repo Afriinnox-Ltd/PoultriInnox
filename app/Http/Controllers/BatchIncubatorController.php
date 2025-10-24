@@ -7,44 +7,68 @@ use Inertia\Inertia;
 use App\Modules\BatchIncubator\Models\Batch;
 use App\Modules\BatchIncubator\Models\Incubator;
 use App\Modules\BatchIncubator\Models\BatchSchedule;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class BatchIncubatorController extends Controller
 {
     public function index()
     {
-        // Batch Statistics
-        $batches = Batch::active()->get(); // Get the actual models
+        $user = Auth::user();
+
+        // Batch Statistics - only accessible batches
+        $batches = Batch::active()->accessibleBy($user)->get();
+        $allBatches = Batch::accessibleBy($user)->get();
+
+        // Calculate average survival rate from mortality rate
+        $avgSurvivalRate = 0;
+        if ($batches->isNotEmpty()) {
+            $avgMortalityRate = $batches->avg(function($batch) {
+                return $batch->initial_count > 0
+                    ? (($batch->mortality_count / $batch->initial_count) * 100)
+                    : 0;
+            });
+            $avgSurvivalRate = 100 - $avgMortalityRate;
+        }
+
         $batchStats = [
-            'total_batches' => Batch::count(),
+            'total_batches' => $allBatches->count(),
             'active_batches' => $batches->count(),
             'total_birds' => $batches->sum('current_count'),
-            'daily_production' => $batches->sum('avg_daily_production') ?? 0,
-            'average_survival_rate' => $batches->avg('survival_rate') ?? 0,
+            'daily_production' => $batches->sum('avg_daily_production'),
+            'average_survival_rate' => round($avgSurvivalRate, 1),
         ];
 
-        // Incubator Statistics
-        $incubators = Incubator::all();
+        // Incubator Statistics - only accessible incubators
+        $incubators = Incubator::accessibleBy($user)->get();
         $activeIncubators = $incubators->filter(function ($incubator) {
-            return $incubator->status->isOperational();
+            return isset($incubator->status) && $incubator->status->isOperational();
         });
+
         $incubatorStats = [
             'total_incubators' => $incubators->count(),
             'active_incubators' => $activeIncubators->count(),
             'idle_incubators' => $incubators->filter(function ($incubator) {
-                return $incubator->status->value === 'idle';
+                return isset($incubator->status) && $incubator->status->value === 'idle';
             })->count(),
             'total_capacity' => $incubators->sum('capacity'),
-            'current_utilization' => $activeIncubators->sum('current_load') ?? 0,
-            'average_temperature' => $activeIncubators->avg('current_temperature') ?? 0,
-            'average_humidity' => $activeIncubators->avg('current_humidity') ?? 0,
+            'current_utilization' => $incubators->sum('current_load'),
+            'average_temperature' => $activeIncubators->isNotEmpty()
+                ? round($activeIncubators->avg('current_temperature'), 1)
+                : 0,
+            'average_humidity' => $activeIncubators->isNotEmpty()
+                ? round($activeIncubators->avg('current_humidity'), 1)
+                : 0,
         ];
 
-        // Recent Batches
-        $recentBatches = Batch::latest()
+        // Recent Batches - only accessible
+        $recentBatches = Batch::accessibleBy($user)
+            ->latest()
             ->limit(10)
             ->get()
             ->map(function ($batch) {
+                $ageDays = $batch->start_date ? now()->diffInDays($batch->start_date) : 0;
+
                 return [
                     'id' => $batch->id,
                     'batch_code' => $batch->batch_code,
@@ -55,13 +79,13 @@ class BatchIncubatorController extends Controller
                         'color' => $batch->status->color(),
                     ],
                     'current_count' => $batch->current_count,
-                    'age_days' => $batch->age_days,
+                    'age_days' => $ageDays,
                 ];
             });
 
         // Incubator Overview
         $incubatorOverview = $incubators->map(function ($incubator) {
-            $utilization = $incubator->capacity > 0
+            $utilization = isset($incubator->capacity) && $incubator->capacity > 0
                 ? round(($incubator->current_load / $incubator->capacity) * 100)
                 : 0;
 
@@ -80,8 +104,11 @@ class BatchIncubatorController extends Controller
         // System Alerts
         $alerts = $this->generateSystemAlerts($batches, $incubators);
 
-        // Upcoming Schedules
+        // Upcoming Schedules - only for accessible batches
         $upcomingSchedules = BatchSchedule::with(['batch', 'assignedTo'])
+            ->whereHas('batch', function($query) use ($user) {
+                $query->accessibleBy($user);
+            })
             ->where('scheduled_date', '>=', Carbon::today())
             ->where('status', '!=', 'completed')
             ->orderBy('scheduled_date')

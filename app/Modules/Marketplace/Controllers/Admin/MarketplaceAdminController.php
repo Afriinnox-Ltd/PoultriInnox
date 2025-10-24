@@ -136,36 +136,64 @@ class MarketplaceAdminController extends Controller
     public function getAnalytics(Request $request)
     {
         $period = $request->get('period', 'month'); // day, week, month, year
+        $start_date = $request->get('start_date');
+        $end_date = $request->get('end_date');
 
-        $start_date = match($period) {
-            'day' => now()->startOfDay(),
-            'week' => now()->startOfWeek(),
-            'month' => now()->startOfMonth(),
-            'year' => now()->startOfYear(),
-            default => now()->startOfMonth(),
-        };
+        // If custom date range provided, use it
+        if ($start_date && $end_date) {
+            $start = \Carbon\Carbon::parse($start_date)->startOfDay();
+            $end = \Carbon\Carbon::parse($end_date)->endOfDay();
+        } else {
+            // Use period-based dates
+            $start = match($period) {
+                'day' => now()->startOfDay(),
+                'week' => now()->startOfWeek(),
+                'month' => now()->startOfMonth(),
+                'year' => now()->startOfYear(),
+                default => now()->startOfMonth(),
+            };
+            $end = now()->endOfDay();
+        }
 
-        // Sales analytics
-        $sales_data = Order::where('status', 'completed')
-            ->where('created_at', '>=', $start_date)
+        // Sales analytics - include all order statuses that count as sales
+        $sales_data = Order::whereIn('status', ['completed', 'delivered', 'shipped', 'processing'])
+            ->whereBetween('created_at', [$start, $end])
             ->selectRaw("date(created_at) as date, COUNT(*) as orders, SUM(total_amount) as revenue")
             ->groupBy('date')
             ->orderBy('date')
             ->get();
 
-        // Product performance
-        $product_performance = Product::withCount(['orderItems'])
+        // Product performance - with date range
+        $product_performance = Product::withCount(['orderItems' => function($query) use ($start, $end) {
+                $query->whereHas('order', function($q) use ($start, $end) {
+                    $q->whereBetween('created_at', [$start, $end]);
+                });
+            }])
             ->with('category')
-            ->orderBy('order_items_count', 'desc')
+            ->get()
+            ->filter(function($product) {
+                return $product->order_items_count > 0;
+            })
+            ->sortByDesc('order_items_count')
             ->take(10)
-            ->get();
+            ->values();
 
-        // Vendor performance
-        $vendor_performance = Vendor::withCount(['orders', 'products'])
-            ->withSum('orders', 'total_amount')
-            ->orderBy('orders_sum_total_amount', 'desc')
+        // Vendor performance - with date range
+        $vendor_performance = Vendor::withCount(['orders' => function($query) use ($start, $end) {
+                $query->whereBetween('created_at', [$start, $end]);
+            }])
+            ->with(['orders' => function($query) use ($start, $end) {
+                $query->whereBetween('created_at', [$start, $end]);
+            }])
+            ->withCount('products')
+            ->get()
+            ->map(function($vendor) {
+                $vendor->orders_sum_total_amount = $vendor->orders->sum('total_amount');
+                return $vendor;
+            })
+            ->sortByDesc('orders_sum_total_amount')
             ->take(10)
-            ->get();
+            ->values();
 
         // Category performance
         $category_performance = Category::withCount('products')
@@ -205,6 +233,8 @@ class MarketplaceAdminController extends Controller
 
         return Inertia::render('Admin/Marketplace/Analytics', [
             'period' => $period,
+            'start_date' => $start_date ?? $start->format('Y-m-d'),
+            'end_date' => $end_date ?? $end->format('Y-m-d'),
             'sales_data' => $sales_data,
             'product_performance' => $product_performance,
             'vendor_performance' => $vendor_performance,

@@ -138,6 +138,8 @@ const formatRWF = (amount: number | undefined | null): string => {
 export default function BatchShow({ batch }: Props) {
     const [isEditingCounts, setIsEditingCounts] = useState(false);
     const [isEditingFinancials, setIsEditingFinancials] = useState(false);
+    const [isEditingStartDate, setIsEditingStartDate] = useState(false);
+    const [isEditingTotalDays, setIsEditingTotalDays] = useState(false);
     const [showEventDialog, setShowEventDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
@@ -149,6 +151,21 @@ export default function BatchShow({ batch }: Props) {
         mortality_count: batch.mortality_count.toString(),
         cull_count: batch.cull_count.toString(),
         avg_daily_production: batch.avg_daily_production.toString(),
+    });
+
+    // Form for updating start date
+    const startDateForm = useForm({
+        start_date: batch.start_date || new Date().toISOString().split('T')[0],
+    });
+
+    // Calculate current total incubation days
+    const currentTotalDays = batch.start_date && batch.expected_completion_date
+        ? Math.ceil((new Date(batch.expected_completion_date).getTime() - new Date(batch.start_date).getTime()) / (1000 * 60 * 60 * 24))
+        : 21; // Default 21 days
+
+    // Form for updating total incubation days
+    const totalDaysForm = useForm({
+        total_days: currentTotalDays.toString(),
     });
 
     // Form for updating financial data
@@ -190,6 +207,24 @@ export default function BatchShow({ batch }: Props) {
         countForm.put(`/batch-incubator/batches/${batch.id}`, {
             onSuccess: () => {
                 setIsEditingCounts(false);
+            }
+        });
+    };
+
+    const handleUpdateStartDate = (e: React.FormEvent) => {
+        e.preventDefault();
+        startDateForm.put(`/batch-incubator/batches/${batch.id}/start-date`, {
+            onSuccess: () => {
+                setIsEditingStartDate(false);
+            }
+        });
+    };
+
+    const handleUpdateTotalDays = (e: React.FormEvent) => {
+        e.preventDefault();
+        totalDaysForm.put(`/batch-incubator/batches/${batch.id}/total-days`, {
+            onSuccess: () => {
+                setIsEditingTotalDays(false);
             }
         });
     };
@@ -730,7 +765,51 @@ export default function BatchShow({ batch }: Props) {
 
                                     {batch.start_date && (
                                         <div>
-                                            <h4 className="text-sm font-medium text-muted-foreground">Start Date</h4>
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-sm font-medium text-muted-foreground">Start Date (Brooding)</h4>
+                                                <Dialog open={isEditingStartDate} onOpenChange={setIsEditingStartDate}>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="h-6 px-2">
+                                                            <Edit className="h-3 w-3" />
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader>
+                                                            <DialogTitle>Update Brooding Start Date</DialogTitle>
+                                                            <DialogDescription>
+                                                                Update the start date for this batch. This will affect age calculations and sync with IoT devices.
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <form onSubmit={handleUpdateStartDate} className="space-y-4">
+                                                            <div>
+                                                                <Label htmlFor="start_date">Start Date</Label>
+                                                                <Input
+                                                                    id="start_date"
+                                                                    type="date"
+                                                                    value={startDateForm.data.start_date}
+                                                                    onChange={(e) => startDateForm.setData('start_date', e.target.value)}
+                                                                    required
+                                                                />
+                                                                {startDateForm.errors.start_date && (
+                                                                    <p className="text-sm text-red-500 mt-1">{startDateForm.errors.start_date}</p>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex justify-end space-x-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    onClick={() => setIsEditingStartDate(false)}
+                                                                >
+                                                                    Cancel
+                                                                </Button>
+                                                                <Button type="submit" disabled={startDateForm.processing}>
+                                                                    {startDateForm.processing ? 'Saving...' : 'Save'}
+                                                                </Button>
+                                                            </div>
+                                                        </form>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            </div>
                                             <p className="text-sm font-medium">{new Date(batch.start_date).toLocaleDateString()}</p>
                                         </div>
                                     )}
@@ -745,7 +824,60 @@ export default function BatchShow({ batch }: Props) {
                                     {batch.expected_completion_date && (
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Expected Completion</h4>
-                                            <p className="text-sm font-medium">{new Date(batch.expected_completion_date).toLocaleDateString()}</p>
+                                            <Dialog open={isEditingTotalDays} onOpenChange={setIsEditingTotalDays}>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-medium">{new Date(batch.expected_completion_date).toLocaleDateString()}</p>
+                                                    {batch.status.value === 'brooding' && (
+                                                        <DialogTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="h-6 px-2">
+                                                                <Edit className="h-3 w-3" />
+                                                            </Button>
+                                                        </DialogTrigger>
+                                                    )}
+                                                </div>
+                                                <DialogContent>
+                                                    <DialogHeader>
+                                                        <DialogTitle>Update Total Incubation Days</DialogTitle>
+                                                        <DialogDescription>
+                                                            Change the total incubation days. The expected completion date will be calculated automatically.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <form onSubmit={handleUpdateTotalDays} className="space-y-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="total_days">Total Incubation Days</Label>
+                                                            <Input
+                                                                id="total_days"
+                                                                type="number"
+                                                                min="1"
+                                                                max="365"
+                                                                value={totalDaysForm.data.total_days}
+                                                                onChange={(e) => totalDaysForm.setData('total_days', e.target.value)}
+                                                                required
+                                                            />
+                                                            {totalDaysForm.errors.total_days && (
+                                                                <p className="text-sm text-red-600">{totalDaysForm.errors.total_days}</p>
+                                                            )}
+                                                            <div className="text-xs text-muted-foreground space-y-1">
+                                                                <p>• Current: {currentTotalDays} days</p>
+                                                                <p>• Age: {batch.age_days || 0} days</p>
+                                                                <p>• Changes will sync with the IoT device</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                onClick={() => setIsEditingTotalDays(false)}
+                                                            >
+                                                                Cancel
+                                                            </Button>
+                                                            <Button type="submit" disabled={totalDaysForm.processing}>
+                                                                {totalDaysForm.processing ? 'Updating...' : 'Update'}
+                                                            </Button>
+                                                        </div>
+                                                    </form>
+                                                </DialogContent>
+                                            </Dialog>
                                         </div>
                                     )}
                                 </div>
@@ -753,11 +885,11 @@ export default function BatchShow({ batch }: Props) {
                         </Card>
 
                         {/* Environmental Conditions */}
-                        {(batch.avg_temperature || batch.avg_humidity) && (
+                        {(batch.avg_temperature) && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Environmental Conditions</CardTitle>
-                                    <CardDescription>Average temperature and humidity readings</CardDescription>
+                                    <CardDescription>Average temperature </CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="grid grid-cols-2 gap-4">
@@ -771,15 +903,7 @@ export default function BatchShow({ batch }: Props) {
                                             </div>
                                         )}
 
-                                        {batch.avg_humidity && (
-                                            <div className="flex items-center space-x-2">
-                                                <Droplets className="h-4 w-4 text-emerald-500" />
-                                                <div>
-                                                    <p className="text-sm font-medium">{batch.avg_humidity}%</p>
-                                                    <p className="text-xs text-muted-foreground">Average Humidity</p>
-                                                </div>
-                                            </div>
-                                        )}
+
                                     </div>
                                 </CardContent>
                             </Card>
@@ -1070,13 +1194,6 @@ export default function BatchShow({ batch }: Props) {
                                         <div className="flex items-center justify-between">
                                             <span className="text-sm">Temperature</span>
                                             <span className="text-sm font-medium">{batch.incubator.current_temperature}°C</span>
-                                        </div>
-                                    )}
-
-                                    {batch.incubator.current_humidity && (
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm">Humidity</span>
-                                            <span className="text-sm font-medium">{batch.incubator.current_humidity}%</span>
                                         </div>
                                     )}
 

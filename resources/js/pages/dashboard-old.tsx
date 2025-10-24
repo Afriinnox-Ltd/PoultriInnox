@@ -36,7 +36,7 @@ export default function Dashboard() {
                 {/* Welcome Section */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Welcome to PoultriInnox</h1>
+                        <h1 className="text-3xl font-bold tracking-tight">Welcome to Agriinnox</h1>
                         <p className="text-muted-foreground">
                             Your comprehensive poultry management system
                         </p>
@@ -193,10 +193,7 @@ export default function Dashboard() {
                                     <p className="text-muted-foreground">Avg Temperature</p>
                                     <p className="font-semibold">37.6°C</p>
                                 </div>
-                                <div>
-                                    <p className="text-muted-foreground">Avg Humidity</p>
-                                    <p className="font-semibold">61.4%</p>
-                                </div>
+
                             </div>
 
                             <div className="space-y-2">
@@ -350,7 +347,7 @@ export default function Dashboard() {
                 {/* Getting Started Guide */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Getting Started with PoultriInnox</CardTitle>
+                        <CardTitle>Getting Started with Agriinnox</CardTitle>
                         <CardDescription>
                             New to the system? Follow these steps to get up and running
                         </CardDescription>

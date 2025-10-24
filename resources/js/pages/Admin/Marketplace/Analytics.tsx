@@ -63,6 +63,8 @@ interface RevenueStats {
 
 interface AnalyticsProps {
     period: string;
+    start_date: string;
+    end_date: string;
     sales_data: SalesData[];
     product_performance: ProductPerformance[];
     vendor_performance: VendorPerformance[];
@@ -72,6 +74,8 @@ interface AnalyticsProps {
 
 export default function Analytics({
     period,
+    start_date,
+    end_date,
     sales_data,
     product_performance,
     vendor_performance,
@@ -79,10 +83,29 @@ export default function Analytics({
     revenue_stats
 }: AnalyticsProps) {
     const [selectedPeriod, setSelectedPeriod] = useState(period);
+    const [startDate, setStartDate] = useState(start_date);
+    const [endDate, setEndDate] = useState(end_date);
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     const handlePeriodChange = (newPeriod: string) => {
         setSelectedPeriod(newPeriod);
-        router.get('/admin/marketplace/analytics', { period: newPeriod }, {
+        if (newPeriod !== 'custom') {
+            setShowDatePicker(false);
+            router.get('/admin/marketplace/analytics', { period: newPeriod }, {
+                preserveState: true,
+                replace: true,
+            });
+        } else {
+            setShowDatePicker(true);
+        }
+    };
+
+    const handleDateFilter = () => {
+        router.get('/admin/marketplace/analytics', {
+            period: 'custom',
+            start_date: startDate,
+            end_date: endDate
+        }, {
             preserveState: true,
             replace: true,
         });
@@ -110,28 +133,63 @@ export default function Analytics({
 
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h2 className="text-3xl font-bold tracking-tight">Marketplace Analytics</h2>
-                        <p className="text-muted-foreground">
-                            Comprehensive insights into marketplace performance
-                        </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
+                <div className="flex flex-col space-y-4">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-3xl font-bold tracking-tight">Marketplace Analytics</h2>
+                            <p className="text-muted-foreground">
+                                Comprehensive insights into marketplace performance
+                            </p>
+                        </div>
                         <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4" />
-                            <select
-                                value={selectedPeriod}
-                                onChange={(e) => handlePeriodChange(e.target.value)}
-                                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            >
-                                <option value="day">Today</option>
-                                <option value="week">This Week</option>
-                                <option value="month">This Month</option>
-                                <option value="year">This Year</option>
-                            </select>
+                            <div className="flex items-center space-x-2">
+                                <Calendar className="h-4 w-4" />
+                                <select
+                                    value={selectedPeriod}
+                                    onChange={(e) => handlePeriodChange(e.target.value)}
+                                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="day">Today</option>
+                                    <option value="week">This Week</option>
+                                    <option value="month">This Month</option>
+                                    <option value="year">This Year</option>
+                                    <option value="custom">Custom Range</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Custom Date Range Picker */}
+                    {showDatePicker && (
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="flex items-end gap-4">
+                                    <div className="flex-1">
+                                        <label className="text-sm font-medium mb-2 block">Start Date</label>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-sm font-medium mb-2 block">End Date</label>
+                                        <input
+                                            type="date"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        />
+                                    </div>
+                                    <Button onClick={handleDateFilter}>
+                                        <Filter className="h-4 w-4 mr-2" />
+                                        Apply Filter
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Revenue Overview Cards */}

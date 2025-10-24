@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { ShoppingCart, Search, Filter, Star, MapPin, Package, TrendingUp, LogIn, UserPlus, Eye } from 'lucide-react';
+import { ShoppingCart, Search, Filter, Star, MapPin, Package, TrendingUp, LogIn, UserPlus, Eye, Shield } from 'lucide-react';
 import { type SharedData } from '@/types';
 import WelcomeNav from '@/components/navigation/WelcomeNav';
 import { formatCurrency } from '@/utils/formatters';
@@ -132,55 +132,102 @@ export default function PublicMarketplace({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <Head title="Browse Products - Poultry Marketplace" />
+        <div className="min-h-screen bg-white">
+            <Head title="Browse Products - Poultry Marketplace">
+                <meta name="description" content="Shop quality poultry equipment, supplies, feed, and farming tools. Find everything you need for your poultry farming operation with trusted vendors across Rwanda." />
+                <meta name="keywords" content="poultry equipment, chicken feed, farming supplies, incubators, brooders, poultry farming, Rwanda agriculture" />
+                <meta property="og:title" content="Browse Products - Poultry Marketplace" />
+                <meta property="og:description" content="Shop quality poultry equipment and supplies from trusted vendors" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <link rel="canonical" href="https://agriinnox.com/store" />
+            </Head>
 
-                <WelcomeNav auth={auth} />
-            <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                {/* Hero Section */}
-                <Card className="mb-6 mt-16 bg-gradient-to-r from-emerald-50 p-0 to-emerald-100 overflow-hidden">
-                    <CardContent className="relative p-0">
-                        {/* Background Image - Only on larger screens */}
-                        <div className="hidden md:block absolute inset-0 bg-[url('/assets/happy-african-american-man-holding-shopping-bags-yellow-background-holidays-concept.png')] bg-contain bg-no-repeat bg-right"></div>
+            <WelcomeNav auth={auth} />
 
-                        {/* Content Overlay */}
-                        <div className="relative bg-gradient-to-r from-emerald-600 via-emerald-600/90 to-emerald-600/70 md:to-transparent p-6 md:p-8">
-                            <div className="text-center md:text-left md:max-w-2xl">
-                                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 md:mb-4">
-                                    Poultry Equipment & Supplies Marketplace
-                                </h1>
-                                <p className="text-base md:text-lg text-emerald-100 mb-4 md:mb-6">
-                                    Find everything you need for your poultry farming operation
-                                </p>
-                                <div className="flex flex-wrap gap-3 md:gap-4">
-                                    <div className="flex items-center justify-center md:justify-start text-white">
-                                        <Package className="h-5 w-5 md:h-6 md:w-6 text-emerald-300 mr-2" />
-                                        <span className="text-sm font-medium">{products.total + 100}+ Products</span>
-                                    </div>
-                                    <div className="flex items-center justify-center md:justify-start text-white">
-                                        <MapPin className="h-5 w-5 md:h-6 md:w-6 text-emerald-300 mr-2" />
-                                        <span className="text-sm font-medium">Local & International</span>
-                                    </div>
-                                    <div className="flex items-center justify-center md:justify-start text-white">
-                                        <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-emerald-300 mr-2" />
-                                        <span className="text-sm font-medium">Best Prices</span>
-                                    </div>
-                                </div>
+            {/* Features Bar */}
+            <div className="bg-gray-50 border-y border-gray-200 pt-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                <Package className="h-6 w-6 text-emerald-600" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-900">Fast Delivery</div>
+                                <div className="text-xs text-gray-600">Nationwide shipping</div>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <Shield className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-900">Secure Payment</div>
+                                <div className="text-xs text-gray-600">100% Protected</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center">
+                                <Star className="h-6 w-6 text-amber-600" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-900">Quality Products</div>
+                                <div className="text-xs text-gray-600">Verified vendors</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                                <TrendingUp className="h-6 w-6 text-purple-600" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-900">Best Prices</div>
+                                <div className="text-xs text-gray-600">Competitive rates</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Categories Section */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Shop by Category</h2>
+                        <p className="text-gray-600 mt-1">Find exactly what you need</p>
+                    </div>
+                    <Button variant="ghost" className="text-emerald-600 hover:text-emerald-700">
+                        View All →
+                    </Button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {safeCategories.slice(0, 6).map((category) => (
+                        <Link
+                            key={category.id}
+                            href={`/store?category=${category.id}`}
+                            className="group"
+                        >
+                            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 text-center hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-200">
+                                <h3 className="font-semibold text-gray-900 text-xs">{category.name}</h3>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="bg-gray-50 py-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
 
                     {/* Filters Sidebar */}
-                    <div className={`flex flex-col gap-4 ${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
-                        <Card className="lg:col-span-1">
-                            <CardHeader>
-                                <CardTitle className="flex items-center">
-                                    <Filter className="h-5 w-5 mr-2" />
-                                    Filters
+                    <div className={`lg:col-span-1 ${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
+                        <Card className="sticky top-20 border-gray-200  border shadow-none bg-white">
+                            <CardHeader className="border-b border-gray-100">
+                                <CardTitle className="flex items-center text-lg">
+                                    <Filter className="h-5 w-5 mr-2 text-emerald-600" />
+                                    Filter Products
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -292,22 +339,31 @@ export default function PublicMarketplace({
 
                     {/* Products Grid */}
                     <div className="lg:col-span-3">
-                        {/* Sort Controls */}
-                        <Card className="mb-4">
-                            <CardContent className="">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-gray-600">
-                                            Showing {safeProducts.length} of {products?.total || 0} products
-                                        </span>
+                        {/* Search and Sort Bar */}
+                        <Card className="mb-6 border-gray-200 shadow-none border bg-white">
+                            <CardContent className="py-4">
+                                <div className="flex flex-col lg:flex-row gap-4">
+                                    {/* Search */}
+                                    <div className="flex-1">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                            <Input
+                                                placeholder="Search products..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                                className="pl-10 pr-4 py-6 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                    {/* Sort Buttons */}
+                                    <div className="flex flex-wrap gap-2">
                                         <Button
                                             variant={sort.sort_by === 'name' ? 'default' : 'outline'}
                                             size="sm"
                                             onClick={() => handleSort('name')}
-                                            className="flex-1 sm:flex-none text-xs sm:text-sm"
+                                            className="flex-1 lg:flex-none"
                                         >
                                             Name {sort.sort_by === 'name' && (sort.sort_direction === 'asc' ? '↑' : '↓')}
                                         </Button>
@@ -315,7 +371,7 @@ export default function PublicMarketplace({
                                             variant={sort.sort_by === 'price' ? 'default' : 'outline'}
                                             size="sm"
                                             onClick={() => handleSort('price')}
-                                            className="flex-1 sm:flex-none text-xs sm:text-sm"
+                                            className="flex-1 lg:flex-none"
                                         >
                                             Price {sort.sort_by === 'price' && (sort.sort_direction === 'asc' ? '↑' : '↓')}
                                         </Button>
@@ -323,19 +379,25 @@ export default function PublicMarketplace({
                                             variant={sort.sort_by === 'created_at' ? 'default' : 'outline'}
                                             size="sm"
                                             onClick={() => handleSort('created_at')}
-                                            className="flex-1 sm:flex-none text-xs sm:text-sm"
+                                            className="flex-1 lg:flex-none"
                                         >
                                             Latest {sort.sort_by === 'created_at' && (sort.sort_direction === 'asc' ? '↑' : '↓')}
                                         </Button>
                                         <Button
                                             onClick={() => setShowMobileFilters(!showMobileFilters)}
-                                            variant="ghost"
+                                            variant="outline"
                                             size="sm"
-                                            className="lg:hidden p-1 h-auto"
+                                            className="lg:hidden"
                                         >
-                                            <Filter className="h-4 w-4" />
+                                            <Filter className="h-4 w-4 mr-2" />
+                                            Filters
                                         </Button>
                                     </div>
+                                </div>
+
+                                {/* Results count */}
+                                <div className="mt-4 text-sm text-gray-600">
+                                    Showing <span className="font-semibold text-gray-900">{safeProducts.length}</span> of <span className="font-semibold text-gray-900">{products?.total || 0}</span> products
                                 </div>
                             </CardContent>
                         </Card>
@@ -347,49 +409,52 @@ export default function PublicMarketplace({
                                     <ProductCard key={product.id} auth={auth} product={product} handleAddToCart={handleAddToCart} />
                                 ))
                             ) : (
-                                <div className="col-span-3 text-center">
-                                    <p className='text-lg'>No products found.</p>
-                                    <Link href="/store" className=" hover:underline">
-                                        Clear filters
-                                    </Link>
+                                <div className="col-span-3 py-16 text-center">
+                                    <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                                    <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+                                    <p className="text-gray-600 mb-6">Try adjusting your filters or search terms</p>
+                                    <Button onClick={clearFilters} variant="outline">
+                                        Clear all filters
+                                    </Button>
                                 </div>
                             )}
                         </div>
 
                         {/* Pagination */}
                         {products?.last_page && products.last_page > 1 && (
-                            <Card className="mt-6">
-                                <CardContent className="p-4">
-                                    <div className="flex justify-center space-x-2">
-                                        {Array.from({ length: Math.min(products?.last_page || 0, 10) }, (_, i) => {
-                                            const page = i + 1;
-                                            const lastPage = products?.last_page || 0;
-                                            const currentPage = products?.current_page || 1;
-                                            if (lastPage <= 10 || page <= 5 || page > lastPage - 5) {
-                                                return (
-                                                    <Button
-                                                        key={page}
-                                                        variant={page === currentPage ? 'default' : 'outline'}
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            const params = new URLSearchParams(window.location.search);
-                                                            params.set('page', page.toString());
-                                                            window.location.href = `/store?${params.toString()}`;
-                                                        }}
-                                                    >
-                                                        {page}
-                                                    </Button>
-                                                );
-                                            }
-                                            return null;
-                                        })}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <div className="mt-8 flex justify-center">
+                                <div className="flex items-center gap-2">
+                                    {Array.from({ length: Math.min(products?.last_page || 0, 10) }, (_, i) => {
+                                        const page = i + 1;
+                                        const lastPage = products?.last_page || 0;
+                                        const currentPage = products?.current_page || 1;
+                                        if (lastPage <= 10 || page <= 5 || page > lastPage - 5) {
+                                            return (
+                                                <Button
+                                                    key={page}
+                                                    variant={page === currentPage ? 'default' : 'outline'}
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const params = new URLSearchParams(window.location.search);
+                                                        params.set('page', page.toString());
+                                                        window.location.href = `/store?${params.toString()}`;
+                                                    }}
+                                                    className={page === currentPage ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                                >
+                                                    {page}
+                                                </Button>
+                                            );
+                                        }
+                                        return null;
+                                    })}
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
+        </div>
+
             <Toaster position="bottom-right" richColors />
         </div>
     );

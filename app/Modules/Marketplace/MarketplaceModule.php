@@ -15,7 +15,7 @@ namespace App\Modules\Marketplace;
  * - Multi-vendor commission system
  *
  * @version 1.0.0
- * @author Poultriinnox System
+ * @author Agriinnox System
  */
 class MarketplaceModule
 {

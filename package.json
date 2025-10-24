@@ -1,4 +1,5 @@
 {
+    "name": "agriinnox",
     "private": true,
     "type": "module",
     "scripts": {
@@ -53,6 +54,7 @@
         "globals": "^15.14.0",
         "laravel-vite-plugin": "^2.0",
         "lucide-react": "^0.475.0",
+        "mqtt": "^5.14.1",
         "next-themes": "^0.4.6",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",

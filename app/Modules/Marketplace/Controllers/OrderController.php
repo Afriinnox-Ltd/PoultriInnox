@@ -221,12 +221,50 @@ class OrderController extends Controller
                 ->sum('total_amount')
         ];
 
+        // Get marketplace settings for commission calculations
+        $marketplaceSettings = \App\Models\MarketplaceSetting::getAllGrouped();
+        
+        // Helper function to get setting value by key from a group
+        $getSetting = function($group, $key, $default = null) use ($marketplaceSettings) {
+            if (!isset($marketplaceSettings[$group])) return $default;
+            
+            foreach ($marketplaceSettings[$group] as $setting) {
+                if ($setting['key'] === $key) {
+                    return $setting['value'];
+                }
+            }
+            return $default;
+        };
+        
+        // Format settings for frontend
+        $formattedSettings = [
+            'commission' => [
+                'rate' => (float) $getSetting('commission', 'default_commission_rate', 10),
+                'commission_type' => $getSetting('commission', 'commission_type', 'percentage'),
+            ],
+            'general' => [
+                'default_currency' => $getSetting('general', 'default_currency', 'RWF'),
+                'currency_symbol' => $getSetting('general', 'currency_symbol', 'RWF'),
+            ],
+            'platform_fees' => [
+                'listing_fee' => (float) $getSetting('platform_fees', 'listing_fee', 0),
+                'processing_fee' => (float) $getSetting('platform_fees', 'processing_fee', 0),
+            ],
+            'payment' => [
+                'cod_enabled' => (bool) $getSetting('payment', 'cod_enabled', false),
+            ],
+            'order' => [
+                'auto_complete_days' => (int) $getSetting('order', 'auto_complete_days', 7),
+            ],
+        ];
+
         return Inertia::render('modules/marketplace/orders/index', [
             'orders' => $orders,
             'stats' => $stats,
             'filters' => $request->only(['status', 'order_number']),
             'sort' => ['sort_by' => $sortBy, 'sort_direction' => $sortDirection],
-            'user_type' => 'vendor'
+            'user_type' => 'vendor',
+            'marketplaceSettings' => $formattedSettings,
         ]);
     }
 
@@ -367,9 +405,8 @@ class OrderController extends Controller
 
         // Check if order is eligible for delivery confirmation
         if (!$order->isDeliveryConfirmationPending()) {
-            return response()->json([
-                'error' => 'This order is not pending delivery confirmation.'
-            ], 400);
+            return redirect()->back()
+                ->with('error', 'This order is not pending delivery confirmation.');
         }
 
         $validated = $request->validate([
@@ -391,15 +428,12 @@ class OrderController extends Controller
             // Confirm delivery
             $order->confirmDeliveryByBuyer($proofImages, $validated['confirmation_notes'] ?? null);
 
-            return response()->json([
-                'message' => 'Delivery confirmed successfully! Payment has been released to the vendor.',
-                'redirect' => route('orders.show', $order->id)
-            ]);
+            return  redirect()->back()
+                ->with('success', 'Delivery confirmed successfully! Payment has been released to the vendor.');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to confirm delivery. Please try again.'
-            ], 500);
+            return redirect()->back()
+                ->with('error', 'Failed to confirm delivery. Please try again.');
         }
     }
 }

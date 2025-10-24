@@ -8,12 +8,21 @@ use App\Modules\BatchIncubator\Models\Incubator;
 use App\Modules\BatchIncubator\Enums\BatchStatus;
 use App\Modules\BatchIncubator\Enums\EventType;
 use App\Models\User;
+use App\Services\MqttService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class BatchController extends Controller
 {
+    protected MqttService $mqttService;
+
+    public function __construct(MqttService $mqttService)
+    {
+        $this->mqttService = $mqttService;
+    }
     /**
      * Display a listing of batches
      */
@@ -91,7 +100,7 @@ class BatchController extends Controller
 
         // Calculate stats only for accessible batches
         $accessibleBatchesQuery = Batch::accessibleBy($user);
-        
+
         $stats = [
             'total_batches' => $accessibleBatchesQuery->count(),
             'active_batches' => $accessibleBatchesQuery->whereIn('status', [
@@ -130,7 +139,7 @@ class BatchController extends Controller
     public function create()
     {
         $user = Auth::user();
-        
+
         // Only show incubators that the user has access to
         $incubators = Incubator::whereIn('status', ['idle', 'running'])
             ->accessibleBy($user)
@@ -165,6 +174,23 @@ class BatchController extends Controller
             'initial_cost' => 'nullable|numeric|min:0',
         ]);
 
+        // Check if trying to create a brooding batch in an incubator that already has one
+        if ($validated['status'] === BatchStatus::BROODING->value && !empty($validated['incubator_id'])) {
+            $existingBroodingBatch = Batch::where('incubator_id', $validated['incubator_id'])
+                ->where('status', BatchStatus::BROODING->value)
+                ->where('id', '!=', $request->route('batch')) // Exclude current batch if editing
+                ->first();
+
+            if ($existingBroodingBatch) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'incubator_id' => 'This incubator already has an active brooding batch (' .
+                            $existingBroodingBatch->batch_code . '). Please complete or move the existing batch first.'
+                    ]);
+            }
+        }
+
         // Generate batch code
         $validated['batch_code'] = 'BTH-' . now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
         $validated['current_count'] = $validated['initial_count'];
@@ -177,8 +203,105 @@ class BatchController extends Controller
 
         $batch = Batch::create($validated);
 
+        // If batch is assigned to an incubator with a device, sync to device
+        if ($batch->incubator_id) {
+            $this->syncBatchToDevice($batch);
+        }
+
         return redirect()->route('batch-incubator.batches.show', $batch)
             ->with('success', 'Batch created successfully!');
+    }
+
+    /**
+     * Sync batch data to IoT device via MQTT
+     */
+    protected function syncBatchToDevice(Batch $batch)
+    {
+        try {
+            $incubator = $batch->incubator;
+
+            // Check if incubator exists
+            if (!$incubator) {
+                Log::warning('MQTT: Cannot sync batch to device - No incubator assigned', [
+                    'batch_id' => $batch->id,
+                ]);
+                return;
+            }
+
+            // Check if incubator has a device serial number
+            if (!$incubator->serial_number) {
+                Log::warning('MQTT: Cannot sync batch to device - Incubator has no device serial number', [
+                    'batch_id' => $batch->id,
+                    'incubator_id' => $incubator->id,
+                    'incubator_name' => $incubator->name,
+                ]);
+                return;
+            }
+
+            $deviceId = $incubator->serial_number;
+
+            // Check if device is online (has recent sensor data)
+            $sensorsData = $incubator->sensors_data ?? [];
+            $isOnline = $sensorsData['online'] ?? false;
+            $lastUpdate = $sensorsData['last_update'] ?? null;
+
+            if (!$isOnline && $lastUpdate) {
+                $lastUpdateTime = \Carbon\Carbon::parse($lastUpdate);
+                $minutesSinceUpdate = now()->diffInMinutes($lastUpdateTime);
+
+                if ($minutesSinceUpdate > 5) {
+                    Log::warning('MQTT: Device appears offline - Last update was {minutes} minutes ago', [
+                        'batch_id' => $batch->id,
+                        'device_id' => $deviceId,
+                        'minutes' => $minutesSinceUpdate,
+                        'last_update' => $lastUpdate,
+                    ]);
+                    // Continue anyway - device might come online and receive the message
+                }
+            }
+
+            // Calculate total_days from start_date to expected_completion_date
+            $totalDays = 30; // Default
+            if ($batch->start_date && $batch->expected_completion_date) {
+                $totalDays = $batch->start_date->diffInDays($batch->expected_completion_date);
+            }
+
+            // Calculate cycle_day from start_date to now
+            $cycleDay = $batch->age_days;
+
+            // Send total_days to device using device-specific topic
+            $topic = str_replace('{device_id}', $deviceId, config('mqtt.topics.total_days'));
+            $published = $this->mqttService->publish(
+                $topic,
+                (string) $totalDays
+            );
+
+            if ($published) {
+                Log::info('MQTT: Successfully synced new batch to device', [
+                    'batch_id' => $batch->id,
+                    'device_id' => $deviceId,
+                    'cycle_day' => $cycleDay,
+                    'total_days' => $totalDays,
+                    'start_date' => $batch->start_date->toDateString(),
+                    'expected_completion_date' => $batch->expected_completion_date ? $batch->expected_completion_date->toDateString() : null,
+                    'device_online' => $isOnline,
+                ]);
+            } else {
+                Log::error('MQTT: Failed to publish message to device', [
+                    'batch_id' => $batch->id,
+                    'device_id' => $deviceId,
+                    'topic' => config('mqtt.topics.total_days'),
+                ]);
+            }
+
+        } catch (\Throwable $e) {
+            Log::error('MQTT: Exception while syncing batch to device', [
+                'batch_id' => $batch->id,
+                'incubator_id' => $batch->incubator_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
     }
 
     /**
@@ -382,6 +505,237 @@ class BatchController extends Controller
     }
 
     /**
+     * Update brooding start date
+     */
+    public function updateStartDate(Request $request, Batch $batch)
+    {
+        $user = Auth::user();
+
+        // Check if user has access to this batch
+        if (!$batch->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to update this batch.');
+        }
+
+        // Verify this is an active/brooding batch
+        if ($batch->status->value !== 'brooding') {
+            return back()->withErrors(['error' => 'Only brooding batches can have their start date updated.']);
+        }
+
+        $validated = $request->validate([
+            'start_date' => 'required|date',
+        ]);
+
+        $oldStartDate = $batch->start_date;
+        $batch->update([
+            'start_date' => $validated['start_date'],
+        ]);
+
+        // Mark this as a manual update to prevent device override
+        // Use 2 minutes to give device time to receive and process the new total_days
+        Cache::put("batch:{$batch->id}:last_start_date_update", now(), 180);
+
+        // Refresh the batch to get updated attributes
+        $batch->refresh();
+
+        // Calculate total days based on expected completion date
+        $totalDays = 21; // Default
+        if ($batch->expected_completion_date) {
+            $startDate = \Carbon\Carbon::parse($batch->start_date);
+            $completionDate = \Carbon\Carbon::parse($batch->expected_completion_date);
+            $totalDays = $startDate->diffInDays($completionDate);
+        } elseif ($batch->incubator && isset($batch->incubator->sensors_data['total_days'])) {
+            $totalDays = $batch->incubator->sensors_data['total_days'];
+            // Update expected completion date based on total_days
+            $batch->update([
+                'expected_completion_date' => \Carbon\Carbon::parse($validated['start_date'])->addDays($totalDays),
+            ]);
+        }
+
+        // Sync with IoT device if linked and this is the active batch
+        if ($batch->incubator && $batch->incubator->serial_number) {
+            // Verify this is the current active batch in the incubator
+            $activeBatch = Batch::where('incubator_id', $batch->incubator->id)
+                ->where('status', 'brooding')
+                ->first();
+
+            if ($activeBatch && $activeBatch->id === $batch->id) {
+                try {
+                    $deviceId = $batch->incubator->serial_number;
+
+                    // Connect to MQTT broker
+                    if (!$this->mqttService->connect()) {
+                        Log::warning('Failed to connect to MQTT broker for start date sync');
+                    } else {
+                        // Send updated total_days to device
+                        $published = $this->mqttService->publishControlCommand($deviceId, 'total_days', $totalDays);
+
+                        // Update incubator sensors_data
+                        $sensorsData = $batch->incubator->sensors_data ?? [];
+                        $sensorsData['total_days'] = $totalDays;
+                        $batch->incubator->update(['sensors_data' => $sensorsData]);
+
+                        if ($published) {
+                            Log::info('Synced start date to IoT device', [
+                                'batch_id' => $batch->id,
+                                'device_id' => $deviceId,
+                                'new_start_date' => $validated['start_date'],
+                                'total_days' => $totalDays,
+                                'current_age_days' => $batch->age_days,
+                            ]);
+                        } else {
+                            Log::warning('Failed to publish start date to device', [
+                                'batch_id' => $batch->id,
+                                'device_id' => $deviceId,
+                            ]);
+                        }
+
+                        // Disconnect after publishing
+                        $this->mqttService->disconnect();
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to sync start date to IoT device', [
+                        'batch_id' => $batch->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
+            }
+        }
+
+        // Log the change as an event
+        $batch->events()->create([
+            'event_type' => EventType::STATUS_CHANGE,
+            'title' => 'Brooding start date updated',
+            'description' => "Start date changed from {$oldStartDate?->format('Y-m-d')} to {$batch->start_date->format('Y-m-d')}",
+            'event_date' => now(),
+            'user_id' => Auth::id(),
+            'event_data' => [
+                'old_start_date' => $oldStartDate?->format('Y-m-d'),
+                'new_start_date' => $batch->start_date->format('Y-m-d'),
+                'current_age_days' => $batch->age_days,
+            ],
+        ]);
+
+        return back()->with('success', 'Brooding start date updated successfully!');
+    }
+
+    /**
+     * Update total incubation days (which automatically calculates expected completion date)
+     */
+    public function updateTotalIncubationDays(Request $request, Batch $batch)
+    {
+        $user = Auth::user();
+
+        // Check if user has access to this batch
+        if (!$batch->userHasAccess($user) && !$user->isAdmin()) {
+            abort(403, 'You do not have permission to update this batch.');
+        }
+
+        // Verify this is an active/brooding batch
+        if ($batch->status->value !== 'brooding') {
+            return back()->withErrors(['error' => 'Only brooding batches can have their total incubation days updated.']);
+        }
+
+        $validated = $request->validate([
+            'total_days' => 'required|integer|min:1|max:365',
+        ]);
+
+        $oldTotalDays = null;
+        if ($batch->incubator && isset($batch->incubator->sensors_data['total_days'])) {
+            $oldTotalDays = $batch->incubator->sensors_data['total_days'];
+        }
+
+        $totalDays = $validated['total_days'];
+
+        // Calculate new expected completion date based on start date + total days
+        $newExpectedDate = \Carbon\Carbon::parse($batch->start_date)->addDays($totalDays);
+        $oldDate = $batch->expected_completion_date;
+
+        $batch->update([
+            'expected_completion_date' => $newExpectedDate,
+        ]);
+
+        // Mark this as a manual update to prevent device override
+        // Store both timestamp and expected total_days to verify device received it
+        Cache::put("batch:{$batch->id}:last_completion_date_update", now(), 180);
+        Cache::put("batch:{$batch->id}:expected_total_days", $totalDays, 180);
+
+        // Refresh the batch to get updated attributes
+        $batch->refresh();
+
+        // Sync with IoT device if linked and this is the active batch
+        if ($batch->incubator && $batch->incubator->serial_number) {
+            // Verify this is the current active batch in the incubator
+            $activeBatch = Batch::where('incubator_id', $batch->incubator->id)
+                ->where('status', 'brooding')
+                ->first();
+
+            if ($activeBatch && $activeBatch->id === $batch->id) {
+                try {
+                    $deviceId = $batch->incubator->serial_number;
+
+                    // Connect to MQTT broker
+                    if (!$this->mqttService->connect()) {
+                        Log::warning('Failed to connect to MQTT broker for expected date sync');
+                    } else {
+                        // Send updated total_days to device
+                        $published = $this->mqttService->publishControlCommand($deviceId, 'total_days', $totalDays);
+
+                        // Update incubator sensors_data
+                        $sensorsData = $batch->incubator->sensors_data ?? [];
+                        $sensorsData['total_days'] = $totalDays;
+                        $batch->incubator->update(['sensors_data' => $sensorsData]);
+
+                        if ($published) {
+                            Log::info('Synced total incubation days to IoT device', [
+                                'batch_id' => $batch->id,
+                                'device_id' => $deviceId,
+                                'total_days' => $totalDays,
+                                'old_total_days' => $oldTotalDays,
+                                'new_expected_completion_date' => $newExpectedDate->format('Y-m-d'),
+                                'old_expected_completion_date' => $oldDate?->format('Y-m-d'),
+                                'current_age_days' => $batch->age_days,
+                            ]);
+                        } else {
+                            Log::warning('Failed to publish expected date to device', [
+                                'batch_id' => $batch->id,
+                                'device_id' => $deviceId,
+                            ]);
+                        }
+
+                        // Disconnect after publishing
+                        $this->mqttService->disconnect();
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to sync expected completion date to IoT device', [
+                        'batch_id' => $batch->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
+            }
+        }
+
+        // Log the change as an event
+        $batch->events()->create([
+            'event_type' => EventType::STATUS_CHANGE,
+            'title' => 'Total incubation days updated',
+            'description' => "Total incubation days changed from {$oldTotalDays} to {$totalDays} days. Expected completion date is now {$batch->expected_completion_date->format('Y-m-d')}",
+            'event_date' => now(),
+            'user_id' => Auth::id(),
+            'event_data' => [
+                'old_total_days' => $oldTotalDays,
+                'new_total_days' => $totalDays,
+                'old_expected_completion_date' => $oldDate?->format('Y-m-d'),
+                'new_expected_completion_date' => $batch->expected_completion_date->format('Y-m-d'),
+                'days_remaining' => $batch->days_remaining,
+            ],
+        ]);
+
+        return back()->with('success', 'Total incubation days updated successfully! Expected completion date is now ' . $batch->expected_completion_date->format('M d, Y'));
+    }
+
+    /**
      * Update batch status
      */
     public function updateStatus(Request $request, Batch $batch)
@@ -396,6 +750,22 @@ class BatchController extends Controller
         $validated = $request->validate([
             'status' => 'required|in:' . implode(',', array_map(fn($s) => $s->value, BatchStatus::cases())),
         ]);
+
+        // Check if trying to change to brooding status in an incubator that already has a brooding batch
+        if ($validated['status'] === BatchStatus::BROODING->value && $batch->incubator_id) {
+            $existingBroodingBatch = Batch::where('incubator_id', $batch->incubator_id)
+                ->where('status', BatchStatus::BROODING->value)
+                ->where('id', '!=', $batch->id)
+                ->first();
+
+            if ($existingBroodingBatch) {
+                return back()
+                    ->withErrors([
+                        'status' => 'This incubator already has an active brooding batch (' .
+                            $existingBroodingBatch->batch_code . '). Please complete or move the existing batch first.'
+                    ]);
+            }
+        }
 
         // Update status with any necessary side effects
         $oldStatus = $batch->status;

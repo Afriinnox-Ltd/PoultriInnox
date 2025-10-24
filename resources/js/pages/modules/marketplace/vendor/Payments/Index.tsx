@@ -1,19 +1,15 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
     DollarSign,
-    TrendingUp,
     Clock,
     CheckCircle,
-    ShoppingCart,
-    Eye,
-    AlertCircle,
-    Calendar
+    Calendar,
+    Wallet
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 
@@ -26,6 +22,8 @@ interface Payment {
     payment_method: string;
     vendor_paid: boolean;
     vendor_paid_at: string | null;
+    payout_requested: boolean;
+    payout_requested_at: string | null;
     created_at: string;
     order: {
         id: number;
@@ -34,65 +32,47 @@ interface Payment {
             name: string;
             email: string;
         };
-    };
-}
-
-interface Order {
-    id: number;
-    order_number: string;
-    total_amount: number;
-    status: string;
-    shipping_status: string;
-    created_at: string;
-    user: {
-        name: string;
-        email: string;
-    };
-    payment: Payment | null;
-    items: Array<{
-        id: number;
-        quantity: number;
-        price: number;
-        product: {
-            id: number;
-            name: string;
-            slug: string;
+        deliveryConfirmation?: {
+            confirmed: boolean;
+            confirmed_at: string;
         };
-    }>;
+    };
 }
 
 interface Stats {
-    total_earnings: number;
+    available_earnings: number;
     pending_payouts: number;
-    completed_payouts: number;
-    total_orders: number;
-    paid_orders: number;
+    total_payouts: number;
+    can_request_payout: boolean;
 }
 
 interface VendorPaymentsProps {
-    orders: {
-        data: Order[];
+    stats: Stats;
+    payoutRequests: {
+        data: Payment[];
         links?: any[];
         meta?: any;
     };
-    stats: Stats;
-    recentPayments: Payment[];
-    filters: {
-        payment_status?: string;
-    };
+    minPayoutAmount: number;
+    marketplaceSettings: any;
 }
 
-export default function VendorPayments({ orders, stats, recentPayments, filters }: VendorPaymentsProps) {
-    // Provide default values to prevent undefined errors
-    const safeOrders = orders || { data: [], links: [], meta: {} };
+export default function VendorPayments({ stats, payoutRequests, minPayoutAmount, marketplaceSettings }: VendorPaymentsProps) {
     const safeStats = stats || {
-        total_earnings: 0,
+        available_earnings: 0,
         pending_payouts: 0,
-        completed_payouts: 0,
-        total_orders: 0,
-        paid_orders: 0
+        total_payouts: 0,
+        can_request_payout: false
     };
-    const safeFilters = filters || {};
+    const safePayoutRequests = payoutRequests || { data: [], links: [], meta: {} };
+
+    const handleRequestPayout = () => {
+        if (confirm(`Request payout for ${formatCurrency(safeStats.available_earnings)}?`)) {
+            router.post('/marketplace/vendor/payments/request-payout', {}, {
+                preserveScroll: true,
+            });
+        }
+    };
 
     return (
         <AppLayout>
@@ -104,30 +84,22 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight">Payments & Earnings</h2>
                         <p className="text-muted-foreground">
-                            Track your earnings and payment history
+                            Manage your payout requests and track earnings
                         </p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" asChild>
-                            <Link href="/marketplace/vendor/payments/analytics">
-                                <TrendingUp className="h-4 w-4 mr-2" />
-                                Analytics
-                            </Link>
-                        </Button>
                     </div>
                 </div>
 
-                {/* Stats Overview */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                {/* Stats Cards */}
+                <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-sm font-medium">Total Payouts</CardTitle>
+                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{formatCurrency(safeStats.total_earnings)}</div>
+                            <div className="text-2xl font-bold">{formatCurrency(safeStats.total_payouts)}</div>
                             <p className="text-xs text-muted-foreground">
-                                From {safeStats.paid_orders} paid orders
+                                Successfully paid out to you
                             </p>
                         </CardContent>
                     </Card>
@@ -147,189 +119,133 @@ export default function VendorPayments({ orders, stats, recentPayments, filters 
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Completed Payouts</CardTitle>
-                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-sm font-medium">Available Earnings</CardTitle>
+                            <Wallet className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{formatCurrency(safeStats.completed_payouts)}</div>
+                            <div className="text-2xl font-bold text-emerald-600">{formatCurrency(safeStats.available_earnings)}</div>
                             <p className="text-xs text-muted-foreground">
-                                Successfully paid out
+                                Ready to request payout
                             </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-                            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{safeStats.total_orders}</div>
-                            <p className="text-xs text-muted-foreground">
-                                All time orders
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Payment Rate</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {safeStats.total_orders > 0 ? Math.round((safeStats.paid_orders / safeStats.total_orders) * 100) : 0}%
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Orders with payment
-                            </p>
+                            <Button
+                                onClick={handleRequestPayout}
+                                disabled={!safeStats.can_request_payout}
+                                className="mt-4 w-full"
+                                size="sm"
+                            >
+                                <DollarSign className="h-4 w-4 mr-2" />
+                                Request Payout
+                            </Button>
+                            {!safeStats.can_request_payout && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    Minimum: {formatCurrency(minPayoutAmount)}
+                                </p>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* Filter Actions */}
-                <div className="flex gap-2">
-                    <Button
-                        variant={!safeFilters.payment_status ? 'default' : 'outline'}
-                        size="sm"
-                        asChild
-                    >
-                        <Link href="/marketplace/vendor/payments">All Orders</Link>
-                    </Button>
-                    <Button
-                        variant={safeFilters.payment_status === 'paid' ? 'default' : 'outline'}
-                        size="sm"
-                        asChild
-                    >
-                        <Link href="/marketplace/vendor/payments?payment_status=paid">Paid Orders</Link>
-                    </Button>
-                    <Button
-                        variant={safeFilters.payment_status === 'unpaid' ? 'default' : 'outline'}
-                        size="sm"
-                        asChild
-                    >
-                        <Link href="/marketplace/vendor/payments?payment_status=unpaid">Unpaid Orders</Link>
-                    </Button>
-                </div>
-
-                {/* Orders and Payments Table */}
+                {/* Payout Requests Table */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Order Payment History</CardTitle>
+                        <CardTitle>Payout Request History</CardTitle>
                         <CardDescription>
-                            Track payment status for all your orders
+                            Track all your payout requests and their status
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {safeOrders?.data && safeOrders.data.length > 0 ? (
-                                safeOrders.data.map((order) => (
-                                    <div key={order.id} className="border rounded-lg p-4">
+                            {safePayoutRequests?.data && safePayoutRequests.data.length > 0 ? (
+                                safePayoutRequests.data.map((payment) => (
+                                    <div key={payment.id} className="border rounded-lg p-4">
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-medium">#{order.order_number}</span>
-                                                    <Badge variant={order.payment ? 'default' : 'secondary'}>
-                                                        {order.payment ? 'Paid' : 'Unpaid'}
-                                                    </Badge>
-                                                    <Badge
-                                                        variant={
-                                                            order.status === 'delivered' ? 'default' :
-                                                            order.status === 'pending' ? 'secondary' :
-                                                            order.status === 'cancelled' ? 'destructive' : 'outline'
-                                                        }
-                                                    >
-                                                        {order.status}
-                                                    </Badge>
+                                                    <span className="font-medium">#{payment.order.order_number}</span>
+                                                    {payment.vendor_paid ? (
+                                                        <Badge variant="default" className="bg-emerald-600">
+                                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                                            Paid Out
+                                                        </Badge>
+                                                    ) : payment.payout_requested ? (
+                                                        <Badge variant="secondary">
+                                                            <Clock className="h-3 w-3 mr-1" />
+                                                            Pending
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline">
+                                                            Available
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
-                                                    Customer: {order.user.name} • {new Date(order.created_at).toLocaleDateString()}
+                                                    Customer: {payment.order.user.name}
                                                 </p>
-                                                <p className="text-sm">
-                                                    {order.items.length} item(s) • Total: {formatCurrency(order.total_amount)}
-                                                </p>
+                                                {payment.order.deliveryConfirmation?.confirmed && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Delivery confirmed: {new Date(payment.order.deliveryConfirmation.confirmed_at).toLocaleDateString()}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="text-right space-y-1">
-                                                {order.payment ? (
-                                                    <div>
-                                                        <p className="font-medium text-green-600">
-                                                            {formatCurrency(order.payment.vendor_amount)}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Your earnings
-                                                        </p>
-                                                        {order.payment.vendor_paid ? (
-                                                            <Badge variant="default" className="text-xs">
-                                                                <CheckCircle className="h-3 w-3 mr-1" />
-                                                                Paid Out
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="secondary" className="text-xs">
-                                                                <Clock className="h-3 w-3 mr-1" />
-                                                                Pending Payout
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <p className="text-muted-foreground">
-                                                            {formatCurrency((order.total_amount * 0.9))}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Expected earnings
-                                                        </p>
-                                                        <Badge variant="outline" className="text-xs">
-                                                            <AlertCircle className="h-3 w-3 mr-1" />
-                                                            Payment Pending
-                                                        </Badge>
-                                                    </div>
+                                                <p className="font-medium text-emerald-600">
+                                                    {formatCurrency(payment.vendor_amount)}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Your earnings
+                                                </p>
+                                                {payment.vendor_paid && payment.vendor_paid_at && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        <Calendar className="h-3 w-3 inline mr-1" />
+                                                        {new Date(payment.vendor_paid_at).toLocaleDateString()}
+                                                    </p>
+                                                )}
+                                                {!payment.vendor_paid && payment.payout_requested_at && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Requested: {new Date(payment.payout_requested_at).toLocaleDateString()}
+                                                    </p>
                                                 )}
                                             </div>
                                         </div>
 
-                                        {order.payment && (
-                                            <div className="mt-3 pt-3 border-t">
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                                    <div>
-                                                        <p className="text-muted-foreground">Transaction ID</p>
-                                                        <p className="font-mono text-xs">{order.payment.transaction_id}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-muted-foreground">Payment Method</p>
-                                                        <p className="capitalize">{order.payment.payment_method}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-muted-foreground">Platform Commission</p>
-                                                        <p>{formatCurrency(order.payment.platform_commission)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-muted-foreground">Payment Date</p>
-                                                        <p>{new Date(order.payment.created_at).toLocaleDateString()}</p>
-                                                    </div>
+                                        <div className="mt-3 pt-3 border-t">
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                                <div>
+                                                    <p className="text-muted-foreground">Transaction ID</p>
+                                                    <p className="font-mono text-xs">{payment.transaction_id}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-muted-foreground">Payment Method</p>
+                                                    <p className="capitalize">{payment.payment_method}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-muted-foreground">Platform Commission</p>
+                                                    <p>{formatCurrency(payment.platform_commission)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-muted-foreground">Payment Date</p>
+                                                    <p>{new Date(payment.created_at).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 ))
                             ) : (
                                 <div className="text-center py-8">
-                                    <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                                    <h3 className="font-semibold mb-2">No orders found</h3>
+                                    <Wallet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                                    <h3 className="font-semibold mb-2">No payout requests yet</h3>
                                     <p className="text-muted-foreground">
-                                        {safeFilters.payment_status ?
-                                            `No ${safeFilters.payment_status} orders to display.` :
-                                            'You haven\'t received any orders yet.'
-                                        }
+                                        Your payout requests will appear here once you request them.
                                     </p>
                                 </div>
                             )}
                         </div>
 
                         {/* Pagination */}
-                        {safeOrders?.meta?.last_page && safeOrders.meta.last_page > 1 && (
+                        {safePayoutRequests?.meta?.last_page && safePayoutRequests.meta.last_page > 1 && (
                             <div className="mt-6 flex justify-center">
                                 <div className="flex gap-2">
-                                    {safeOrders.links?.map((link, index) => (
+                                    {safePayoutRequests.links?.map((link, index) => (
                                         <Button
                                             key={index}
                                             variant={link.active ? 'default' : 'outline'}

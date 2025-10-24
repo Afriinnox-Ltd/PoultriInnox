@@ -74,6 +74,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             subItems: subscriptionSubNavigation,
         },
         { name: 'Analytics', href: '/admin/marketplace/analytics' },
+        {
+            name: 'Settings',
+            href: '/admin/marketplace/settings',
+            icon: Settings
+        },
     ];    return (
         <div className="min-h-screen bg-gray-50">
             {/* Sidebar */}
@@ -81,7 +86,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <div className="flex min-h-0 flex-1 flex-col bg-white border-r border-gray-200">
                     {/* Logo */}
                     <div className="flex h-16 flex-shrink-0 items-center px-4 border-b border-gray-200">
-                        <h1 className="text-xl font-bold text-gray-900">PoultriInnox Admin</h1>
+                        <h1 className="text-xl font-bold text-gray-900">Agriinnox Admin</h1>
                     </div>
 
                     {/* Navigation */}
@@ -236,9 +241,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         </Button>
 
                         <div className="flex items-center space-x-4">
-                            <Link 
-                                href="/logout" 
-                                method="post" 
+                            <Link
+                                href="/logout"
+                                method="post"
                                 as="button"
                                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9"
                             >

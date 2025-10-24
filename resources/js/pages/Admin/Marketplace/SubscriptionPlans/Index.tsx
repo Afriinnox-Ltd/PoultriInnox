@@ -126,7 +126,7 @@ export default function Index({ plans, stats }: Props) {
             </CardHeader>
             <CardContent>
               <div className="flex items-center space-x-2">
-                <TrendingUp className="w-5 h-5 text-green-500" />
+                <TrendingUp className="w-5 h-5 text-emerald-500" />
                 <span className="text-2xl font-bold">{stats.active_plans}</span>
               </div>
             </CardContent>
@@ -245,7 +245,7 @@ export default function Index({ plans, stats }: Props) {
                             onClick={() => togglePlanStatus(plan.id)}
                           >
                             {plan.is_active ? (
-                              <ToggleRight className="w-4 h-4 text-green-500" />
+                              <ToggleRight className="w-4 h-4 text-emerald-500" />
                             ) : (
                               <ToggleLeft className="w-4 h-4 text-gray-400" />
                             )}
@@ -303,7 +303,7 @@ export default function Index({ plans, stats }: Props) {
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="pt-6">
                 <div className="flex items-center space-x-2">
-                  <TrendingUp className="w-5 h-5 text-green-500" />
+                  <TrendingUp className="w-5 h-5 text-emerald-500" />
                   <span className="font-medium">Analytics</span>
                 </div>
                 <p className="text-sm text-gray-600 mt-2">

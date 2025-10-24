@@ -20,6 +20,11 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Help & Support page
+    Route::get('help', function () {
+        return Inertia::render('help');
+    })->name('help');
+
     // Module management routes
     Route::prefix('modules')->name('modules.')->group(function () {
         Route::get('/', [ModuleController::class, 'index'])->name('index');
@@ -39,6 +44,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::resource('batches', BatchController::class);
             Route::put('batches/{batch}/status', [BatchController::class, 'updateStatus'])
                 ->name('batches.status');
+            Route::put('batches/{batch}/start-date', [BatchController::class, 'updateStartDate'])
+                ->name('batches.start-date');
+            Route::put('batches/{batch}/total-days', [BatchController::class, 'updateTotalIncubationDays'])
+                ->name('batches.total-days');
             Route::post('batches/{batch}/events', [BatchController::class, 'addEvent'])
                 ->name('batches.events.store');
             Route::put('batches/{batch}/access', [BatchController::class, 'updateAccess'])
@@ -139,3 +148,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/admin.php';
+require __DIR__ . '/payment.php';

@@ -84,9 +84,29 @@ interface EditProductProps {
     subscriptionUsage: any;
     needsUpgrade: boolean;
     upgradeReason?: string;
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+        };
+        platform_fees: {
+            platform_fee_rate: number;
+            processing_fee: number;
+            transaction_fee_rate: number;
+        };
+        tax: {
+            tax_rate: number;
+            tax_enabled: boolean;
+            tax_inclusive: boolean;
+        };
+        general: {
+            currency: string;
+            currency_symbol: string;
+        };
+    };
 }
 
-export default function EditProduct({ product, categories, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason }: EditProductProps) {
+export default function EditProduct({ product, categories, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason, marketplaceSettings }: EditProductProps) {
     // Ensure tags is always an array
     const parsedTags: string[] = (() => {
         if (Array.isArray(product.tags)) {
@@ -145,6 +165,47 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
     const [existingImages, setExistingImages] = useState<ProductImage[]>(product.images || []);
     const [currentTab, setCurrentTab] = useState('basic');
 
+    // Format currency based on marketplace settings
+    const formatCurrency = (amount: number) => {
+        const currency = marketplaceSettings?.general?.currency || 'RWF';
+        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+        
+        if (currency === 'RWF') {
+            return new Intl.NumberFormat('rw-RW', {
+                style: 'currency',
+                currency: 'RWF'
+            }).format(amount);
+        }
+        
+        return `${symbol}${amount.toLocaleString()}`;
+    };
+
+    // Calculate vendor earnings from price
+    const calculateVendorEarnings = (price: number) => {
+        if (!marketplaceSettings || !price) return { earnings: 0, breakdown: [] };
+
+        const commission = marketplaceSettings.commission.commission_type === 'percentage' 
+            ? (price * marketplaceSettings.commission.default_commission_rate) / 100
+            : marketplaceSettings.commission.default_commission_rate;
+        
+        const platformFee = (price * marketplaceSettings?.platform_fees?.platform_fee_rate) / 100;
+        const transactionFee = (price * marketplaceSettings?.platform_fees?.transaction_fee_rate) / 100;
+
+        const totalFees = commission + platformFee + transactionFee;
+        const earnings = price - totalFees;
+
+        return {
+            earnings,
+            breakdown: [
+                { label: 'Product Price', amount: price, type: 'positive' },
+                { label: 'Commission', amount: -commission, type: 'negative' },
+                { label: 'Platform Fee', amount: -platformFee, type: 'negative' },
+                { label: 'Transaction Fee', amount: -transactionFee, type: 'negative' },
+                { label: 'Your Earnings', amount: earnings, type: 'positive', isTotal: true }
+            ]
+        };
+    };
+
     const tabs = [
         { value: 'basic', label: 'Basic Info' },
         { value: 'details', label: 'Details' },
@@ -178,7 +239,7 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                 setImagePreviews([]);
                 toast.success('Product updated successfully!');
             },
-            onError: (errors: any) => {
+            onError: (errors: Record<string, string>) => {
                 console.log(errors);
                 toast.error('Please fix the errors in the form and try again.');
             }
@@ -367,7 +428,7 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <Label htmlFor="price">Price (RWF) *</Label>
+                                                <Label htmlFor="price">Price ({marketplaceSettings?.general?.currency || 'RWF'}) *</Label>
                                                 <Input
                                                     type="number"
                                                     id="price"
@@ -380,7 +441,7 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                                 />
                                                 {errors.price && (
                                                     <p className="text-sm text-red-500 mt-1">{errors.price}</p>
-                                                )}
+                                                )} 
                                             </div>
 
                                             <div>

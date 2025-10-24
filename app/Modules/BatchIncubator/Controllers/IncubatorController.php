@@ -47,16 +47,36 @@ class IncubatorController extends Controller
 
         // Transform the paginated data
         $incubators->getCollection()->transform(function ($incubator) use ($user) {
+            // Determine device online status based on last sensor update
+            $sensorsData = $incubator->sensors_data ?? [];
+            $lastUpdate = $sensorsData['last_update'] ?? null;
+            $isDeviceOnline = false;
+
+            if ($lastUpdate) {
+                $lastUpdateTime = \Carbon\Carbon::parse($lastUpdate);
+                $minutesSinceUpdate = now()->diffInMinutes($lastUpdateTime);
+                $isDeviceOnline = $minutesSinceUpdate < 5; // Online if updated within 5 minutes
+            }
+
+            // Update incubator status to reflect actual device state
+            $actualStatus = $incubator->status;
+            if ($incubator->serial_number && !$isDeviceOnline) {
+                // Device should be online but isn't - mark as offline/maintenance
+                $actualStatus = IncubatorStatus::OFFLINE;
+            }
+
             return [
                 'id' => $incubator->id,
                 'name' => $incubator->name,
                 'model' => $incubator->model,
                 'serial_number' => $incubator->serial_number,
                 'status' => [
-                    'value' => $incubator->status->value,
-                    'label' => $incubator->status->label(),
-                    'color' => $incubator->status->color(),
+                    'value' => $actualStatus->value,
+                    'label' => $actualStatus->label(),
+                    'color' => $actualStatus->color(),
                 ],
+                'device_online' => $isDeviceOnline,
+                'last_update' => $lastUpdate ? \Carbon\Carbon::parse($lastUpdate)->diffForHumans() : null,
                 'capacity' => $incubator->capacity,
                 'current_load' => $incubator->current_load,
                 'utilization_rate' => $incubator->getUtilizationPercentage(),
@@ -74,6 +94,7 @@ class IncubatorController extends Controller
                         'batch_code' => $batch->batch_code,
                         'name' => $batch->name,
                         'status' => $batch->status->label(),
+                        'created_at' => $batch?->created_at?->format('Y-m-d'),
                         'current_count' => $batch->current_count,
                     ];
                 }),
@@ -87,15 +108,17 @@ class IncubatorController extends Controller
         });
 
         // Calculate stats only for accessible incubators
-        $accessibleIncubatorsQuery = Incubator::accessibleBy($user);
-        
+        $accessibleIncubators = Incubator::accessibleBy($user)->get();
+
         $stats = [
-            'total_incubators' => $accessibleIncubatorsQuery->count(),
-            'running_incubators' => $accessibleIncubatorsQuery->where('status', IncubatorStatus::RUNNING)->count(),
-            'idle_incubators' => $accessibleIncubatorsQuery->where('status', IncubatorStatus::IDLE)->count(),
-            'maintenance_due' => $accessibleIncubatorsQuery->whereDate('next_maintenance', '<=', now()->addDays(7))->count(),
-            'total_capacity' => $accessibleIncubatorsQuery->sum('capacity'),
-            'current_utilization' => $accessibleIncubatorsQuery->sum('current_load'),
+            'total_incubators' => $accessibleIncubators->count(),
+            'running_incubators' => $accessibleIncubators->where('status', IncubatorStatus::RUNNING)->count(),
+            'idle_incubators' => $accessibleIncubators->where('status', IncubatorStatus::IDLE)->count(),
+            'maintenance_due' => $accessibleIncubators->filter(function ($incubator) {
+                return $incubator->next_maintenance && $incubator->next_maintenance <= now()->addDays(7);
+            })->count(),
+            'total_capacity' => $accessibleIncubators->sum('capacity'),
+            'current_utilization' => $accessibleIncubators->sum('current_load'),
         ];
 
         return Inertia::render('modules/batch-incubator/incubators/index', [
@@ -247,6 +270,7 @@ class IncubatorController extends Controller
                         'id' => $batch->id,
                         'batch_code' => $batch->batch_code,
                         'name' => $batch->name,
+
                         'breed' => $batch->breed,
                         'status' => [
                             'value' => $batch->status->value,
@@ -256,6 +280,7 @@ class IncubatorController extends Controller
                         'current_count' => $batch->current_count,
                         'start_date' => $batch->start_date?->format('Y-m-d'),
                         'hatch_date' => $batch->hatch_date?->format('Y-m-d'),
+                        'created_at' => $batch->created_at->toISOString(),
                         'age_days' => $batch->age_days,
                         'manager' => [
                             'name' => $batch->manager->name,

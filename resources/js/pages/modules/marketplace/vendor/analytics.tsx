@@ -62,6 +62,20 @@ interface VendorAnalyticsProps {
     recentProducts: Product[];
     monthlySales: MonthlySale[];
     categoryPerformance: CategoryPerformance[];
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+        };
+        general: {
+            currency: string;
+            currency_symbol: string;
+        };
+    };
 }
 
 export default function VendorAnalytics({
@@ -69,14 +83,22 @@ export default function VendorAnalytics({
     topSellingProducts,
     lowStockItems,
     monthlySales,
-    categoryPerformance
+    categoryPerformance,
+    marketplaceSettings
 }: VendorAnalyticsProps) {
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('rw-RW', { 
-            style: 'currency', 
-            currency: 'RWF',
-            minimumFractionDigits: 0 
-        }).format(amount);
+        const currency = marketplaceSettings?.general?.currency || 'RWF';
+        
+        if (currency === 'RWF') {
+            return new Intl.NumberFormat('rw-RW', { 
+                style: 'currency', 
+                currency: 'RWF',
+                minimumFractionDigits: 0 
+            }).format(amount);
+        }
+        
+        const symbol = marketplaceSettings?.general?.currency_symbol || '$';
+        return `${symbol}${amount.toLocaleString()}`;
     };
 
     const formatMonth = (monthStr: string) => {
@@ -156,10 +178,10 @@ export default function VendorAnalytics({
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Stock Alerts</CardTitle>
-                            <AlertTriangle className="h-4 w-4 text-orange-500" />
+                            <AlertTriangle className="h-4 w-4 text-emerald-500" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-orange-500">
+                            <div className="text-2xl font-bold text-emerald-500">
                                 {stats.lowStockProducts + stats.outOfStockProducts}
                             </div>
                             <p className="text-xs text-muted-foreground">
@@ -168,6 +190,81 @@ export default function VendorAnalytics({
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Earnings Breakdown */}
+                {marketplaceSettings && (
+                    console.log(marketplaceSettings),
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <DollarSign className="h-5 w-5 mr-2" />
+                                Earnings Breakdown
+                            </CardTitle>
+                            <CardDescription>
+                                Based on your total revenue of {formatCurrency(stats.totalRevenue)}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {(() => {
+
+                                    const commission = marketplaceSettings.commission?.commission_type === 'percentage' 
+                                        ? (stats.totalRevenue * marketplaceSettings.commission.default_commission_rate) / 100
+                                        : marketplaceSettings.commission.default_commission_rate * stats.completedOrders;
+                                    
+                                    const platformFee = (stats.totalRevenue * marketplaceSettings.fees.platform_fee_rate) / 100;
+                                    const transactionFee = (stats.totalRevenue * marketplaceSettings.fees.transaction_fee_rate) / 100;
+                                    const vendorEarnings = stats.totalRevenue - commission - platformFee - transactionFee;
+
+                                    return (
+                                        <>
+                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                                <div className="text-2xl font-bold text-emerald-900">
+                                                    {formatCurrency(stats.totalRevenue)}
+                                                </div>
+                                                <div className="text-sm font-medium text-emerald-700">Gross Revenue</div>
+                                                <div className="text-xs text-emerald-600 mt-1">
+                                                    Total sales amount
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                                <div className="text-2xl font-bold text-emerald-900">
+                                                    {formatCurrency(commission)}
+                                                </div>
+                                                <div className="text-sm font-medium text-emerald-700">Commission</div>
+                                                <div className="text-xs text-emerald-600 mt-1">
+                                                    {marketplaceSettings.commission.default_commission_rate}% 
+                                                    {marketplaceSettings.commission.commission_type === 'percentage' ? ' of sales' : ' per order'}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                                <div className="text-2xl font-bold text-emerald-900">
+                                                    {formatCurrency(platformFee + transactionFee)}
+                                                </div>
+                                                <div className="text-sm font-medium text-emerald-700">Total Fees</div>
+                                                <div className="text-xs text-emerald-600 mt-1">
+                                                    Platform + Transaction
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                                <div className="text-2xl font-bold text-emerald-900">
+                                                    {formatCurrency(vendorEarnings)}
+                                                </div>
+                                                <div className="text-sm font-medium text-emerald-700">Your Earnings</div>
+                                                <div className="text-xs text-emerald-600 mt-1">
+                                                    {((vendorEarnings / stats.totalRevenue) * 100).toFixed(1)}% of revenue
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
                     {/* Top Selling Products */}
@@ -187,7 +284,7 @@ export default function VendorAnalytics({
                                     {topSellingProducts.map((product, index) => (
                                         <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
                                             <div className="flex items-center gap-3">
-                                                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full text-sm font-bold text-blue-600">
+                                                <div className="flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-full text-sm font-bold text-emerald-600">
                                                     {index + 1}
                                                 </div>
                                                 <div>
@@ -216,7 +313,7 @@ export default function VendorAnalytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                                <AlertTriangle className="h-5 w-5 text-emerald-500" />
                                 Low Stock Alerts
                             </CardTitle>
                             <CardDescription>
@@ -227,7 +324,7 @@ export default function VendorAnalytics({
                             {lowStockItems.length > 0 ? (
                                 <div className="space-y-4">
                                     {lowStockItems.map((product) => (
-                                        <div key={product.id} className="flex items-center justify-between p-3 border border-orange-200 bg-orange-50 rounded-lg">
+                                        <div key={product.id} className="flex items-center justify-between p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
                                             <div>
                                                 <p className="font-medium">{product.name}</p>
                                                 <p className="text-sm text-muted-foreground">
@@ -235,7 +332,7 @@ export default function VendorAnalytics({
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <Badge variant="destructive" className="bg-orange-500">
+                                                <Badge variant="destructive" className="bg-emerald-500">
                                                     {product.stock_quantity} left
                                                 </Badge>
                                             </div>
@@ -244,7 +341,7 @@ export default function VendorAnalytics({
                                 </div>
                             ) : (
                                 <div className="text-center py-8">
-                                    <Activity className="h-12 w-12 mx-auto text-green-500 mb-4" />
+                                    <Activity className="h-12 w-12 mx-auto text-emerald-500 mb-4" />
                                     <p className="text-muted-foreground">All products well stocked!</p>
                                 </div>
                             )}
@@ -282,7 +379,7 @@ export default function VendorAnalytics({
                                             </div>
                                             <div className="w-full bg-gray-200 rounded-full h-2">
                                                 <div
-                                                    className="bg-blue-600 h-2 rounded-full transition-all"
+                                                    className="bg-emerald-600 h-2 rounded-full transition-all"
                                                     style={{ width: `${percentage}%` }}
                                                 ></div>
                                             </div>

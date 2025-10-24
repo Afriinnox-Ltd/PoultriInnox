@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-    Package, 
-    ShoppingCart, 
-    CreditCard,
+import {
+    Package,
+    ShoppingCart,
+    Smartphone,
     CheckCircle,
-    Clock
+    Clock,
+    AlertCircle
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 
@@ -56,6 +58,8 @@ interface CheckoutPageProps {
 
 export default function CheckoutPage({ plan, currentSubscription, pricing }: CheckoutPageProps) {
     const [autoRenew, setAutoRenew] = useState(true);
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [error, setError] = useState('');
 
     const form = useForm({
         plan_id: plan.id,
@@ -74,12 +78,37 @@ export default function CheckoutPage({ plan, currentSubscription, pricing }: Che
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        form.setData({
-            plan_id: plan.id,
-            payment_method: 'online',
-            auto_renew: autoRenew,
+        setError('');
+
+        if (!phoneNumber) {
+            setError('Please enter your mobile money number');
+            return;
+        }
+
+        if (!/^[0-9]{9,12}$/.test(phoneNumber)) {
+            setError('Please enter a valid phone number (9-12 digits)');
+            return;
+        }
+
+        console.log('Submitting checkout form with phone:', phoneNumber);
+
+        // Update form data with phone number and submit
+        form.transform((data) => ({
+            ...data,
+            phone_number: phoneNumber,
+        }));
+
+        console.log('Form data:', form.data);
+
+        form.post('/marketplace/subscriptions/upgrade', {
+            onSuccess: () => {
+                console.log('Form submission successful');
+            },
+            onError: (errors: any) => {
+                console.error('Form submission error:', errors);
+                setError(errors.message || 'Failed to process payment');
+            },
         });
-        form.post('/marketplace/subscriptions/upgrade');
     };
 
 
@@ -87,7 +116,7 @@ export default function CheckoutPage({ plan, currentSubscription, pricing }: Che
     return (
         <AppLayout>
             <Head title={`Checkout - ${plan.name} Plan`} />
-            
+
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
                 <div className="text-center mb-8">
@@ -98,130 +127,127 @@ export default function CheckoutPage({ plan, currentSubscription, pricing }: Che
                 </div>
 
                 <div className="max-w-2xl mx-auto">
-                    {/* Plan Summary */}
-                    <Card className="mb-6">
-                        <CardHeader>
-                            <CardTitle className="text-center">
-                                Subscribe to {plan.name} Plan
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-center mb-6">
-                                <div className="text-4xl font-bold text-blue-600 mb-2">
-                                    {formatCurrency(pricing.upgrade_cost)}
-                                </div>
-                                <p className="text-gray-600">One-time payment</p>
-                            </div>
-
-                            {/* Plan Features */}
-                            <div className="space-y-3 mb-6">
-                                <div className="flex items-center justify-center gap-2 text-sm">
-                                    <Package className="h-4 w-4 text-blue-600" />
-                                    <span>
-                                        {plan.product_limit ? `Up to ${plan.product_limit} products` : 'Unlimited products'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-center gap-2 text-sm">
-                                    <ShoppingCart className="h-4 w-4 text-green-600" />
-                                    <span>
-                                        {plan.order_limit ? `Up to ${plan.order_limit} orders per month` : 'Unlimited orders'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Current Plan Credit */}
-                            {currentSubscription && pricing.current_plan_credit > 0 && (
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                                    <div className="text-center">
-                                        <p className="text-sm text-green-800 mb-1">Credit from your current plan</p>
-                                        <p className="text-lg font-semibold text-green-600">
-                                            -{formatCurrency(pricing.current_plan_credit)}
-                                        </p>
-                                        <p className="text-xs text-green-700 mt-1">
-                                            Applied to your new subscription
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Checkout Form */}
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Payment Method */}
+                    {/* Single Card Checkout */}
+                    <form onSubmit={handleSubmit}>
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg text-center">Payment Method</CardTitle>
+                                <CardTitle className="text-center text-2xl">
+                                    {plan.name} Plan
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center justify-center p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
-                                    <div className="flex items-center gap-3">
-                                        <CreditCard className="h-6 w-6 text-blue-600" />
+                            <CardContent className="space-y-6">
+                                {/* Price */}
+                                <div className="text-center py-4 border-b">
+                                    <div className="text-5xl font-bold text-emerald-600 mb-2">
+                                        {formatCurrency(pricing.upgrade_cost)}
+                                    </div>
+                                    <p className="text-gray-600 text-sm capitalize">{plan.billing_cycle} billing</p>
+                                </div>
+
+                                {/* Current Plan Credit */}
+                                {currentSubscription && pricing.current_plan_credit > 0 && (
+                                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 -mt-2">
                                         <div className="text-center">
-                                            <p className="font-medium text-blue-900">Online Payment</p>
-                                            <p className="text-sm text-blue-700">
-                                                Pay securely with mobile money or bank card
+                                            <p className="text-sm text-emerald-800 mb-1">Credit from your current plan</p>
+                                            <p className="text-lg font-semibold text-emerald-600">
+                                                -{formatCurrency(pricing.current_plan_credit)}
                                             </p>
                                         </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                )}
 
-                        {/* Auto Renewal Option */}
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex items-center justify-center space-x-3">
+                                {/* Plan Features */}
+                                <div className="space-y-3 py-4 border-b">
+                                    <div className="flex items-center gap-3 text-sm">
+                                        <Package className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                                        <span className="text-gray-700">
+                                            {plan.product_limit ? `Up to ${plan.product_limit} products` : 'Unlimited products'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm">
+                                        <ShoppingCart className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                                        <span className="text-gray-700">
+                                            {plan.order_limit ? `Up to ${plan.order_limit} orders per month` : 'Unlimited orders'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Phone Number Input */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone_number" className="text-sm font-medium flex items-center gap-2">
+                                        <Smartphone className="h-4 w-4 text-emerald-600" />
+                                        Mobile Money Number
+                                    </Label>
+                                    <Input
+                                        id="phone_number"
+                                        type="tel"
+                                        placeholder="078XXXXXXX"
+                                        value={phoneNumber}
+                                        onChange={(e) => setPhoneNumber(e.target.value)}
+                                        required
+                                        className="text-lg"
+                                        disabled={processing}
+                                    />
+                                    <p className="text-xs text-gray-600">
+                                        Enter your MTN Mobile Money number for payment
+                                    </p>
+                                </div>
+
+                                {/* Error Alert */}
+                                {error && (
+                                    <Alert variant="destructive">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertDescription>{error}</AlertDescription>
+                                    </Alert>
+                                )}
+
+                                {/* Auto Renewal */}
+                                <div className="flex items-center justify-between py-2">
+                                    <Label htmlFor="auto_renew" className="cursor-pointer text-sm font-medium">
+                                        Auto-renew subscription
+                                    </Label>
                                     <Checkbox
                                         id="auto_renew"
                                         checked={autoRenew}
                                         onCheckedChange={(checked) => setAutoRenew(checked as boolean)}
                                     />
-                                    <Label htmlFor="auto_renew" className="cursor-pointer text-sm">
-                                        <span>Auto-renew subscription when it expires</span>
-                                    </Label>
                                 </div>
-                                <p className="text-xs text-gray-600 mt-2 text-center">
-                                    You can change this setting anytime
-                                </p>
+
+                                {/* Info Alert */}
+                                <Alert className="bg-emerald-50 border-emerald-200">
+                                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                    <AlertDescription className="text-emerald-800 text-sm">
+                                        Your subscription activates immediately after payment
+                                    </AlertDescription>
+                                </Alert>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-3 pt-2">
+                                    <Link href="/marketplace/subscriptions" className="flex-1">
+                                        <Button variant="outline" className="w-full" type="button">
+                                            Cancel
+                                        </Button>
+                                    </Link>
+                                    <Button
+                                        type="submit"
+                                        disabled={processing || !phoneNumber}
+                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        size="lg"
+                                    >
+                                        {processing ? (
+                                            <>
+                                                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                                Processing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                Pay {formatCurrency(pricing.upgrade_cost)}
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
-
-                        {/* Submit Button */}
-                        <div className="space-y-4">
-                            <Alert>
-                                <CheckCircle className="h-4 w-4" />
-                                <AlertDescription>
-                                    Your subscription will be activated immediately after payment
-                                </AlertDescription>
-                            </Alert>
-
-                            <div className="flex gap-4">
-                                <Link href="/marketplace/subscriptions/upgrade" className="flex-1">
-                                    <Button variant="outline" className="w-full" type="button">
-                                        Back to Plans
-                                    </Button>
-                                </Link>
-                                <Button 
-                                    type="submit" 
-                                    disabled={processing}
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                                    size="lg"
-                                >
-                                    {processing ? (
-                                        <>
-                                            <Clock className="h-4 w-4 mr-2 animate-spin" />
-                                            Processing...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CreditCard className="h-4 w-4 mr-2" />
-                                            Pay {formatCurrency(pricing.upgrade_cost)}
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
                     </form>
                 </div>
             </div>

@@ -98,7 +98,7 @@ export default function ReviewsList({
     return (
         <div className="space-y-6">
             {/* Reviews Header */}
-            <Card>
+            <Card className='shadow-none'>
                 <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                         <MessageSquare className="h-5 w-5" />
@@ -178,7 +178,7 @@ export default function ReviewsList({
 
             {/* Reviews List */}
             {reviews.length > 0 ? (
-                <Card>
+                <Card className='shadow-none'>
                     <CardHeader>
                         <CardTitle>Reviews ({totalReviews})</CardTitle>
                     </CardHeader>
@@ -202,7 +202,7 @@ export default function ReviewsList({
                     </CardContent>
                 </Card>
             ) : (
-                <Card>
+                <Card className='shadow-none'>
                     <CardContent className="py-12 text-center">
                         <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">

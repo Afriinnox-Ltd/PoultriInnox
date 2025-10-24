@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-    Crown, 
-    Package, 
-    ShoppingCart, 
+import {
+    Crown,
+    Package,
+    ShoppingCart,
     CreditCard,
     ArrowLeft,
     CheckCircle,
@@ -69,7 +69,7 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
     const getUsageStatus = (percentage: number) => {
         if (percentage >= 90) return { color: 'text-red-600', icon: AlertTriangle };
         if (percentage >= 75) return { color: 'text-yellow-600', icon: AlertTriangle };
-        return { color: 'text-green-600', icon: CheckCircle };
+        return { color: 'text-emerald-600', icon: CheckCircle };
     };
 
     const productStatus = getUsageStatus(usage.products.percentage);
@@ -78,17 +78,12 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
     return (
         <AppLayout>
             <Head title="Subscription Usage" />
-            
+
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center space-x-4">
-                        <Link href="/marketplace/subscriptions">
-                            <Button variant="outline" size="sm">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Subscriptions
-                            </Button>
-                        </Link>
+
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Subscription Usage</h1>
                             <p className="text-gray-600">Monitor your subscription usage and limits</p>
@@ -147,8 +142,8 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                                 <div className="flex items-center justify-center mt-1">
                                     {usage.can_use_cod ? (
                                         <>
-                                            <CheckCircle className="h-5 w-5 text-green-500 mr-1" />
-                                            <span className="text-lg font-semibold text-green-600">Available</span>
+                                            <CheckCircle className="h-5 w-5 text-emerald-500 mr-1" />
+                                            <span className="text-lg font-semibold text-emerald-600">Available</span>
                                         </>
                                     ) : (
                                         <>
@@ -168,7 +163,7 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Package className="h-5 w-5 text-blue-600" />
+                                <Package className="h-5 w-5 text-emerald-600" />
                                 Product Usage
                                 <productStatus.icon className={`h-5 w-5 ${productStatus.color}`} />
                             </CardTitle>
@@ -198,8 +193,8 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                                 </>
                             ) : (
                                 <div className="text-center py-8">
-                                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                                    <h3 className="text-lg font-semibold text-green-600">Unlimited Products</h3>
+                                    <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
+                                    <h3 className="text-lg font-semibold text-emerald-600">Unlimited Products</h3>
                                     <p className="text-gray-600">You can list as many products as you want</p>
                                     <p className="text-2xl font-bold mt-2">{usage.products.used}</p>
                                     <p className="text-sm text-gray-500">products currently listed</p>
@@ -212,7 +207,7 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <ShoppingCart className="h-5 w-5 text-green-600" />
+                                <ShoppingCart className="h-5 w-5 text-emerald-600" />
                                 Monthly Order Usage
                                 <orderStatus.icon className={`h-5 w-5 ${orderStatus.color}`} />
                             </CardTitle>
@@ -242,8 +237,8 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                                 </>
                             ) : (
                                 <div className="text-center py-8">
-                                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                                    <h3 className="text-lg font-semibold text-green-600">Unlimited Orders</h3>
+                                    <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
+                                    <h3 className="text-lg font-semibold text-emerald-600">Unlimited Orders</h3>
                                     <p className="text-gray-600">You can process unlimited orders per month</p>
                                     <p className="text-2xl font-bold mt-2">{usage.orders.used}</p>
                                     <p className="text-sm text-gray-500">orders processed this month</p>
@@ -261,7 +256,7 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                     <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="flex items-center space-x-3">
-                                <Package className="h-6 w-6 text-blue-600" />
+                                <Package className="h-6 w-6 text-emerald-600" />
                                 <div>
                                     <p className="font-medium">Product Listings</p>
                                     <p className="text-sm text-gray-600">
@@ -270,7 +265,7 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                                 </div>
                             </div>
                             <div className="flex items-center space-x-3">
-                                <ShoppingCart className="h-6 w-6 text-green-600" />
+                                <ShoppingCart className="h-6 w-6 text-emerald-600" />
                                 <div>
                                     <p className="font-medium">Monthly Orders</p>
                                     <p className="text-sm text-gray-600">
@@ -279,7 +274,7 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                                 </div>
                             </div>
                             <div className="flex items-center space-x-3">
-                                <CreditCard className={`h-6 w-6 ${subscription.allow_cod ? 'text-green-600' : 'text-gray-400'}`} />
+                                <CreditCard className={`h-6 w-6 ${subscription.allow_cod ? 'text-emerald-600' : 'text-gray-400'}`} />
                                 <div>
                                     <p className="font-medium">Cash on Delivery</p>
                                     <p className="text-sm text-gray-600">
@@ -296,12 +291,6 @@ export default function UsagePage({ subscription, usage }: UsagePageProps) {
                     <Link href="/marketplace/subscriptions">
                         <Button variant="outline">
                             Manage Subscription
-                        </Button>
-                    </Link>
-                    <Link href="/marketplace/subscriptions/upgrade">
-                        <Button>
-                            <TrendingUp className="h-4 w-4 mr-2" />
-                            Upgrade Plan
                         </Button>
                     </Link>
                 </div>

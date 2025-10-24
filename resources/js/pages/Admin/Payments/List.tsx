@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,27 +36,41 @@ import {
   Eye,
   CheckCircle,
   XCircle,
-  Clock,
-  ArrowUpDown
+  Clock
 } from 'lucide-react';
+import { formatCurrency } from '@/utils/formatters';
 
 interface Payment {
   id: number;
   transaction_id: string;
-  order: {
+  reference?: string;
+  gateway_transaction_id?: string;
+  type: 'payment' | 'subscription';
+  order?: {
     order_number: string;
-    user: { name: string };
+    user: { name: string; email: string };
     vendor: { business_name: string };
   };
+  subscription?: {
+    id: number;
+    plan_name: string;
+    vendor: {
+      business_name: string;
+      user: { name: string; email: string };
+    };
+  };
   payment_method: string;
+  gateway?: string;
   status: string;
   amount: number;
+  currency: string;
   net_amount: number;
   commission_amount: number;
   vendor_amount: number;
-  processed_at: string;
-  formatted_amount: string;
-  formatted_net_amount: string;
+  created_at: string;
+  processed_at?: string;
+  formatted_amount?: string;
+  formatted_net_amount?: string;
 }
 
 interface PaginatedPayments {
@@ -73,8 +87,10 @@ interface PaginatedPayments {
 }
 
 interface Filters {
+  type?: string;
   status?: string;
   payment_method?: string;
+  gateway?: string;
   vendor_id?: string;
   date_from?: string;
   date_to?: string;
@@ -83,17 +99,30 @@ interface Filters {
 }
 
 interface FilterOptions {
+  types: string[];
   statuses: string[];
   payment_methods: string[];
+  gateways: string[];
+}
+
+interface Stats {
+  total_payments: number;
+  total_amount: number;
+  order_payments: number;
+  subscription_payments: number;
+  completed_payments: number;
+  pending_payments: number;
+  failed_payments: number;
 }
 
 interface Props {
   payments: PaginatedPayments;
+  stats: Stats;
   filters: Filters;
   filterOptions: FilterOptions;
 }
 
-export default function PaymentsList({ payments, filters, filterOptions }: Props) {
+export default function PaymentsList({ payments, stats, filters, filterOptions }: Props) {
   const [localFilters, setLocalFilters] = useState<Filters>(filters);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -103,7 +132,7 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
     setLocalFilters(newFilters);
 
     // Update URL with new filters
-    router.get('/marketplace/admin/payments/list', newFilters, {
+    router.get('/admin/marketplace/payments/list', newFilters, {
       preserveState: true,
       preserveScroll: true,
     });
@@ -111,7 +140,7 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    router.get('/marketplace/admin/payments/list', localFilters, {
+    router.get('/admin/marketplace/payments/list', localFilters, {
       preserveState: true,
       preserveScroll: true,
     });
@@ -120,7 +149,7 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
   const clearFilters = () => {
     const clearedFilters = {};
     setLocalFilters(clearedFilters);
-    router.get('/marketplace/admin/payments/list', clearedFilters);
+    router.get('/admin/marketplace/payments/list', clearedFilters);
   };
 
   const exportPayments = () => {
@@ -128,15 +157,10 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
       format: 'csv',
       ...localFilters,
     });
-    window.open(`/marketplace/admin/payments/export?${exportParams}`, '_blank');
+    window.open(`/admin/marketplace/payments/export?${exportParams}`, '_blank');
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -168,15 +192,15 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
 
   return (
     <AdminLayout>
-      <Head title="All Payments" />
+      <Head title="Payment Records" />
 
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">All Payments</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Payment Records</h1>
             <p className="text-muted-foreground">
-              View and manage all payment transactions
+              View all payment transactions including orders and subscriptions
             </p>
           </div>
 
@@ -193,6 +217,39 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
               Export
             </Button>
           </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.total_payments}</div>
+              <p className="text-xs text-muted-foreground">Total Payments</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{formatCurrency(stats.total_amount)}</div>
+              <p className="text-xs text-muted-foreground">Total Amount</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.order_payments}</div>
+              <p className="text-xs text-muted-foreground">Order Payments</p>
+              <p className="text-xs text-muted-foreground mt-1">{stats.subscription_payments} Subscription Payments</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex gap-2 text-sm">
+                <Badge variant="default">{stats.completed_payments} Completed</Badge>
+                <Badge variant="secondary">{stats.pending_payments} Pending</Badge>
+                <Badge variant="destructive">{stats.failed_payments} Failed</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Status Distribution</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Search and Filters */}
@@ -226,7 +283,7 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All statuses</SelectItem>
+                      <SelectItem value=" ">All statuses</SelectItem>
                       {filterOptions.statuses.map((status) => (
                         <SelectItem key={status} value={status}>
                           {status}
@@ -246,7 +303,7 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
                       <SelectValue placeholder="All methods" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All methods</SelectItem>
+                      <SelectItem value=" ">All methods</SelectItem>
                       {filterOptions.payment_methods.map((method) => (
                         <SelectItem key={method} value={method}>
                           {method}
@@ -291,13 +348,13 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
               <TableHeader>
                 <TableRow>
                   <TableHead>Transaction</TableHead>
-                  <TableHead>Order</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Service/Order</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Method</TableHead>
+                  <TableHead>Vendor/Plan</TableHead>
+                  <TableHead>Method / Gateway</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Commission</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -314,23 +371,66 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
                     <TableRow key={payment.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{payment.transaction_id}</p>
-                          <p className="text-sm text-muted-foreground">ID: {payment.id}</p>
+                          <p className="font-medium text-sm">{payment.transaction_id}</p>
+                          {payment.reference && (
+                            <p className="text-xs text-muted-foreground">Ref: {payment.reference}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">ID: {payment.id}</p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <p className="font-medium">{payment.order.order_number}</p>
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">{payment.order.user.name}</p>
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">{payment.order.vendor.business_name}</p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {payment.payment_method.replace('_', ' ')}
+                        <Badge variant={payment.type === 'subscription' ? 'default' : 'outline'}>
+                          {payment.type === 'subscription' ? 'Subscription' : 'Order'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {payment.type === 'payment' && payment.order ? (
+                          <div>
+                            <p className="font-medium">Order #{payment.order.order_number}</p>
+                            <p className="text-xs text-muted-foreground">Product Purchase</p>
+                          </div>
+                        ) : payment.subscription ? (
+                          <div>
+                            <p className="font-medium">{payment.subscription.plan_name}</p>
+                            <p className="text-xs text-muted-foreground">Subscription Plan</p>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {payment.type === 'payment' && payment.order ? (
+                          <div>
+                            <p className="font-medium">{payment.order.user.name}</p>
+                            <p className="text-xs text-muted-foreground">{payment.order.user.email}</p>
+                          </div>
+                        ) : payment.subscription?.vendor?.user ? (
+                          <div>
+                            <p className="font-medium">{payment.subscription.vendor.user.name}</p>
+                            <p className="text-xs text-muted-foreground">{payment.subscription.vendor.user.email}</p>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {payment.type === 'payment' && payment.order?.vendor ? (
+                          <p className="font-medium">{payment.order.vendor.business_name}</p>
+                        ) : payment.subscription ? (
+                          <p className="font-medium">{payment.subscription.vendor.business_name}</p>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <Badge variant="outline" className="capitalize mb-1">
+                            {payment.payment_method.replace('_', ' ')}
+                          </Badge>
+                          {payment.gateway && (
+                            <p className="text-xs text-muted-foreground capitalize">{payment.gateway}</p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
@@ -342,23 +442,18 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
                       </TableCell>
                       <TableCell className="text-right">
                         <div>
-                          <p className="font-medium">{payment.formatted_net_amount}</p>
-                          <p className="text-sm text-muted-foreground">
-                            of {payment.formatted_amount}
+                          <p className="font-medium">
+                            {payment.formatted_amount || formatCurrency(payment.amount)}
                           </p>
+                          <p className="text-xs text-muted-foreground">{payment.currency}</p>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <p className="font-medium">
-                          {formatCurrency(payment.commission_amount)}
-                        </p>
                       </TableCell>
                       <TableCell>
                         <p className="text-sm">
-                          {new Date(payment.processed_at).toLocaleDateString()}
+                          {new Date(payment.created_at).toLocaleDateString()}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(payment.processed_at).toLocaleTimeString()}
+                          {new Date(payment.created_at).toLocaleTimeString()}
                         </p>
                       </TableCell>
                       <TableCell>
@@ -372,49 +467,97 @@ export default function PaymentsList({ payments, filters, filterOptions }: Props
                               <Eye className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent>
+                          <DialogContent className="max-w-2xl">
                             <DialogHeader>
                               <DialogTitle>Payment Details</DialogTitle>
                               <DialogDescription>
                                 Transaction {payment.transaction_id}
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Amount</Label>
-                                  <p className="font-medium">{payment.formatted_amount}</p>
+                            {selectedPayment && (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label>Type</Label>
+                                    <p className="font-medium capitalize">{selectedPayment.type}</p>
+                                  </div>
+                                  <div>
+                                    <Label>Status</Label>
+                                    <Badge variant={getStatusBadgeVariant(selectedPayment.status)}>
+                                      {selectedPayment.status}
+                                    </Badge>
+                                  </div>
+                                  <div>
+                                    <Label>Amount</Label>
+                                    <p className="font-medium">
+                                      {selectedPayment.formatted_amount || formatCurrency(selectedPayment.amount)} {selectedPayment.currency}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <Label>Net Amount</Label>
+                                    <p className="font-medium">
+                                      {selectedPayment.formatted_net_amount || formatCurrency(selectedPayment.net_amount)}
+                                    </p>
+                                  </div>
+                                  {selectedPayment.type === 'payment' && (
+                                    <>
+                                      <div>
+                                        <Label>Commission</Label>
+                                        <p className="font-medium">
+                                          {formatCurrency(selectedPayment.commission_amount)}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <Label>Vendor Amount</Label>
+                                        <p className="font-medium">
+                                          {formatCurrency(selectedPayment.vendor_amount)}
+                                        </p>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
-                                <div>
-                                  <Label>Net Amount</Label>
-                                  <p className="font-medium">{payment.formatted_net_amount}</p>
-                                </div>
-                                <div>
-                                  <Label>Commission</Label>
-                                  <p className="font-medium">
-                                    {formatCurrency(payment.commission_amount)}
-                                  </p>
-                                </div>
-                                <div>
-                                  <Label>Vendor Amount</Label>
-                                  <p className="font-medium">
-                                    {formatCurrency(payment.vendor_amount)}
-                                  </p>
+
+                                {selectedPayment.type === 'payment' && selectedPayment.order && (
+                                  <div className="border-t pt-4">
+                                    <Label>Order Details</Label>
+                                    <div className="mt-2 space-y-1">
+                                      <p>Order #{selectedPayment.order.order_number}</p>
+                                      <p>Customer: {selectedPayment.order.user.name}</p>
+                                      <p>Email: {selectedPayment.order.user.email}</p>
+                                      <p>Vendor: {selectedPayment.order.vendor.business_name}</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedPayment.type === 'subscription' && selectedPayment.subscription && (
+                                  <div className="border-t pt-4">
+                                    <Label>Subscription Details</Label>
+                                    <div className="mt-2 space-y-1">
+                                      <p>Plan: {selectedPayment.subscription.plan_name}</p>
+                                      <p>Subscriber: {selectedPayment.subscription.vendor.user.name}</p>
+                                      <p>Email: {selectedPayment.subscription.vendor.user.email}</p>
+                                      <p>Business: {selectedPayment.subscription.vendor.business_name}</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="border-t pt-4">
+                                  <Label>Payment Information</Label>
+                                  <div className="mt-2 space-y-1">
+                                    <p>Method: {selectedPayment.payment_method}</p>
+                                    {selectedPayment.gateway && <p>Gateway: {selectedPayment.gateway}</p>}
+                                    {selectedPayment.reference && <p>Reference: {selectedPayment.reference}</p>}
+                                    {selectedPayment.gateway_transaction_id && (
+                                      <p>Gateway Transaction: {selectedPayment.gateway_transaction_id}</p>
+                                    )}
+                                    <p>Created: {new Date(selectedPayment.created_at).toLocaleString()}</p>
+                                    {selectedPayment.processed_at && (
+                                      <p>Processed: {new Date(selectedPayment.processed_at).toLocaleString()}</p>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                              <div>
-                                <Label>Order Details</Label>
-                                <p>Order #{payment.order.order_number}</p>
-                                <p>Customer: {payment.order.user.name}</p>
-                                <p>Vendor: {payment.order.vendor.business_name}</p>
-                              </div>
-                              <div>
-                                <Label>Payment Information</Label>
-                                <p>Method: {payment.payment_method}</p>
-                                <p>Status: {payment.status}</p>
-                                <p>Processed: {new Date(payment.processed_at).toLocaleString()}</p>
-                              </div>
-                            </div>
+                            )}
                           </DialogContent>
                         </Dialog>
                       </TableCell>

@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 
+import { MarketplaceSettings } from '@/types/marketplace';
+
 interface VendorStatsProps {
     stats?: {
         total_products: number;
@@ -37,6 +39,7 @@ interface VendorStatsProps {
         end_date: string;
         is_active: boolean;
     } | null;
+    marketplaceSettings?: MarketplaceSettings;
     compact?: boolean;
     showActions?: boolean;
 }
@@ -49,14 +52,19 @@ export function VendorStatsWidget({
         pending_orders: 0
     }, 
     subscription,
+    marketplaceSettings,
     compact = false,
     showActions = true
 }: VendorStatsProps) {
     const formatCurrency = (amount: number) => {
+        const currency = marketplaceSettings?.general?.default_currency || 'RWF';
+        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+        
         return new Intl.NumberFormat('rw-RW', {
             style: 'currency',
-            currency: 'RWF'
-        }).format(amount);
+            currency: currency,
+            currencyDisplay: 'symbol'
+        }).format(amount).replace(currency, symbol);
     };
 
     const getUsagePercentage = (used: number, limit: number | null) => {
@@ -67,7 +75,7 @@ export function VendorStatsWidget({
     const getUsageColor = (percentage: number) => {
         if (percentage >= 90) return 'text-red-600 bg-red-50';
         if (percentage >= 70) return 'text-yellow-600 bg-yellow-50';
-        return 'text-green-600 bg-green-50';
+        return 'text-emerald-600 bg-emerald-50';
     };
 
     if (compact) {
@@ -89,7 +97,7 @@ export function VendorStatsWidget({
                             <p className="text-sm text-gray-600">Orders</p>
                             <p className="text-xl font-bold">{stats.total_orders}</p>
                         </div>
-                        <ShoppingCart className="h-8 w-8 text-green-600" />
+                        <ShoppingCart className="h-8 w-8 text-emerald-600" />
                     </div>
                 </Card>
 
@@ -297,8 +305,8 @@ export function VendorStatsWidget({
 
                     <Card className="p-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <Eye className="h-5 w-5 text-green-600" />
+                            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <Eye className="h-5 w-5 text-emerald-600" />
                             </div>
                             <div className="flex-1">
                                 <p className="font-medium">View Store</p>

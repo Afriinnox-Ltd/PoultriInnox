@@ -5,14 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Factory, 
-  Eye, 
-  Plus, 
-  Activity, 
-  Thermometer, 
-  Droplets, 
-  AlertTriangle, 
+import {
+  Factory,
+  Eye,
+  Plus,
+  Activity,
+  Thermometer,
+  Droplets,
+  AlertTriangle,
   Wrench,
   Search,
   ChevronLeft,
@@ -33,6 +33,8 @@ interface Incubator {
     value: string;
     label: string;
   };
+  device_online?: boolean;
+  last_update?: string;
   location?: string;
   current_temperature?: number;
   target_temperature?: number;
@@ -113,8 +115,8 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
   const [statusFilter, setStatusFilter] = useState('');
   const [perPage, setPerPage] = useState(incubators?.meta?.per_page);
 
-  const utilizationPercentage = stats.total_capacity > 0 
-    ? Math.round((stats.current_utilization / stats.total_capacity) * 100) 
+  const utilizationPercentage = stats.total_capacity > 0
+    ? Math.round((stats.current_utilization / stats.total_capacity) * 100)
     : 0;
 
   const navigateToBatch = (batchId: number) => {
@@ -123,7 +125,7 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
 
   const applyFilters = (filters: Record<string, any>) => {
     const params = new URLSearchParams(window.location.search);
-    
+
     Object.keys(filters).forEach(key => {
       if (filters[key]) {
         params.set(key, filters[key]);
@@ -133,7 +135,7 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
     });
 
     params.set('page', '1'); // Reset to first page when filtering
-    
+
     router.get(window.location.pathname + '?' + params.toString(), {}, {
       preserveState: true,
       preserveScroll: true,
@@ -163,7 +165,7 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
   const handlePageChange = (page: number) => {
     const params = new URLSearchParams(window.location.search);
     params.set('page', page.toString());
-    
+
     router.get(window.location.pathname + '?' + params.toString(), {}, {
       preserveState: true,
       preserveScroll: true,
@@ -364,17 +366,26 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
                         </CardTitle>
                         <CardDescription>{incubator.model}</CardDescription>
                       </div>
-                      <Badge
-                        className={statusColors[incubator.status.value as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}
-                      >
-                        {incubator.status.label}
-                      </Badge>
+                      <div className="flex flex-col gap-1 items-end">
+
+                        {incubator.serial_number && (
+                          <Badge
+                            variant={incubator.device_online ? "default" : "destructive"}
+                            className="text-xs"
+                          >
+                            {incubator.device_online ? '🟢 Online' : '🔴Offline'}
+                          </Badge>
+                        )}
+                        {incubator.last_update && (
+                          <span className="text-xs text-muted-foreground">{incubator.last_update}</span>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
 
                   <CardContent className="space-y-4">
                     {/* Capacity */}
-                    <div>
+                    {/* <div>
                       <div className="flex justify-between text-sm mb-1">
                         <span>Capacity</span>
                         <span>{incubator.current_load} / {incubator.capacity}</span>
@@ -382,15 +393,15 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className="bg-blue-600 h-2 rounded-full"
-                          style={{ 
-                            width: `${Math.min((incubator.current_load / incubator.capacity) * 100, 100)}%` 
+                          style={{
+                            width: `${Math.min((incubator.current_load / incubator.capacity) * 100, 100)}%`
                           }}
                         ></div>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Environmental Conditions */}
-                    {(incubator.current_temperature || incubator.current_humidity) && (
+                    {(incubator.current_temperature ) && (
                       <div className="grid grid-cols-2 gap-4">
                         {incubator.current_temperature && (
                           <div className="flex items-center space-x-2">
@@ -406,19 +417,7 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
                           </div>
                         )}
 
-                        {incubator.current_humidity && (
-                          <div className="flex items-center space-x-2">
-                            <Droplets className="h-4 w-4 text-emerald-500" />
-                            <div>
-                              <p className="text-sm font-medium">{incubator.current_humidity}%</p>
-                              {incubator.target_humidity && (
-                                <p className="text-xs text-muted-foreground">
-                                  Target: {incubator.target_humidity}%
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        )}
+
                       </div>
                     )}
 
@@ -435,14 +434,14 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
                                     id={batch.id}
                                     label={batch.name}
                                     onClick={(id: number) => navigateToBatch(id)}
-                                    className="font-medium text-emerald-600 hover:text-emerald-800"
+                                    className="font-medium flex items-center mb-2 text-emerald-600 hover:text-emerald-800"
                                   />
                                   <p className="text-muted-foreground">
                                     {batch.batch_code} • {batch.current_count} birds
                                   </p>
                                 </div>
                                 <span className="text-muted-foreground">
-                                  {new Date(batch.hatch_date).toLocaleDateString()}
+                                          {new Date(batch.created_at).toLocaleDateString()}
                                 </span>
                               </div>
                             </div>
@@ -467,12 +466,6 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
                         </div>
                       )}
 
-                      {incubator.humidity_variance && Math.abs(incubator.humidity_variance) > 5 && (
-                        <div className="flex items-center space-x-2 text-red-600">
-                          <AlertTriangle className="h-4 w-4" />
-                          <span className="text-xs">Humidity variance: {incubator.humidity_variance}%</span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Location */}
@@ -483,9 +476,9 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
                     {/* Actions */}
                     <div className="flex space-x-2 pt-2">
                       <Link href={`/batch-incubator/incubators/${incubator.id}`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
+                        <Button variant=""   size="sm" className="w-full cursor-pointer">
                           <Eye className="mr-2 h-4 w-4" />
-                          View
+                          Open Incubator
                         </Button>
                       </Link>
                     </div>
@@ -501,7 +494,7 @@ export default function IncubatorsIndex({ incubators, stats }: Props) {
               <div className="text-sm text-muted-foreground">
                 Showing {incubators?.meta?.from || 0} to {incubators?.meta?.to || 0} of {incubators?.meta?.total} entries
               </div>
-              
+
               <div className="flex items-center space-x-1">
                 <Button
                   variant="outline"

@@ -22,14 +22,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-    User,
     Building,
     MapPin,
-    Globe,
-    Phone,
-    Mail,
     CreditCard,
-    FileText,
     Camera,
     Save,
     ArrowLeft,
@@ -37,7 +32,7 @@ import {
     AlertCircle,
     CheckCircle,
     Clock,
-    Trash2
+    Trash2,
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 
@@ -74,9 +69,32 @@ interface VendorProfileProps {
         additional_info: string;
         rejection_reason?: string;
     };
+    marketplaceSettings?: {
+        commission: {
+            default_commission_rate: number;
+            commission_type: 'percentage' | 'fixed';
+            min_commission_amount?: number;
+            max_commission_amount?: number;
+        };
+        fees: {
+            platform_fee_rate: number;
+            transaction_fee_rate: number;
+            withdrawal_fee?: number;
+        };
+        tax: {
+            tax_rate: number;
+            tax_inclusive: boolean;
+        };
+        payout: {
+            min_payout_amount: number;
+            payout_schedule: string;
+            auto_payout_enabled: boolean;
+        };
+    };
 }
 
-export default function VendorProfile({ vendor }: VendorProfileProps) {
+export default function VendorProfile({ vendor, marketplaceSettings }: VendorProfileProps) {
+
     const { data, setData, put, processing, errors, isDirty } = useForm({
         business_name: vendor.business_name || '',
         business_type: vendor.business_type || '',
@@ -109,17 +127,18 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        put('/marketplace/vendor/profile'), {
+        put('/marketplace/vendor/profile', {
             onSuccess: () => {
-
+                // Handle success
             },
-            onerror: (error: any) => {
+            onError: (error: Record<string, string>) => {
                 // Handle error
                 console.error('Error updating vendor profile', error);
             }
-        };
+        });
     };
 
     const handleImageUpload = (file: File, type: 'logo' | 'banner_image') => {
@@ -208,9 +227,6 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
                 </div>
                 <div className="flex items-center gap-2">
                     {getVerificationBadge()}
-                    <Badge variant={vendor.is_active ? 'default' : 'secondary'}>
-                        {vendor.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
                 </div>
             </div>
 
@@ -233,7 +249,7 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
 
                     <form onSubmit={handleSubmit}>
                         <Tabs defaultValue="business" className="space-y-6">
-                            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto gap-2">
+                            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto gap-2">
                                 <TabsTrigger value="business" className="text-xs sm:text-sm">
                                     <Building className="h-4 w-4 sm:mr-2" />
                                     <span className="hidden sm:inline">Business Info</span>
@@ -681,7 +697,7 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
                             {/* Danger Zone Tab */}
                             <TabsContent value="danger">
                                 <Card className="border-red-200">
-                                    <CardHeader className="bg-red-50">
+                                    <CardHeader className="">
                                         <CardTitle className="flex items-center text-red-800">
                                             <AlertCircle className="h-5 w-5 mr-2" />
                                             Danger Zone
@@ -767,9 +783,9 @@ export default function VendorProfile({ vendor }: VendorProfileProps) {
                                 </DialogDescription>
                             </DialogHeader>
                             <DialogFooter>
-                                <Button 
-                                    variant="outline" 
-                                    onClick={() => setShowDeleteDialog(false)} 
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowDeleteDialog(false)}
                                     disabled={isDeleting}
                                 >
                                     Cancel

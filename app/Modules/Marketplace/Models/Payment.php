@@ -16,6 +16,7 @@ class Payment extends Model
 
     protected $fillable = [
         'order_id',
+        'subscription_id',
         'transaction_id',
         'payment_method',
         'gateway',
@@ -33,6 +34,14 @@ class Payment extends Model
         'commission_amount',
         'vendor_paid',
         'vendor_paid_at',
+        'payout_requested',
+        'payout_requested_at',
+        'payout_requested_by',
+        'payout_processing',
+        'payout_processing_at',
+        'payout_processing_by',
+        'payout_batch_id',
+        'payout_notes',
         'metadata',
         'processed_at',
         'processed_by',
@@ -46,6 +55,10 @@ class Payment extends Model
         'commission_amount' => 'decimal:2',
         'vendor_paid' => 'boolean',
         'vendor_paid_at' => 'datetime',
+        'payout_requested' => 'boolean',
+        'payout_requested_at' => 'datetime',
+        'payout_processing' => 'boolean',
+        'payout_processing_at' => 'datetime',
         'gateway_response' => 'array',
         'metadata' => 'array',
         'processed_at' => 'datetime',
@@ -54,6 +67,11 @@ class Payment extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(Subscription::class);
     }
 
     // Revenue Tracking Methods

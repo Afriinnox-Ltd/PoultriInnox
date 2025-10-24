@@ -1,4 +1,0 @@
-Name,Code,Description,Breed Type,Duration (days),Estimated Cost per Bird,Feeding Times
-"Broiler Fast Growth","BFG-001","Intensive program for commercial broilers","broiler",42,3.50,"06:00,12:00,18:00"
-"Layer Development","LD-001","Development program for future laying hens","layer",120,8.75,"07:00,19:00"
-"Free Range Program","FR-001","Natural growth program for free-range chickens","dual_purpose",84,5.25,"08:00,16:00"

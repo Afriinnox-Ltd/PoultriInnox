@@ -41,6 +41,9 @@ class Order extends Model
         'delivered_at',
         'cancelled_at',
         'refunded_at',
+        'vendor_confirmed',
+        'vendor_confirmed_at',
+        'vendor_confirmed_by',
     ];
 
     protected $casts = [
@@ -50,11 +53,13 @@ class Order extends Model
         'discount_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'admin_confirmed' => 'boolean',
+        'vendor_confirmed' => 'boolean',
         'shipping_address' => 'array',
         'billing_address' => 'array',
         'shipped_at' => 'datetime',
         'delivered_at' => 'datetime',
         'admin_confirmed_at' => 'datetime',
+        'vendor_confirmed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'refunded_at' => 'datetime',
     ];
@@ -81,6 +86,14 @@ class Order extends Model
     public function adminConfirmedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'admin_confirmed_by');
+    }
+
+    /**
+     * Get the vendor who confirmed this order
+     */
+    public function vendorConfirmedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'vendor_confirmed_by');
     }
 
     /**
@@ -462,12 +475,13 @@ class Order extends Model
     }
 
     /**
-     * Calculate vendor amount (total minus commission)
+     * Calculate vendor amount (total minus commission and platform fees)
      */
     public function calculateVendorAmount(): float
     {
-        $commissionRate = 0.10; // 10% commission rate - make this configurable
-        return $this->total_amount * (1 - $commissionRate);
+        // Use helper function that accounts for both commission and platform fees
+        $payout = calculate_vendor_payout($this->total_amount);
+        return $payout['vendor_amount'];
     }
 
     /**
@@ -475,8 +489,9 @@ class Order extends Model
      */
     public function calculateCommissionAmount(): float
     {
-        $commissionRate = 0.10; // 10% commission rate - make this configurable
-        return $this->total_amount * $commissionRate;
+        // Use helper function that properly calculates commission
+        $payout = calculate_vendor_payout($this->total_amount);
+        return $payout['commission'] + $payout['platform_fee'];
     }
 
     /**
@@ -525,8 +540,8 @@ class Order extends Model
      */
     public function isDeliveryConfirmationPending(): bool
     {
-        return $this->status === 'delivered' && 
-               $this->payment_status === 'pending_confirmation' && 
+        return $this->status === 'delivered' &&
+               $this->payment_status === 'pending_confirmation' &&
                !$this->isDeliveryConfirmed();
     }
 }

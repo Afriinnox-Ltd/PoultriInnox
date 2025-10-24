@@ -285,7 +285,7 @@ export function SubscriptionUsageWidget({
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Package className="h-4 w-4" />
                             <span>Unlimited products</span>
-                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <CheckCircle className="h-4 w-4 text-emerald-500" />
                         </div>
                     )}
 
@@ -312,7 +312,7 @@ export function SubscriptionUsageWidget({
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                             <ShoppingCart className="h-4 w-4" />
                             <span>Unlimited orders</span>
-                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <CheckCircle className="h-4 w-4 text-emerald-500" />
                         </div>
                     )}
                 </div>
@@ -323,7 +323,7 @@ export function SubscriptionUsageWidget({
                         <div className="flex items-center gap-2">
                             {currentSubscription.allow_cod && (
                                 <div className="flex items-center gap-1">
-                                    <CreditCard className="h-4 w-4 text-green-500" />
+                                    <CreditCard className="h-4 w-4 text-emerald-500" />
                                     <span className="text-sm text-gray-600">Cash on Delivery</span>
                                 </div>
                             )}
@@ -379,7 +379,7 @@ export function PlanComparisonWidget({
                     <Card key={plan.id} className={cn(
                         "relative",
                         plan.is_popular && "border-blue-500 shadow-lg",
-                        isCurrentPlan(plan.name) && "border-green-500 bg-green-50"
+                        isCurrentPlan(plan.name) && "border-emerald-500 bg-emerald-50"
                     )}>
                         {plan.is_popular && (
                             <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -421,7 +421,7 @@ export function PlanComparisonWidget({
                                 </div>
                                 {plan.allow_cod && (
                                     <div className="flex items-center gap-2">
-                                        <CreditCard className="h-4 w-4 text-green-500" />
+                                        <CreditCard className="h-4 w-4 text-emerald-500" />
                                         <span>Cash on Delivery</span>
                                     </div>
                                 )}

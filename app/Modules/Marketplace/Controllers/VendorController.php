@@ -3,6 +3,7 @@
 namespace App\Modules\Marketplace\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\MarketplaceSetting;
 use App\Modules\Marketplace\Models\Vendor;
 use App\Modules\Marketplace\Models\Product;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\Modules\Marketplace\Models\Order;
 use App\Modules\Marketplace\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Notifications\NewVendorRegistrationNotification;
+use App\Services\MarketplaceSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -96,7 +98,12 @@ class VendorController extends Controller
             }
         }
 
+        // Get marketplace settings for commission calculations
+        $settingsService = new MarketplaceSettingsService();
+        $formattedSettings = $settingsService->getFormattedSettings();
+ 
         return Inertia::render('modules/marketplace/vendor/register', [
+            'marketplaceGroupedSettings'=>$formattedSettings,
             'user' => Auth::user(),
             'existing_application' => $existingVendor
         ]);
@@ -236,33 +243,32 @@ class VendorController extends Controller
         // Load vendor with all necessary relationships
         $vendor->load(['products.category', 'products.images', 'user']);
 
-        // Get vendor orders for statistics
-        $vendorOrders = Order::where('vendor_id', $vendor->id);
-        $vendorOrdersThisMonth = Order::where('vendor_id', $vendor->id)
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year);
+        // Calculate order statistics - Use fresh queries for each calculation
+        $totalOrders = Order::where('vendor_id', $vendor->id)->count();
+        $pendingOrders = Order::where('vendor_id', $vendor->id)->where('status', 'pending')->count();
+        $processingOrders = Order::where('vendor_id', $vendor->id)->where('status', 'processing')->count();
+        $completedOrders = Order::where('vendor_id', $vendor->id)->whereIn('status', ['delivered', 'completed'])->count();
+        $cancelledOrders = Order::where('vendor_id', $vendor->id)->where('status', 'cancelled')->count();
 
-        // Calculate order statistics
-        $totalOrders = $vendorOrders->count();
-        $pendingOrders = $vendorOrders->where('status', 'pending')->count();
-        $processingOrders = $vendorOrders->where('status', 'processing')->count();
-        $completedOrders = $vendorOrders->whereIn('status', ['delivered', 'completed'])->count();
-        $cancelledOrders = $vendorOrders->where('status', 'cancelled')->count();
-
-        // Calculate revenue statistics
-        $totalRevenue = $vendorOrders->whereIn('status', ['delivered', 'completed'])
+        // Calculate revenue statistics - Use fresh queries
+        $totalRevenue = Order::where('vendor_id', $vendor->id)
+            ->whereIn('status', ['delivered', 'completed'])
             ->sum('total_amount');
-        $monthlyRevenue = $vendorOrdersThisMonth->whereIn('status', ['delivered', 'completed'])
+        $monthlyRevenue = Order::where('vendor_id', $vendor->id)
+            ->whereIn('status', ['delivered', 'completed'])
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
             ->sum('total_amount');
 
         // Calculate performance metrics
-        $totalDeliveredOrders = $vendorOrders->where('status', 'delivered')->count();
+        $totalDeliveredOrders = Order::where('vendor_id', $vendor->id)->where('status', 'delivered')->count();
         $onTimeDeliveries = 0; // Default to 0 for safety
 
         if ($totalDeliveredOrders > 0) {
             // Only calculate if we have delivered orders and the necessary columns exist
             try {
-                $onTimeDeliveries = $vendorOrders->where('status', 'delivered')
+                $onTimeDeliveries = Order::where('vendor_id', $vendor->id)
+                    ->where('status', 'delivered')
                     ->whereNotNull('delivered_at')
                     ->whereNotNull('shipped_at')
                     ->whereColumn('delivered_at', '<=', 'shipped_at')
@@ -416,7 +422,10 @@ class VendorController extends Controller
                 'allows_cod' => $currentSubscription->allow_cod,
                 'products_used' => $vendor->products()->count(),
                 'products_limit' => $currentSubscription->product_limit,
-                'orders_this_month' => $vendorOrdersThisMonth->count(),
+                'orders_this_month' => Order::where('vendor_id', $vendor->id)
+                    ->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year)
+                    ->count(),
                 'order_limit' => $currentSubscription->order_limit,
                 'can_create_products' => $currentSubscription->product_limit ? 
                     ($vendor->products()->count() < $currentSubscription->product_limit) : true,
@@ -424,7 +433,10 @@ class VendorController extends Controller
                     'products' => $currentSubscription->product_limit ? 
                         min(100, ($vendor->products()->count() / $currentSubscription->product_limit) * 100) : 0,
                     'orders' => $currentSubscription->order_limit ? 
-                        min(100, ($vendorOrdersThisMonth->count() / $currentSubscription->order_limit) * 100) : 0,
+                        min(100, (Order::where('vendor_id', $vendor->id)
+                            ->whereMonth('created_at', now()->month)
+                            ->whereYear('created_at', now()->year)
+                            ->count() / $currentSubscription->order_limit) * 100) : 0,
                 ],
             ];
         }
@@ -434,11 +446,20 @@ class VendorController extends Controller
             $needsUpgrade = ($currentSubscription->product_limit && 
                            $vendor->products()->count() >= $currentSubscription->product_limit * 0.9) ||
                            ($currentSubscription->order_limit && 
-                           $vendorOrdersThisMonth->count() >= $currentSubscription->order_limit * 0.9) ||
+                           Order::where('vendor_id', $vendor->id)
+                               ->whereMonth('created_at', now()->month)
+                               ->whereYear('created_at', now()->year)
+                               ->count() >= $currentSubscription->order_limit * 0.9) ||
                            ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
         } else {
             $needsUpgrade = true;
         }
+
+        // Get marketplace settings for commission calculations
+        // Clear cache to ensure fresh data
+        \App\Models\MarketplaceSetting::clearCache();
+        $settingsService = new MarketplaceSettingsService();
+        $formattedSettings = $settingsService->getFormattedSettings();
 
         return Inertia::render('modules/marketplace/vendor/dashboard', [
             'vendor' => $vendorProfile,
@@ -450,6 +471,7 @@ class VendorController extends Controller
             'monthlySales' => $monthlySales,
             'orderStatusDistribution' => $orderStatusDistribution,
             'products' => $vendor->products()->with(['category', 'images'])->latest()->get(),
+            'marketplaceSettings' => $formattedSettings,
             'currentSubscription' => $currentSubscription,
             'subscriptionUsage' => $subscriptionUsage,
             'needsUpgrade' => $needsUpgrade,
@@ -503,8 +525,13 @@ class VendorController extends Controller
             'additional_info' => $vendor->additional_info,
         ];
 
+        // Get marketplace settings for commission calculations
+        $settingsService = new MarketplaceSettingsService();
+        $formattedSettings = $settingsService->getFormattedSettings();
+   
         return Inertia::render('modules/marketplace/vendor/profile', [
-            'vendor' => $vendorData
+            'vendor' => $vendorData,
+            'marketplaceSettings' => $formattedSettings
         ]);
     }
 
@@ -608,7 +635,6 @@ class VendorController extends Controller
 
         return redirect()->back()->with('success', 'Vendor profile updated successfully!');
         } catch (\Throwable $th) {
-          dd($th);
             return redirect()->back()->with('error', 'Failed to update vendor profile.');
         }
     }
@@ -624,8 +650,18 @@ class VendorController extends Controller
             return redirect()->route('marketplace.vendor.register');
         }
 
+        // Get marketplace settings for commission preview
+        $settingsService = new MarketplaceSettingsService();
+        $formattedSettings = $settingsService->getFormattedSettings();
+
         return Inertia::render('modules/marketplace/vendor/pending', [
-            'vendor' => $vendor
+            'vendor' => [
+                'id' => $vendor->id,
+                'business_name' => $vendor->business_name,
+                'status' => $vendor->status,
+                'submitted_at' => $vendor->created_at,
+            ],
+            'marketplaceSettings' => $formattedSettings
         ]);
     }
 
@@ -668,8 +704,9 @@ class VendorController extends Controller
      */
     public function analytics()
     {
-        $vendor = Auth::user()->vendor;
 
+        $vendor = Auth::user()->vendor;
+ 
         if (!$vendor) {
             return redirect()->route('marketplace.vendor.register');
         }
@@ -757,6 +794,10 @@ class VendorController extends Controller
             ->orderByDesc('total_revenue')
             ->get();
 
+        // Get marketplace settings for commission calculations
+        $settingsService = new MarketplaceSettingsService();
+        $formattedSettings = $settingsService->getFormattedSettings();
+                
         return Inertia::render('modules/marketplace/vendor/analytics', [
             'stats' => [
                 'totalProducts' => $totalProducts,
@@ -773,6 +814,7 @@ class VendorController extends Controller
             'recentProducts' => $recentProducts,
             'monthlySales' => $monthlySales,
             'categoryPerformance' => $categoryPerformance,
+            'marketplaceSettings' => $formattedSettings,
         ]);
     }
 

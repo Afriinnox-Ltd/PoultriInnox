@@ -14,7 +14,7 @@ namespace App\Modules\FeedManagement;
  * - Cost analysis and optimization
  *
  * @version 1.0.0
- * @author PoultriInnox System
+ * @author Agriinnox System
  * @requires BatchIncubatorModule
  */
 class FeedManagementModule

@@ -31,7 +31,7 @@ function WelcomeNav({ auth }: any) {
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
                     <Link href={'/'} className="flex items-center">
-                        <span className="text-xl font-bold text-emerald-600">PoultriInnox</span>
+                        <span className="text-xl font-bold text-emerald-600">Agriinnox</span>
                     </Link>
 
                     {/* Desktop Navigation */}

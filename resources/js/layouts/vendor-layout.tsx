@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
+import { MarketplaceSettings } from '@/types/marketplace';
+
 interface VendorLayoutProps {
     children: React.ReactNode;
     title?: string;
@@ -46,6 +48,7 @@ interface VendorLayoutProps {
     } | null;
     needsUpgrade?: boolean;
     upgradeReason?: string;
+    marketplaceSettings?: MarketplaceSettings;
     className?: string;
 }
 
@@ -58,8 +61,19 @@ export default function VendorLayout({
     subscriptionUsage,
     needsUpgrade = false,
     upgradeReason,
+    marketplaceSettings,
     className = ''
 }: VendorLayoutProps) {
+    const formatCurrency = (amount: number) => {
+        const currency = marketplaceSettings?.general?.default_currency || 'RWF';
+        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
+        
+        return new Intl.NumberFormat('rw-RW', {
+            style: 'currency',
+            currency: currency,
+            currencyDisplay: 'symbol'
+        }).format(amount).replace(currency, symbol);
+    };
     // Status alerts based on vendor status
     const getStatusAlert = () => {
         if (!vendor) return null;
@@ -143,6 +157,15 @@ export default function VendorLayout({
                                             <p className="text-sm"><strong>Business:</strong> {vendor.business_name}</p>
                                             <p className="text-sm"><strong>Status:</strong> Pending Approval</p>
                                             <p className="text-sm"><strong>Verified:</strong> {vendor.is_verified ? 'Yes' : 'No'}</p>
+                                            {marketplaceSettings && (
+                                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                                    <p className="text-xs text-gray-600 mb-1">Commission Structure:</p>
+                                                    <p className="text-sm"><strong>Rate:</strong> {marketplaceSettings.commission?.rate || 10}%</p>
+                                                    {marketplaceSettings.platform_fees?.listing_fee && (
+                                                        <p className="text-sm"><strong>Listing Fee:</strong> {formatCurrency(marketplaceSettings.platform_fees.listing_fee)}</p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ) : vendor?.status === 'rejected' ? (
@@ -167,7 +190,7 @@ export default function VendorLayout({
                                     </div>
                                 ) : (
                                     <div>
-                                        <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                                        <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
                                         <h3 className="text-lg font-semibold text-gray-900 mb-2">
                                             Welcome to the Marketplace
                                         </h3>

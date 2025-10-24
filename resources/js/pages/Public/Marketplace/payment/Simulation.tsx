@@ -66,7 +66,7 @@ export default function PaymentSimulation({ order }: PaymentSimulationProps) {
         // Simulate random success/failure (90% success rate)
         const isSuccess = Math.random() > 0.1;
         const transactionId = `TXN${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        
+
         // Process the payment on the backend
         router.post(`/payment/process/${order.id}`, {
             payment_method: paymentMethod,
@@ -120,7 +120,7 @@ export default function PaymentSimulation({ order }: PaymentSimulationProps) {
     const renderPaymentMethodSelection = () => (
         <div className="space-y-4">
             <h3 className="text-lg font-semibold">Select Payment Method</h3>
-            
+
             {/* Card Payment */}
             <div
                 className={`p-4 border rounded-lg cursor-pointer transition-colors ${
@@ -143,13 +143,13 @@ export default function PaymentSimulation({ order }: PaymentSimulationProps) {
             <div
                 className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                     paymentMethod === 'mobile_money'
-                        ? 'border-green-500 bg-green-50'
+                        ? 'border-emerald-500 bg-emerald-50'
                         : 'border-gray-200 hover:border-gray-300'
                 }`}
                 onClick={() => setPaymentMethod('mobile_money')}
             >
                 <div className="flex items-center">
-                    <Smartphone className="h-6 w-6 mr-3 text-green-600" />
+                    <Smartphone className="h-6 w-6 mr-3 text-emerald-600" />
                     <div>
                         <div className="font-medium">Mobile Money</div>
                         <div className="text-sm text-gray-600">MTN MoMo, Airtel Money</div>
@@ -283,16 +283,16 @@ export default function PaymentSimulation({ order }: PaymentSimulationProps) {
     const renderSuccess = () => (
         <div className="text-center space-y-4">
             <div className="flex justify-center">
-                <div className="bg-green-100 rounded-full p-4">
-                    <CheckCircle className="h-16 w-16 text-green-600" />
+                <div className="bg-emerald-100 rounded-full p-4">
+                    <CheckCircle className="h-16 w-16 text-emerald-600" />
                 </div>
             </div>
-            <h3 className="text-xl font-bold text-green-700">Payment Successful!</h3>
+            <h3 className="text-xl font-bold text-emerald-700">Payment Successful!</h3>
             <p className="text-gray-600">
                 Your payment has been processed successfully. Order #{order.order_number} is confirmed.
             </p>
-            <div className="bg-green-50 p-4 rounded-lg">
-                <p className="text-sm text-green-700">
+            <div className="bg-emerald-50 p-4 rounded-lg">
+                <p className="text-sm text-emerald-700">
                     • Stock has been updated<br />
                     • Notifications sent to vendors<br />
                     • Order confirmation email sent
@@ -372,17 +372,17 @@ export default function PaymentSimulation({ order }: PaymentSimulationProps) {
                                             </div>
                                         </div>
                                     ))}
-                                    
+
                                     <hr />
-                                    
+
                                     <div className="flex justify-between font-bold text-lg">
                                         <span>Total</span>
                                         <span>{formatCurrency(order.total_amount)}</span>
                                     </div>
-                                    
+
                                     <div className="bg-blue-50 p-3 rounded-lg">
                                         <p className="text-xs text-blue-600 text-center">
-                                            Secure payment powered by PoultriInnox
+                                            Secure payment powered by Agriinnox
                                         </p>
                                     </div>
                                 </CardContent>

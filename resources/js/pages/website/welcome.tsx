@@ -40,7 +40,7 @@ export default function Welcome() {
     const testimonials = [
         {
             id: 1,
-            quote: "Since I started using Poultriinnox, I can track every expense and finally understand where my money goes. It's a game-changer!",
+            quote: "Since I started using Agriinnox, I can track every expense and finally understand where my money goes. It's a game-changer!",
             author: "Farmer",
             location: "Kigali",
             rating: 5
@@ -68,7 +68,7 @@ export default function Welcome() {
         },
         {
             id: 5,
-            quote: "The feed management system optimized our nutrition programs. We've seen 20% better growth rates since using Poultriinnox.",
+            quote: "The feed management system optimized our nutrition programs. We've seen 20% better growth rates since using Agriinnox.",
             author: "Commercial Farm Manager",
             location: "Muhanga",
             rating: 5
@@ -111,18 +111,18 @@ export default function Welcome() {
     return (
         <>
             <Head title="The All-in-One Platform for Livestock Farmers & Consumers">
-                <meta name="description" content="Poultriinnox is a comprehensive digital platform designed for livestock farmers, service providers, and consumers. Manage your farm, sell and buy products, track finances, and brood remotely — all in one powerful web app." />
-                <meta name="keywords" content="Poultriinnox, Livestock Farming, Farm Management, Brooding, Feed Management, Marketplace, Financial Tracking, Remote Monitoring, IoT Integration" />
+                <meta name="description" content="Agriinnox is a comprehensive digital platform designed for livestock farmers, service providers, and consumers. Manage your farm, sell and buy products, track finances, and brood remotely — all in one powerful web app." />
+                <meta name="keywords" content="Agriinnox, Livestock Farming, Farm Management, Brooding, Feed Management, Marketplace, Financial Tracking, Remote Monitoring, IoT Integration" />
                 <meta name="author" content="Afriinnox Technologies" />
-                <meta property="og:title" content="Poultriinnox - The All-in-One Platform for Livestock Farmers & Consumers" />
-                <meta property="og:description" content="Poultriinnox is a comprehensive digital platform designed for livestock farmers, service providers, and consumers. Manage your farm, sell and buy products, track finances, and brood remotely — all in one powerful web app." />
-                <meta property="og:image" content="/assets/poultriinnox-og-image.png" />
-                <meta property="og:url" content="https://poultriinnox.com" />
+                <meta property="og:title" content="Agriinnox - The All-in-One Platform for Livestock Farmers & Consumers" />
+                <meta property="og:description" content="Agriinnox is a comprehensive digital platform designed for livestock farmers, service providers, and consumers. Manage your farm, sell and buy products, track finances, and brood remotely — all in one powerful web app." />
+                <meta property="og:image" content="/assets/agriinnox-og-image.png" />
+                <meta property="og:url" content="https://agriinnox.com" />
                 <meta property="og:type" content="website" />
                 <meta name="twitter:card" content="summary_large_image" />
-                <meta name="twitter:title" content="Poultriinnox - The All-in-One Platform for Livestock Farmers & Consumers" />
-                <meta name="twitter:description" content="Poultriinnox is a comprehensive digital platform designed for livestock farmers, service providers, and consumers. Manage your farm, sell and buy products, track finances, and brood remotely — all in one powerful web app." />
-                <meta name="twitter:image" content="/assets/poultriinnox-og-image.png" />
+                <meta name="twitter:title" content="Agriinnox - The All-in-One Platform for Livestock Farmers & Consumers" />
+                <meta name="twitter:description" content="Agriinnox is a comprehensive digital platform designed for livestock farmers, service providers, and consumers. Manage your farm, sell and buy products, track finances, and brood remotely — all in one powerful web app." />
+                <meta name="twitter:image" content="/assets/agriinnox-og-image.png" />
                 <meta name="twitter:site" content="@afriinnox" />
                 <meta name="twitter:creator" content="@afriinnox" />
 
@@ -154,9 +154,9 @@ export default function Welcome() {
 
                                     <video
                                         className="w-full h-auto rounded-2xl" autoPlay loop muted playsInline>
-                                        <source src="/assets/4124024-uhd_4096_2160_25fps.mp4" type="video/mp4" />
+                                        <source src="/assets/10685-226624850_tiny.mp4" type="video/mp4" />
                                         Your browser does not support the video tag.
-                                    </video> 
+                                    </video>
                                 </div>
                             </div>
 
@@ -181,10 +181,10 @@ export default function Welcome() {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center mb-20">
                             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                                What is Poultriinnox?
+                                What is Agriinnox?
                             </h2>
                             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                                Poultriinnox is a digital solution built for livestock farmers, service providers, and consumers.
+                                Agriinnox is a digital solution built for livestock farmers, service providers, and consumers.
                                 Our platform connects the livestock ecosystem — enabling farmers to sell products, track farm performance,
                                 manage feeding, and even brood livestock remotely through smart technology.
                             </p>
@@ -293,7 +293,7 @@ export default function Welcome() {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                             <div>
-                                <h2 className="text-4xl font-bold text-gray-900 mb-6">Why Choose Poultriinnox?</h2>
+                                <h2 className="text-4xl font-bold text-gray-900 mb-6">Why Choose Agriinnox?</h2>
                                 <p className="text-lg text-gray-600 mb-8">
                                     Join thousands of successful livestock farmers who have revolutionized their farming operations with our comprehensive digital platform.
                                 </p>
@@ -308,7 +308,7 @@ export default function Welcome() {
                                 </div>
                             </div>
                             <div className="">
-                                <img src='/assets/pexels-photo-4124024.jpeg' alt='Real-time Monitoring Dashboard' className="w-full h-auto mb-4" />
+                                <img src='/assets/aja-island-CY1NVUsZoLE-unsplash.jpg' alt='' className="w-full rounded-2xl h-auto mb-4" />
                             </div>
                         </div>
                     </div>
@@ -320,7 +320,7 @@ export default function Welcome() {
                         <div className="text-center mb-16">
                             <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Users Say</h2>
                             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                                Hear from successful livestock farmers who have transformed their operations with Poultriinnox
+                                Hear from successful livestock farmers who have transformed their operations with Agriinnox
                             </p>
                         </div>
 
@@ -410,7 +410,7 @@ export default function Welcome() {
                         </h2>
                         <p className="text-xl text-emerald-100 mb-12">
                             Join the digital farming revolution and connect your livestock ecosystem
-                            with Poultriinnox technology. Start your journey today.
+                            with Agriinnox technology. Start your journey today.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-6">
                             <Link href="/register" className="group bg-white text-emerald-600 px-8 py-4 rounded-full hover:bg-gray-100 transition-all duration-300 font-semibold flex items-center justify-center shadow-lg hover:shadow-xl transform hover:-translate-y-1">
@@ -431,7 +431,7 @@ export default function Welcome() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                             <div className="col-span-1 md:col-span-2">
                                 <div className="flex items-center mb-6">
-                                    <span className="text-2xl font-bold">PoultriInnox</span>
+                                    <span className="text-2xl font-bold">Agriinnox</span>
                                 </div>
                                 <p className="text-white mb-6 max-w-md">
                                     Connecting the livestock ecosystem across Africa with smart digital solutions.
@@ -466,8 +466,8 @@ export default function Welcome() {
                                 <h3 className="text-lg font-semibold mb-6">Contact Info</h3>
                                 <ul className="space-y-4">
                                     <li>
-                                        <a href="mailto:info@poultriinnox.com" className="text-gray-200 hover:text-white transition-colors flex items-center">
-                                            info@poultriinnox.com
+                                        <a href="mailto:info@agriinnox.com" className="text-gray-200 hover:text-white transition-colors flex items-center">
+                                            info@agriinnox.com
                                         </a>
                                     </li>
                                     <li>
@@ -490,7 +490,7 @@ export default function Welcome() {
                         <div className="border-t border-gray-800 mt-12 pt-8">
                             <div className="flex flex-col md:flex-row justify-between items-center">
                                 <p className="text-gray-200 text-sm">
-                                    © {new Date().getFullYear()} Poultriinnox. All rights reserved.
+                                    © {new Date().getFullYear()} Agriinnox. All rights reserved.
                                 </p>
                                 <div className="flex items-center space-x-6 mt-4 md:mt-0">
                                     <a href="#" className="text-gray-200 hover:text-white text-sm transition-colors">Privacy Policy</a>

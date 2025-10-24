@@ -170,6 +170,38 @@ class ProductController extends Controller
             $needsUpgrade = true;
         }
 
+        // Get marketplace settings for earnings calculations
+        \App\Models\MarketplaceSetting::clearCache();
+        $marketplaceSettings = \App\Models\MarketplaceSetting::getAllGrouped();
+        
+        // Helper function to get setting value by key from a group
+        $getSetting = function($group, $key, $default = null) use ($marketplaceSettings) {
+            if (!isset($marketplaceSettings[$group])) return $default;
+            
+            foreach ($marketplaceSettings[$group] as $setting) {
+                if (isset($setting['key']) && $setting['key'] === $key) {
+                    return $setting['value'] ?? $default;
+                }
+            }
+            return $default;
+        };
+        
+        // Format settings for frontend
+        $formattedSettings = [
+            'commission' => [
+                'default_commission_rate' => (float) $getSetting('commission', 'default_commission_rate', 10),
+                'commission_type' => $getSetting('commission', 'commission_type', 'percentage'),
+            ],
+            'general' => [
+                'currency' => $getSetting('general', 'default_currency', 'RWF'),
+                'currency_symbol' => $getSetting('general', 'currency_symbol', 'RWF'),
+            ],
+            'platform_fees' => [
+                'platform_fee_rate' => (float) $getSetting('platform_fees', 'listing_fee', 0),
+                'processing_fee' => (float) $getSetting('platform_fees', 'processing_fee', 0),
+            ],
+        ];
+
         return Inertia::render('modules/marketplace/vendor/products/index', [
             'products' => $products,
             'categories' => Category::whereNull('parent_id')->with('children')->get(),
@@ -180,6 +212,7 @@ class ProductController extends Controller
             'subscriptionUsage' => $subscriptionUsage,
             'needsUpgrade' => $needsUpgrade,
             'upgradeReason' => !$currentSubscription ? 'no_subscription' : 'product_limit',
+            'marketplaceSettings' => $formattedSettings,
         ]);
     }
 
@@ -262,6 +295,37 @@ class ProductController extends Controller
             $needsUpgrade = true;
         }
 
+        // Get marketplace settings for earnings calculations
+        $marketplaceSettings = \App\Models\MarketplaceSetting::getAllGrouped();
+        
+        // Helper function to get setting value by key from a group
+        $getSetting = function($group, $key, $default = null) use ($marketplaceSettings) {
+            if (!isset($marketplaceSettings[$group])) return $default;
+            
+            foreach ($marketplaceSettings[$group] as $setting) {
+                if ($setting['key'] === $key) {
+                    return $setting['value'];
+                }
+            }
+            return $default;
+        };
+        
+        // Format settings for frontend
+        $formattedSettings = [
+            'commission' => [
+                'rate' => (float) $getSetting('commission', 'default_commission_rate', 10),
+                'commission_type' => $getSetting('commission', 'commission_type', 'percentage'),
+            ],
+            'general' => [
+                'default_currency' => $getSetting('general', 'default_currency', 'RWF'),
+                'currency_symbol' => $getSetting('general', 'currency_symbol', 'RWF'),
+            ],
+            'platform_fees' => [
+                'listing_fee' => (float) $getSetting('platform_fees', 'listing_fee', 0),
+                'processing_fee' => (float) $getSetting('platform_fees', 'processing_fee', 0),
+            ],
+        ];
+
         return Inertia::render('modules/marketplace/vendor/products/create', [
             'categories' => Category::where('is_active', true)->whereNull('parent_id')->with('parent')->get(),
             'vendor' => $vendor,
@@ -269,6 +333,7 @@ class ProductController extends Controller
             'subscriptionUsage' => $subscriptionUsage,
             'needsUpgrade' => $needsUpgrade,
             'upgradeReason' => !$currentSubscription ? 'no_subscription' : 'product_limit',
+            'marketplaceSettings' => $formattedSettings,
         ]);
     }
 
@@ -536,6 +601,39 @@ class ProductController extends Controller
             $needsUpgrade = true;
         }
 
+        // Get marketplace settings for earnings calculations
+        \App\Models\MarketplaceSetting::clearCache();
+        $marketplaceSettings = \App\Models\MarketplaceSetting::getAllGrouped();
+        
+        // Helper function to get setting value by key from a group
+        $getSetting = function($group, $key, $default = null) use ($marketplaceSettings) {
+            if (!isset($marketplaceSettings[$group])) return $default;
+            
+            foreach ($marketplaceSettings[$group] as $setting) {
+                if (isset($setting['key']) && $setting['key'] === $key) {
+                    return $setting['value'] ?? $default;
+                }
+            }
+            return $default;
+        };
+        
+        // Format settings for frontend
+        $formattedSettings = [
+            'commission' => [
+                'default_commission_rate' => (float) $getSetting('commission', 'default_commission_rate', 10),
+                'commission_type' => $getSetting('commission', 'commission_type', 'percentage'),
+            ],
+            'general' => [
+                'currency' => $getSetting('general', 'default_currency', 'RWF'),
+                'currency_symbol' => $getSetting('general', 'currency_symbol', 'RWF'),
+            ],
+            'platform_fees' => [
+                'platform_fee_rate' => (float) $getSetting('platform_fees', 'listing_fee', 0),
+                'processing_fee' => (float) $getSetting('platform_fees', 'processing_fee', 0),
+                'transaction_fee_rate' => (float) $getSetting('platform_fees', 'transaction_fee_rate', 0),
+            ],
+        ];
+
         return Inertia::render('modules/marketplace/vendor/products/edit', [
             'product' => $product,
             'categories' => Category::where('is_active', true)->whereNull('parent_id')->with('parent')->get(),
@@ -544,6 +642,7 @@ class ProductController extends Controller
             'subscriptionUsage' => $subscriptionUsage,
             'needsUpgrade' => $needsUpgrade,
             'upgradeReason' => !$currentSubscription ? 'no_subscription' : 'product_limit',
+            'marketplaceSettings' => $formattedSettings,
         ]);
     }
 

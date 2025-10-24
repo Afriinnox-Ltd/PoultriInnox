@@ -147,7 +147,7 @@ export default function Dashboard({
         {/* Welcome Section */}
         <div className="flex lg:flex-row flex-col gap-4 lg:items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">PoultriInnox Dashboard</h1>
+                      <h1 className="text-3xl font-bold tracking-tight">Agriinnox Dashboard</h1>
             <p className="text-muted-foreground">
               Comprehensive poultry management system with modular functionality
             </p>
@@ -166,7 +166,7 @@ export default function Dashboard({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-emerald-600" />
-                Welcome to PoultriInnox
+                              Welcome to Agriinnox
               </CardTitle>
               <CardDescription>
                 Get started by activating modules for your poultry management needs
@@ -175,7 +175,7 @@ export default function Dashboard({
             <CardContent>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  PoultriInnox is a modular system that lets you choose which features you need.
+                  Agriinnox is a modular system that lets you choose which features you need.
                   Start by activating modules that match your poultry operation requirements.
                 </p>
 
@@ -357,10 +357,7 @@ export default function Dashboard({
                               <Thermometer className="h-3 w-3" />
                               <span className="text-sm">{incubatorStats?.average_temperature?.toFixed(1) || 0}°C</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Droplet className="h-3 w-3" />
-                              <span className="text-sm">{incubatorStats?.average_humidity?.toFixed(1) || 0}%</span>
-                            </div>
+
                           </div>
                         </div>
                       </div>
@@ -552,7 +549,7 @@ export default function Dashboard({
             <CardContent>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Explore additional modules like Feed Management, Health Tracking, and Financial Management to get the most out of PoultriInnox.
+                  Explore additional modules like Feed Management, Health Tracking, and Financial Management to get the most out of Agriinnox.
                 </p>
                 <Button asChild variant="outline">
                   <Link href="/modules">

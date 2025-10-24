@@ -18,8 +18,8 @@ export default function CreateIncubator() {
     capacity: '',
     location: '',
     target_temperature: '',
-    target_humidity: '',
-    status: 'active',
+    target_humidity: 0,
+    status: 'running',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -154,23 +154,6 @@ export default function CreateIncubator() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="target_humidity">Target Humidity (%)</Label>
-                  <Input
-                    id="target_humidity"
-                    type="number"
-                    step="0.1"
-                    value={data.target_humidity}
-                    onChange={(e) => setData('target_humidity', e.target.value)}
-                    placeholder="e.g., 60.0"
-                    min="0"
-                    max="100"
-                    className={errors.target_humidity ? 'border-red-500' : ''}
-                  />
-                  {errors.target_humidity && (
-                    <p className="text-sm text-red-500">{errors.target_humidity}</p>
-                  )}
-                </div>
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="description">Description (Optional)</Label>

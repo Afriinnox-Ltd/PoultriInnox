@@ -49,7 +49,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/confirmation', [CheckoutController::class, 'confirmation'])->name('confirmation');
         Route::get('/{order}', [OrderController::class, 'show'])->name('show');
         Route::post('/{order}/cancel', [OrderController::class, 'cancel'])->name('cancel');
-        
+
         // Delivery confirmation routes
         Route::get('/{order}/confirm-delivery', [OrderController::class, 'showDeliveryConfirmation'])->name('confirm-delivery');
         Route::post('/{order}/confirm-delivery', [OrderController::class, 'confirmDelivery'])->name('confirm-delivery.submit');
@@ -57,7 +57,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Payment simulation routes
     Route::prefix('payment')->name('payment.')->group(function () {
-        Route::get('/simulation/{order}', [CheckoutController::class, 'paymentSimulation'])->name('simulation');
+        Route::get('/complete/{order}', [CheckoutController::class, 'paymentSimulation'])->name('simulation');
         Route::post('/process/{order}', [CheckoutController::class, 'processPayment'])->name('process');
     });
 });
@@ -138,6 +138,8 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
             Route::prefix('payments')->name('payments.')->group(function () {
                 Route::get('/', [App\Modules\Marketplace\Controllers\VendorPaymentController::class, 'index'])->name('index');
                 Route::get('/analytics', [App\Modules\Marketplace\Controllers\VendorPaymentController::class, 'analytics'])->name('analytics');
+                Route::post('/remind-buyer/{order}', [App\Modules\Marketplace\Controllers\VendorPaymentController::class, 'remindBuyerConfirmation'])->name('remind-buyer');
+                Route::post('/request-payout', [App\Modules\Marketplace\Controllers\VendorPaymentController::class, 'requestPayout'])->name('request-payout');
             });
 
             // Vendor analytics
@@ -154,6 +156,10 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
         Route::get('/upgrade', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'upgrade'])->name('upgrade');
         Route::get('/plans/{plan}', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'selectPlan'])->name('select-plan');
         Route::post('/upgrade', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'processUpgrade'])->name('process-upgrade');
+        Route::get('/payment/{subscription}', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'showPayment'])->name('payment');
+        Route::post('/payment/{subscription}/initiate', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'initiatePayment'])->name('payment.initiate');
+        Route::get('/payment/{subscription}/status', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'checkPaymentStatus'])->name('payment.status');
+        Route::post('/payment/callback', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'handlePaymentCallback'])->name('payment.callback');
         Route::get('/success/{subscription}', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'success'])->name('success');
         Route::post('/cancel', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'cancel'])->name('cancel');
         Route::post('/reactivate', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'reactivate'])->name('reactivate');
@@ -179,7 +185,7 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
         // Cart API
         Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
         Route::get('/cart/total', [CartController::class, 'total'])->name('cart.total');
-        
+
         // Subscription API
         Route::get('/subscription/usage', [App\Modules\Marketplace\Controllers\SubscriptionController::class, 'usageApi'])->name('subscription.usage');
     });

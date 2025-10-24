@@ -12,7 +12,7 @@ namespace App\Modules\BatchIncubator;
  * - Scheduling and reminders for batch-related activities
  *
  * @version 1.0.0
- * @author Poultriinnox System
+ * @author Agriinnox System
  */
 class BatchIncubatorModule
 {

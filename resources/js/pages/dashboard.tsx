@@ -67,7 +67,7 @@ export default function Dashboard({
                 {enabledModules.length !== 0 && (
                     <div className="flex lg:flex-row flex-col gap-4 lg:items-center  justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight">PoultriInnox Dashboard</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">Agriinnox Dashboard</h1>
                             <p className="text-muted-foreground">
                                 Modular poultry management system - Choose your tools, manage your way
                             </p>
@@ -86,7 +86,7 @@ export default function Dashboard({
                     <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
                         <div className="max-w-md mx-auto">
                             <Package className="h-16 w-16 text-emerald-600 mx-auto mb-4" />
-                            <h2 className="text-2xl font-bold mb-2">Welcome to PoultriInnox</h2>
+                            <h2 className="text-2xl font-bold mb-2">Welcome to Agriinnox</h2>
                             <p className="text-muted-foreground mb-6">
                                 Get started by activating modules that match your poultry operation needs.
                                 Each module provides specialized tools and features.
@@ -110,7 +110,9 @@ export default function Dashboard({
                             <Card className="border-emerald-200 bg-emerald-50">
                                 <CardContent className="">
                                     <p className="text-sm text-emerald-800">
-                                        💡 <strong>Tip:</strong> Start with the Batch Incubator module if you're managing egg incubation and chicken raising.
+                                        💡 <strong>Tip:</strong> Start with
+                                        agriinnox marketplace to sell your poultry products
+                                        directly from the dashboard.
                                     </p>
                                 </CardContent>
                             </Card>
