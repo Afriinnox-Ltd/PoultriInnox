@@ -272,8 +272,11 @@ export default function MqttIotDeviceControl({
 
                 setBrokerConfig(config);
 
-                // Save config to localStorage for faster reconnection
-                localStorage.setItem(MQTT_CONFIG_KEY, JSON.stringify(config));
+                // Save config with version to localStorage
+                const configWithVersion = { version: data.version || '1.2', config };
+                localStorage.setItem(MQTT_CONFIG_KEY, JSON.stringify(configWithVersion));
+
+                console.log('MQTT Broker Config Loaded (HiveMQ):', config);
             }
         } catch (error) {
 
@@ -281,8 +284,16 @@ export default function MqttIotDeviceControl({
             const savedConfig = localStorage.getItem(MQTT_CONFIG_KEY);
             if (savedConfig) {
                 try {
-                    const config = JSON.parse(savedConfig);
-                    setBrokerConfig(config);
+                    const parsed = JSON.parse(savedConfig);
+                    // Check if version matches, clear if outdated
+                    if (parsed.version === '1.2' && parsed.config) {
+                        setBrokerConfig(parsed.config);
+                        console.log('MQTT Broker Config Loaded from cache (HiveMQ):', parsed.config);
+                    } else {
+                        // Old version, clear cache and refetch
+                        localStorage.removeItem(MQTT_CONFIG_KEY);
+                        console.log('Old MQTT config detected (switching to HiveMQ), cleared cache');
+                    }
                 } catch (e) {
                     toast.error('Failed to parse saved boordinnox configuration');
                 }

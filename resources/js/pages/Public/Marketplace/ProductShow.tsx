@@ -385,7 +385,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                 )}
                                 </Button>
                                 <Button variant="outline" size="lg" className="w-full">
-                                    <Link href={`/store/?vendor=${product.vendor?.id}`} className="w-full">
+                                    <Link href={`/store/search/?vendor=${product.vendor?.id}`} className="w-full">
                                         View Store
                                     </Link>
                                 </Button>
@@ -434,7 +434,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
 
                         <TabsContent value="description" className="mt-6">
                             <Card className='shadow-none'>
-                                <CardContent className="p-6">
+                                <CardContent className="">
                                     {product.description ? (
                                         <div className="prose max-w-none">
                                             {product.description.split('\n').map((paragraph, index) => (

@@ -22,7 +22,7 @@ class CategoryAdminController extends Controller
         // Search
         if ($request->has('search') && $request->search) {
             $query->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%');
+                ->orWhere('description', 'like', '%' . $request->search . '%');
         }
 
         // Filter by status
@@ -79,6 +79,7 @@ class CategoryAdminController extends Controller
             'parent_id' => 'nullable|exists:marketplace_categories,id',
             'image_url' => 'nullable|url|max:255',
             'icon' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'is_active' => 'boolean',
@@ -112,9 +113,12 @@ class CategoryAdminController extends Controller
      */
     public function show(Category $category)
     {
-        $category->load(['children', 'products' => function($query) {
-            $query->take(10);
-        }]);
+        $category->load([
+            'children',
+            'products' => function ($query) {
+                $query->take(10);
+            }
+        ]);
 
         return Inertia::render('Admin/Marketplace/Categories/Show', [
             'category' => $category,
@@ -158,6 +162,7 @@ class CategoryAdminController extends Controller
             ],
             'image_url' => 'nullable|url|max:255',
             'icon' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'is_active' => 'boolean',
@@ -290,7 +295,7 @@ class CategoryAdminController extends Controller
             case 'delete':
                 // Check if any category has products or children
                 $categories_with_products = $categories->withCount(['products', 'children'])->get();
-                $cannot_delete = $categories_with_products->filter(function($category) {
+                $cannot_delete = $categories_with_products->filter(function ($category) {
                     return $category->products_count > 0 || $category->children_count > 0;
                 });
 
