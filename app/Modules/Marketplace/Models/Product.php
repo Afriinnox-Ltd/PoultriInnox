@@ -34,6 +34,8 @@ class Product extends Model
         'dimensions',
         'unit_of_measure',
         'minimum_order_quantity',
+        'is_negotiable',
+        'maximum_order_quantity',
         'suitable_for_breeds',
         'suitable_for_ages',
         'product_type',
@@ -56,8 +58,9 @@ class Product extends Model
         'free_shipping',
         'shipping_cost',
 
-         'payment_methods',
+        'payment_methods',
         'shipping_option',
+        'video_path',
         'extra_fee',
         'delivery_time',
         'return_policy',
@@ -74,6 +77,7 @@ class Product extends Model
         'track_inventory' => 'boolean',
         'allow_backorders' => 'boolean',
         'is_featured' => 'boolean',
+        'is_negotiable' => 'boolean',
         'requires_prescription' => 'boolean',
         'requires_shipping' => 'boolean',
         'free_shipping' => 'boolean',
@@ -93,6 +97,37 @@ class Product extends Model
 
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Automatically delete associated images when product is deleted
+        static::deleting(function ($product) {
+            foreach ($product->images as $image) {
+                if ($image->image_path) {
+                    // Convert URL back to relative path
+                    $relativePath = str_replace('/storage/', '', $image->image_path);
+
+                    // Delete file from storage if it exists
+                    if (Storage::disk('public')->exists($relativePath)) {
+                        Storage::disk('public')->delete($relativePath);
+                    }
+                }
+
+                // Delete the image record
+                $image->delete();
+            }
+
+            // Delete associated video if exists
+            if ($product->video_path) {
+                $videoPath = str_replace('/storage/', '', $product->video_path);
+                if (Storage::disk('public')->exists($videoPath)) {
+                    Storage::disk('public')->delete($videoPath);
+                }
+            }
+        });
+    }
+
     /**
      * Get the vendor that owns the product
      */
@@ -107,6 +142,14 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Get all categories for this product
+     */
+    public function categories(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'marketplace_category_product');
     }
 
     /**
@@ -188,9 +231,9 @@ class Product extends Model
     {
         return $query->where(function ($q) use ($search) {
             $q->where('name', 'LIKE', "%{$search}%")
-              ->orWhere('description', 'LIKE', "%{$search}%")
-              ->orWhere('short_description', 'LIKE', "%{$search}%")
-              ->orWhere('sku', 'LIKE', "%{$search}%");
+                ->orWhere('description', 'LIKE', "%{$search}%")
+                ->orWhere('short_description', 'LIKE', "%{$search}%")
+                ->orWhere('sku', 'LIKE', "%{$search}%");
         });
     }
 
@@ -207,7 +250,7 @@ class Product extends Model
      */
     public function isActive(): bool
     {
-        return $this->status === 'active';
+        return $this->status== 'active';
     }
 
     /**
@@ -232,7 +275,7 @@ class Product extends Model
     public function getMainImageAttribute(): ?string
     {
         $firstImage = $this->images()->where('is_primary', true)->first()
-                     ?? $this->images()->orderBy('sort_order')->first();
+            ?? $this->images()->orderBy('sort_order')->first();
         return $firstImage ? $firstImage->image_path : null;
     }
 

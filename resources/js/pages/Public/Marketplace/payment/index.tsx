@@ -155,7 +155,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                 }
             }
         } catch (err) {
-            console.error('Status check failed:', err);
+
         } finally {
             setCheckingStatus(false);
         }
@@ -408,7 +408,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
             <Dialog open={showTimeoutModal} onOpenChange={setShowTimeoutModal}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="flex items-center text-orange-600">
+                        <DialogTitle className="flex items-center text-emerald-600">
                             <Clock className="h-5 w-5 mr-2" />
                             Payment Timeout
                         </DialogTitle>
@@ -423,7 +423,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                             </div>
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="flex gap-2 sm:gap-0">
+                    <DialogFooter className="flex gap-4 sm:gap-3">
                         <Button
                             variant="outline"
                             onClick={handleCancelPayment}
@@ -432,7 +432,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                         </Button>
                         <Button
                             onClick={handleRetryPayment}
-                            className="bg-orange-600 hover:bg-orange-700"
+                            className="bg-emerald-600 hover:bg-emerald-700"
                         >
                             Try Again
                         </Button>

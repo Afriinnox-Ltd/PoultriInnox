@@ -20,7 +20,7 @@ class ProductPolicy
      */
     public function view(?User $user, Product $product): bool
     {
-        return $product->status === 'active' ||
+        return $product->status== 'active' ||
                ($user && ($user->isAdmin() || $this->owns($user, $product)));
     }
 
@@ -29,7 +29,7 @@ class ProductPolicy
      */
     public function create(User $user): bool
     {
-        return $user->vendor && $user->vendor->status === 'approved';
+        return $user->vendor && $user->vendor->status== 'approved';
     }
 
     /**
@@ -53,6 +53,6 @@ class ProductPolicy
      */
     private function owns(User $user, Product $product): bool
     {
-        return $user->vendor && $user->vendor->id === $product->vendor_id;
+        return $user->vendor && $user->vendor->id== $product->vendor_id;
     }
 }

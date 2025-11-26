@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { MarketplaceSettings } from '@/types/marketplace';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PendingPageProps {
     marketplaceSettings: MarketplaceSettings;
@@ -47,27 +48,16 @@ interface PendingPageProps {
 
 export default function Pending({ marketplaceSettings, vendor }: PendingPageProps) {
 
-
-    const formatCurrency = (amount: number) => {
-        const currency = marketplaceSettings?.general?.default_currency || 'RWF';
-        const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
-        
-        return new Intl.NumberFormat('rw-RW', {
-            style: 'currency',
-            currency: currency,
-            currencyDisplay: 'symbol'
-        }).format(amount).replace(currency, symbol);
-    };
-
+ 
     const calculateSampleEarnings = (salePrice: number) => {
         const commissionRate = marketplaceSettings?.commission?.rate || 10;
         const platformFee = marketplaceSettings?.platform_fees?.listing_fee || 0;
         const processingFee = marketplaceSettings?.platform_fees?.processing_fee || 0;
-        
+
         const commission = (salePrice * commissionRate) / 100;
         const totalFees = commission + platformFee + processingFee;
         const netEarnings = salePrice - totalFees;
-        
+
         return { commission, totalFees, netEarnings };
     };
 
@@ -78,21 +68,44 @@ export default function Pending({ marketplaceSettings, vendor }: PendingPageProp
             <div className="min-h-screen bg-gray-50 py-8">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Status Alert */}
-                    <Alert className="mb-8" variant="default">
-                        <Clock className="h-4 w-4" />
-                        <AlertDescription>
-                            <div className="flex flex-col">
-                                <span className="font-semibold">Application Under Review</span>
-                                <span className="mt-1">Your vendor application is currently being reviewed. This process typically takes 2-3 business days.</span>
-                                <span className="mt-1">You will receive an email notification once your application has been reviewed.</span>
-                                {vendor?.submitted_at && (
-                                    <span className="mt-2 text-sm text-gray-600">
-                                        Submitted: {new Date(vendor.submitted_at).toLocaleDateString()}
-                                    </span>
-                                )}
-                            </div>
-                        </AlertDescription>
-                    </Alert>
+                    {/* Status Alert */}
+                    {vendor?.status === 'changes_requested' ? (
+                        <Alert className="mb-8 border-amber-200 bg-amber-50" variant="default">
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            <AlertDescription className="text-amber-900">
+                                <div className="flex flex-col">
+                                    <span className="font-semibold text-lg">Changes Requested</span>
+                                    <span className="mt-2">We have reviewed your application and some changes are required before we can approve it.</span>
+                                    <span className="mt-1 font-medium">Please check your email for detailed feedback on what needs to be updated.</span>
+                                    <div className="mt-4">
+                                        <Button
+                                            variant="outline"
+                                            className="bg-white border-amber-200 hover:bg-amber-100 hover:text-amber-900"
+                                            onClick={() => window.location.href = '/marketplace/vendor/register'}
+                                        >
+                                            Update Application
+                                        </Button>
+                                    </div>
+                                </div>
+                            </AlertDescription>
+                        </Alert>
+                    ) : (
+                        <Alert className="mb-8" variant="default">
+                            <Clock className="h-4 w-4" />
+                            <AlertDescription>
+                                <div className="flex flex-col">
+                                    <span className="font-semibold">Application Under Review</span>
+                                    <span className="mt-1">Your vendor application is currently being reviewed. This process typically takes 2-3 business days.</span>
+                                    <span className="mt-1">You will receive an email notification once your application has been reviewed.</span>
+                                    {vendor?.submitted_at && (
+                                        <span className="mt-2 text-sm text-gray-600">
+                                            Submitted: {new Date(vendor.submitted_at).toLocaleDateString()}
+                                        </span>
+                                    )}
+                                </div>
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
                     {/* What to Expect Section */}
                     <div className="grid gap-6 lg:grid-cols-2">
@@ -105,8 +118,8 @@ export default function Pending({ marketplaceSettings, vendor }: PendingPageProp
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="bg-blue-50 p-4 rounded-lg">
-                                    <h4 className="font-semibold text-blue-900 mb-2">How You'll Earn</h4>
+                                <div className="bg-gray-50 border p-4 rounded-lg">
+                                    <h4 className="font-semibold text-emerald-900  mb-2">How You'll Earn</h4>
                                     <div className="space-y-2 text-sm">
                                         <div className="flex justify-between">
                                             <span>Commission Rate:</span>
@@ -124,7 +137,7 @@ export default function Pending({ marketplaceSettings, vendor }: PendingPageProp
                                 </div>
 
                                 {/* Sample Earnings Calculator */}
-                                <div className="bg-emerald-50 p-4 rounded-lg">
+                                <div className="bg-gray-50 border p-4 rounded-lg">
                                     <h4 className="font-semibold text-emerald-900 mb-3 flex items-center gap-2">
                                         <Calculator className="h-4 w-4" />
                                         Sample Earnings
@@ -154,38 +167,38 @@ export default function Pending({ marketplaceSettings, vendor }: PendingPageProp
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <TrendingUp className="h-5 w-5 text-blue-600" />
+                                    <TrendingUp className="h-5 w-5 text-emerald-600" />
                                     Platform Features
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-3">
                                     <div className="flex items-start gap-3">
-                                        <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5" />
+                                        <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
                                         <div>
                                             <p className="font-medium">Product Management</p>
                                             <p className="text-sm text-gray-600">Easy-to-use dashboard for managing your products</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-start gap-3">
-                                        <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5" />
+                                        <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
                                         <div>
                                             <p className="font-medium">Order Processing</p>
                                             <p className="text-sm text-gray-600">Streamlined order management and fulfillment</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-start gap-3">
-                                        <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5" />
+                                        <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
                                         <div>
                                             <p className="font-medium">Analytics Dashboard</p>
                                             <p className="text-sm text-gray-600">Track your sales, revenue, and performance</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-start gap-3">
-                                        <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5" />
+                                        <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
                                         <div>
                                             <p className="font-medium">Payment Processing</p>
                                             <p className="text-sm text-gray-600">Secure and reliable payment handling</p>
@@ -194,7 +207,7 @@ export default function Pending({ marketplaceSettings, vendor }: PendingPageProp
 
                                     {marketplaceSettings?.payment?.cod_enabled && (
                                         <div className="flex items-start gap-3">
-                                            <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5" />
+                                            <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
                                             <div>
                                                 <p className="font-medium">Cash on Delivery</p>
                                                 <p className="text-sm text-gray-600">Accept COD payments from customers</p>
@@ -210,20 +223,20 @@ export default function Pending({ marketplaceSettings, vendor }: PendingPageProp
                     <Card className="mt-6">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Info className="h-5 w-5 text-blue-600" />
+                                <Info className="h-5 w-5 text-emerald-600" />
                                 What Happens Next?
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="grid gap-4 md:grid-cols-3">
-                                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                        <span className="text-blue-600 font-bold">1</span>
+                                <div className="text-center p-4 bg-emerald-50 rounded-lg">
+                                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <span className="text-emerald-600 font-bold">1</span>
                                     </div>
                                     <h4 className="font-semibold mb-2">Review Process</h4>
                                     <p className="text-sm text-gray-600">Our team reviews your application and business information</p>
                                 </div>
-                                
+
                                 <div className="text-center p-4 bg-emerald-50 rounded-lg">
                                     <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
                                         <span className="text-emerald-600 font-bold">2</span>
@@ -231,10 +244,10 @@ export default function Pending({ marketplaceSettings, vendor }: PendingPageProp
                                     <h4 className="font-semibold mb-2">Approval</h4>
                                     <p className="text-sm text-gray-600">You'll receive an email confirmation once approved</p>
                                 </div>
-                                
-                                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                        <span className="text-purple-600 font-bold">3</span>
+
+                                <div className="text-center p-4 bg-emerald-50 rounded-lg">
+                                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <span className="text-emerald-600 font-bold">3</span>
                                     </div>
                                     <h4 className="font-semibold mb-2">Start Selling</h4>
                                     <p className="text-sm text-gray-600">Access your vendor dashboard and add your first product</p>
@@ -252,8 +265,12 @@ export default function Pending({ marketplaceSettings, vendor }: PendingPageProp
                                     Our support team is here to help you through the vendor onboarding process.
                                 </p>
                                 <Button variant="outline">
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Contact Support
+                                    <a href='mailto:info@afriinnox.com' className='flex'>
+                                        <Mail className="h-4 w-4 mr-2" />
+                                        Contact Support (info@afriinnox.com)
+
+                                    </a>
+
                                 </Button>
                             </div>
                         </CardContent>

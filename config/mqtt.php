@@ -14,7 +14,7 @@ return [
     */
 
     'broker' => [
-        'host' => env('MQTT_HOST', 'test.mosquitto.org'),
+        'host' => env('MQTT_HOST', 'broker.hivemq.com'),
         'port' => env('MQTT_PORT', 1883),
         'username' => env('MQTT_USERNAME', null),
         'password' => env('MQTT_PASSWORD', null),
@@ -104,19 +104,18 @@ return [
     |
     | Public Broker WebSocket Ports:
     | - test.mosquitto.org: 8080 (ws), 8081 (wss)
-    | - broker.hivemq.com: 8000 (ws only, no wss support)
+    | - broker.hivemq.com: 8000 (ws), 8884 (wss)
     |
     | Path:
-    | - '/mqtt' for Mosquitto brokers
-    | - '/' or empty for most other brokers
+    | - '/mqtt' for both Mosquitto and HiveMQ brokers
     |
     */
 
     'websocket' => [
         'enabled' => env('MQTT_WEBSOCKET_ENABLED', true),
-        'port' => env('MQTT_WEBSOCKET_PORT', 8080), // 8080 for ws, 8081 for wss (Mosquitto)
+        'port' => env('MQTT_WEBSOCKET_PORT', 8000), // 8000 for ws, 8884 for wss (HiveMQ)
         'protocol' => env('MQTT_WEBSOCKET_PROTOCOL', ''), // Auto-detect: ws for HTTP, wss for HTTPS
-        'path' => env('MQTT_WEBSOCKET_PATH', '/mqtt'), // WebSocket path (required for Mosquitto)
+        'path' => env('MQTT_WEBSOCKET_PATH', '/mqtt'), // WebSocket path (required for MQTT over WebSocket)
     ],    /*
     |--------------------------------------------------------------------------
     | Message Retention

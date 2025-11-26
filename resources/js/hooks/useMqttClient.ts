@@ -80,8 +80,7 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
 
             const brokerUrl = `${protocol}://${host}:${port}${path || ''}`;
 
-            console.log('Connecting to MQTT broker:', brokerUrl);
-
+            
             const mqttClient = mqtt.connect(brokerUrl, {
                 clientId,
                 username,
@@ -92,7 +91,6 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
             });
 
             mqttClient.on('connect', () => {
-                console.log('MQTT: Connected to broker');
                 setIsConnected(true);
                 setError(null);
                 onConnect?.();
@@ -104,13 +102,11 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
             });
 
             mqttClient.on('disconnect', () => {
-                console.log('MQTT: Disconnected from broker');
                 setIsConnected(false);
                 onDisconnect?.();
             });
 
-            mqttClient.on('error', (err) => {
-                console.error('MQTT: Connection error:', err);
+            mqttClient.on('error', (err) => { 
                 setError(err);
                 onError?.(err);
             });
@@ -133,15 +129,13 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
 
                     setMessages(prev => [...prev.slice(-99), message]); // Keep last 100 messages
                     onMessage?.(message);
-                } catch (err) {
-                    console.error('MQTT: Error processing message:', err);
+                } catch (err) { 
                 }
             });
 
             setClient(mqttClient);
         } catch (err) {
-            const error = err as Error;
-            console.error('MQTT: Failed to connect:', error);
+            const error = err as Error; 
             setError(error);
             onError?.(error);
         }
@@ -150,7 +144,6 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
     // Disconnect from MQTT broker
     const disconnect = useCallback(() => {
         if (client) {
-            console.log('MQTT: Disconnecting...');
             client.end(true);
             setClient(null);
             setIsConnected(false);
@@ -161,13 +154,11 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
     // Subscribe to topic(s)
     const subscribe = useCallback((topic: string | string[], qos: 0 | 1 | 2 = 1) => {
         if (!client) {
-            console.warn('MQTT: Cannot subscribe, client not available');
             return;
         }
 
         // Check if client is actually connected (not just state)
         if (!client.connected) {
-            console.warn('MQTT: Cannot subscribe, client not connected yet');
             // Store for later subscription when connected
             const topics = Array.isArray(topic) ? topic : [topic];
             topics.forEach(t => subscriptionsRef.current.add(t));
@@ -179,10 +170,8 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
         topics.forEach(t => subscriptionsRef.current.add(t));
 
         client.subscribe(topics, { qos }, (err) => {
-            if (err) {
-                console.error('MQTT: Subscription error:', err);
-            } else {
-                console.log('MQTT: Subscribed to:', topics);
+            if (err) { 
+            } else { 
             }
         });
     }, [client]);
@@ -198,10 +187,8 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
         topics.forEach(t => subscriptionsRef.current.delete(t));
 
         client.unsubscribe(topics, (err) => {
-            if (err) {
-                console.error('MQTT: Unsubscribe error:', err);
-            } else {
-                console.log('MQTT: Unsubscribed from:', topics);
+            if (err) { 
+            } else { 
             }
         });
     }, [client, isConnected]);
@@ -214,17 +201,14 @@ export function useMqttClient(options: UseMqttClientOptions = {}): UseMqttClient
         retain: boolean = false
     ) => {
         if (!client || !isConnected) {
-            console.warn('MQTT: Cannot publish, client not connected');
             return;
         }
 
         const payload = typeof message === 'string' ? message : JSON.stringify(message);
 
         client.publish(topic, payload, { qos, retain }, (err) => {
-            if (err) {
-                console.error('MQTT: Publish error:', err);
-            } else {
-                console.log('MQTT: Published to', topic, ':', payload);
+            if (err) { 
+            } else { 
             }
         });
     }, [client, isConnected]);

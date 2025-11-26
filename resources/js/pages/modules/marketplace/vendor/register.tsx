@@ -9,9 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
     Store,
-    FileText, 
-    Phone, 
-    CreditCard,
+    FileText,
+    Phone,
+
     Shield,
     CheckCircle,
     AlertCircle,
@@ -31,39 +31,41 @@ interface VendorRegistrationProps {
     existing_application?: {
         id: number;
         business_name: string;
+        business_registration_number?: string;
+        business_type?: string;
         business_description?: string;
         business_address?: string;
         business_phone?: string;
         business_email?: string;
         business_website?: string;
         tax_number?: string;
-        status: 'pending' | 'approved' | 'rejected' | 'suspended';
+        years_in_business?: number;
+        specializations?: string;
+        business_documents?: string[];
+        status: 'pending' | 'approved' | 'rejected' | 'suspended' | 'changes_requested';
         is_verified: boolean;
         created_at: string;
-    }; 
+    };
 }
 
 export default function VendorRegistration({ user, existing_application }: VendorRegistrationProps) {
- 
+
     const [formData, setFormData] = useState({
         business_name: existing_application?.business_name || '',
-        business_registration_number: '',
-        business_type: '',
+        business_registration_number: existing_application?.business_registration_number || '',
+        business_type: existing_application?.business_type || '',
         business_description: existing_application?.business_description || '',
         business_address: existing_application?.business_address || '',
         business_phone: existing_application?.business_phone || '',
         business_email: existing_application?.business_email || user?.email,
         business_website: existing_application?.business_website || '',
-        bank_name: '',
-        bank_account_number: '',
-        bank_account_name: '',
-        bank_branch: '',
         tax_number: existing_application?.tax_number || '',
-        years_in_business: '',
-        specializations: ''
+        years_in_business: existing_application?.years_in_business?.toString() || '',
+        specializations: existing_application?.specializations || ''
     });
 
     const [business_documents, setBusinessDocuments] = useState<File[]>([]);
+    const [existing_documents, setExistingDocuments] = useState<string[]>(existing_application?.business_documents || []);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -104,6 +106,10 @@ export default function VendorRegistration({ user, existing_application }: Vendo
         setBusinessDocuments(prev => prev.filter((_, i) => i !== index));
     };
 
+    const removeExistingDocument = (index: number) => {
+        setExistingDocuments(prev => prev.filter((_, i) => i !== index));
+    };
+
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
 
@@ -137,19 +143,9 @@ export default function VendorRegistration({ user, existing_application }: Vendo
             newErrors.business_email = 'Please enter a valid email address';
         }
 
-        if (!formData.bank_name.trim()) {
-            newErrors.bank_name = 'Bank name is required';
-        }
 
-        if (!formData.bank_account_number.trim()) {
-            newErrors.bank_account_number = 'Bank account number is required';
-        }
 
-        if (!formData.bank_account_name.trim()) {
-            newErrors.bank_account_name = 'Bank account name is required';
-        }
-
-        if (business_documents.length === 0) {
+        if (business_documents.length === 0 && existing_documents.length === 0) {
             newErrors.business_documents = 'At least one verification document is required';
         }
 
@@ -178,21 +174,34 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                 formDataToSend.append(key, value);
             });
 
-            // Add documents
+            // Add new documents
             business_documents.forEach((file, index) => {
                 formDataToSend.append(`business_documents[${index}]`, file);
             });
 
-            router.post('/marketplace/vendor/register', formDataToSend , {
+            // Add existing documents to keep
+            existing_documents.forEach((doc, index) => {
+                formDataToSend.append(`existing_documents[${index}]`, doc);
+            });
+
+            router.post('/marketplace/vendor/register', formDataToSend, {
                 onSuccess: () => {
                     toast.success("Registration successful! Your application is under review.")
                 },
-                onError:(error) =>{ 
-                    toast.error(error.message || 'An error occurred. Please try again.');
+                onError: (error) => {
+                    console.error("Submission errors:", error);
+                    setErrors(error as Record<string, string>);
+
+                    if (error.message) {
+                        toast.error(error.message);
+                    } else {
+                        toast.error('Please fix the errors in the form.');
+                    }
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             })
         } catch (error) {
-            console.error('Error submitting application:', error);
+            console.error("Submission error:", error);
             toast.error('An error occurred while submitting your application. Please try again later.');
         } finally {
             setIsSubmitting(false);
@@ -203,9 +212,9 @@ export default function VendorRegistration({ user, existing_application }: Vendo
         return (
             <AppLayout >
                 <Head title="Vendor Application - Pending" />
-             <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                        Vendor Application Status
-                    </h2>
+                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                    Vendor Application Status
+                </h2>
                 <div className="py-12">
                     <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
                         <Card>
@@ -296,7 +305,7 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                     Join Our Marketplace
                                 </h1>
                                 <p className="text-emerald-100  mb-4">
-                                    Start selling your poultry equipment and supplies to thousands of customers
+                                    Start selling your Livestock Equipment and supplies to thousands of customers
                                 </p>
                                 <div className="grid grid-cols-1 text-emerald-100 md:grid-cols-3 gap-4">
                                     <div className="flex items-center justify-center">
@@ -492,76 +501,7 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                             </CardContent>
                         </Card>
 
-                        {/* Banking Information */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center">
-                                    <CreditCard className="h-5 w-5 mr-2" />
-                                    Banking Information
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="bank_name">Bank Name *</Label>
-                                        <Input
-                                            id="bank_name"
-                                            value={formData.bank_name}
-                                            onChange={(e) => handleInputChange('bank_name', e.target.value)}
-                                            placeholder="Name of your bank"
-                                            className={errors.bank_name ? 'border-red-500' : ''}
-                                        />
-                                        {errors.bank_name && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.bank_name}</p>
-                                        )}
-                                    </div>
 
-                                    <div>
-                                        <Label htmlFor="bank_account_number">Account Number *</Label>
-                                        <Input
-                                            id="bank_account_number"
-                                            value={formData.bank_account_number}
-                                            onChange={(e) => handleInputChange('bank_account_number', e.target.value)}
-                                            placeholder="Your bank account number"
-                                            className={errors.bank_account_number ? 'border-red-500' : ''}
-                                        />
-                                        {errors.bank_account_number && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.bank_account_number}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="bank_account_name">Account Name *</Label>
-                                        <Input
-                                            id="bank_account_name"
-                                            value={formData.bank_account_name}
-                                            onChange={(e) => handleInputChange('bank_account_name', e.target.value)}
-                                            placeholder="Account holder name"
-                                            className={errors.bank_account_name ? 'border-red-500' : ''}
-                                        />
-                                        {errors.bank_account_name && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.bank_account_name}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="bank_branch">Bank Branch</Label>
-                                        <Input
-                                            id="bank_branch"
-                                            value={formData.bank_branch}
-                                            onChange={(e) => handleInputChange('bank_branch', e.target.value)}
-                                            placeholder="Branch name or code"
-                                        />
-                                    </div>
-                                </div>
-
-                                <p className="text-xs text-gray-500">
-                                    This information is required for payment processing and will be securely stored.
-                                </p>
-                            </CardContent>
-                        </Card>
 
                         {/* Document Upload */}
                         <Card>
@@ -596,11 +536,36 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                                         </label>
                                     </div>
 
-                                    {business_documents.length > 0 && (
+                                    {existing_documents.length > 0 && (
                                         <div className="mt-4 space-y-2">
-                                            <p className="text-sm font-medium">Uploaded Documents:</p>
+                                            <p className="text-sm font-medium">Previously Uploaded Documents:</p>
+                                            {existing_documents.map((doc, index) => (
+                                                <div key={`existing-${index}`} className="flex items-center justify-between bg-emerald-50 p-2 rounded border border-emerald-100">
+                                                    <div className="flex items-center space-x-2">
+                                                        <FileText className="h-4 w-4 text-emerald-600" />
+                                                        <a href={doc} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-700 hover:underline truncate max-w-[200px]">
+                                                            {doc.split('/').pop()}
+                                                        </a>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => removeExistingDocument(index)}
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {(business_documents.length > 0) && (
+                                        <div className="mt-4 space-y-2">
+                                            <p className="text-sm font-medium">New Documents:</p>
                                             {business_documents.map((file, index) => (
-                                                <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                                <div key={`new-${index}`} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                                                     <span className="text-sm">{file.name}</span>
                                                     <Button
                                                         type="button"

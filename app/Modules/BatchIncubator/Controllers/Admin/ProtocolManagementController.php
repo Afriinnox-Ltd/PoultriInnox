@@ -269,7 +269,7 @@ class ProtocolManagementController extends Controller
             'status' => 'required|string|in:active,inactive,archived',
         ]);
 
-        if ($type === 'medication') {
+        if ($type== 'medication') {
             $protocol = MedicationProtocol::findOrFail($id);
         } else {
             $protocol = VaccinationProtocol::findOrFail($id);
@@ -288,7 +288,7 @@ class ProtocolManagementController extends Controller
      */
     public function destroy(string $type, int $id)
     {
-        if ($type === 'medication') {
+        if ($type== 'medication') {
             $protocol = MedicationProtocol::findOrFail($id);
             $protocol->delete();
             $message = 'Medication protocol deleted successfully.';
@@ -377,7 +377,7 @@ class ProtocolManagementController extends Controller
     {
         $type = $request->route('type');
         
-        if ($type === 'medication') {
+        if ($type== 'medication') {
             $headers = [
                 'medication_name',
                 'medication_type',
@@ -485,7 +485,7 @@ class ProtocolManagementController extends Controller
     {
         $extension = pathinfo($filePath, PATHINFO_EXTENSION);
         
-        if ($extension === 'csv') {
+        if ($extension== 'csv') {
             $data = $this->readCsvFile($filePath);
         } else {
             $data = $this->readExcelFile($filePath);
@@ -517,7 +517,7 @@ class ProtocolManagementController extends Controller
                 $protocolData = $this->mapRowToProtocol($headers, $row, $type);
                 $this->validateProtocolData($protocolData, $type);
                 
-                if ($type === 'medication') {
+                if ($type== 'medication') {
                     MedicationProtocol::create($protocolData);
                 } else {
                     VaccinationProtocol::create($protocolData);
@@ -549,8 +549,8 @@ class ProtocolManagementController extends Controller
     private function readCsvFile(string $filePath): array
     {
         $data = [];
-        if (($handle = fopen($filePath, 'r')) !== false) {
-            while (($row = fgetcsv($handle, 1000, ',')) !== false) {
+        if (($handle = fopen($filePath, 'r')) != false) {
+            while (($row = fgetcsv($handle, 1000, ',')) != false) {
                 $data[] = $row;
             }
             fclose($handle);
@@ -586,7 +586,7 @@ class ProtocolManagementController extends Controller
         $mapped['status'] = $mapped['status'] ?? 'active';
         $mapped['auto_recommend'] = $mapped['auto_recommend'] ?? false;
         
-        if ($type === 'medication') {
+        if ($type== 'medication') {
             $mapped['is_emergency_protocol'] = $mapped['is_emergency_protocol'] ?? false;
         } else {
             $mapped['is_mandatory'] = $mapped['is_mandatory'] ?? false;
@@ -597,7 +597,7 @@ class ProtocolManagementController extends Controller
         }
 
         return array_filter($mapped, function($value) {
-            return $value !== null && $value !== '';
+            return $value != null && $value != '';
         });
     }
 
@@ -606,7 +606,7 @@ class ProtocolManagementController extends Controller
      */
     private function validateProtocolData(array $data, string $type): void
     {
-        if ($type === 'medication') {
+        if ($type== 'medication') {
             $required = ['medication_name', 'medication_type', 'dosage', 'administration_method'];
             $validTypes = ['antibiotic', 'antiviral', 'antifungal', 'antiparasitic', 'vitamin', 'supplement', 'other'];
         } else {
@@ -622,11 +622,11 @@ class ProtocolManagementController extends Controller
         }
 
         // Validate specific fields
-        if ($type === 'medication' && isset($validTypes) && !in_array($data['medication_type'], $validTypes)) {
+        if ($type== 'medication' && isset($validTypes) && !in_array($data['medication_type'], $validTypes)) {
             throw new \Exception("Invalid medication type. Must be one of: " . implode(', ', $validTypes));
         }
 
-        if ($type === 'vaccination' && isset($data['priority_level']) && !in_array($data['priority_level'], $validPriorities)) {
+        if ($type== 'vaccination' && isset($data['priority_level']) && !in_array($data['priority_level'], $validPriorities)) {
             throw new \Exception("Invalid priority level. Must be one of: " . implode(', ', $validPriorities));
         }
     }

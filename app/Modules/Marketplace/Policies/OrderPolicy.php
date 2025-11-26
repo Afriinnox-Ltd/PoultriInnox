@@ -21,8 +21,8 @@ class OrderPolicy
     public function view(User $user, Order $order): bool
     {
         return $user->isAdmin() ||
-               $order->user_id === $user->id ||
-               ($user->vendor && $order->vendor_id === $user->vendor->id);
+               $order->user_id== $user->id ||
+               ($user->vendor && $order->vendor_id== $user->vendor->id);
     }
 
     /**
@@ -39,7 +39,7 @@ class OrderPolicy
     public function update(User $user, Order $order): bool
     {
         return $user->isAdmin() ||
-               ($user->vendor && $order->vendor_id === $user->vendor->id);
+               ($user->vendor && $order->vendor_id== $user->vendor->id);
     }
 
     /**
@@ -55,7 +55,7 @@ class OrderPolicy
      */
     public function cancel(User $user, Order $order): bool
     {
-        return $order->user_id === $user->id &&
+        return $order->user_id== $user->id &&
                in_array($order->status, ['pending', 'confirmed']);
     }
 }

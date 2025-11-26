@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -22,7 +21,7 @@ return new class extends Migration
 
             // Target specification
             $table->enum('breed_type', ['broiler', 'layer', 'dual_purpose', 'breeder', 'universal'])->comment('Target breed type');
-            $table->string('specific_breed')->nullable()->comment('Specific breed if applicable');
+            $table->string('specific_breed', 100)->nullable()->comment('Specific breed if applicable');
             $table->integer('target_batch_size_min')->nullable()->comment('Minimum batch size');
             $table->integer('target_batch_size_max')->nullable()->comment('Maximum batch size');
 

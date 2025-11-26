@@ -33,7 +33,6 @@ interface ProductShowProps {
     product: Product & {
         images: Array<{ id: number; image_path: string; alt_text?: string; is_primary: boolean }>;
         reviews: (ProductReview & { user: { id: number; name: string } })[];
-        variants: ProductVariant[];
         vendor: {
             id: number;
             business_name: string;
@@ -59,18 +58,53 @@ interface ProductShowProps {
 }
 
 export default function ProductShow({ product, user_review, is_in_wishlist, relatedProducts, currentUser }: ProductShowProps) {
-    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
     const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(product.minimum_order_quantity || 1);
     const [isInWishlist, setIsInWishlist] = useState(is_in_wishlist);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-    const images = product.images?.length > 0 ? product.images : [
-        { id: 0, image_path: '/placeholder-product.jpg', alt_text: product.name, is_primary: true }
-    ];
+    // Combine images and video into a single media array
+    const mediaItems = React.useMemo(() => {
+        const items = [];
+
+        // Add images
+        if (product.images && product.images.length > 0) {
+            items.push(...product.images.map(img => ({
+                type: 'image' as const,
+                id: img.id,
+                path: img.image_path,
+                alt: img.alt_text || product.name,
+                is_primary: img.is_primary
+            })));
+        } else {
+            items.push({
+                type: 'image' as const,
+                id: 0,
+                path: '/placeholder-product.jpg',
+                alt: product.name,
+                is_primary: true
+            });
+        }
+
+        // Add video if exists
+        if (product.video_path) {
+            items.push({
+                type: 'video' as const,
+                id: 'video',
+                path: product.video_path,
+                alt: 'Product Video',
+                is_primary: false
+            });
+        }
+
+        return items;
+    }, [product]);
+
+    const currentMedia = mediaItems[selectedMediaIndex];
 
     const currentPrice = selectedVariant
-        ? product.price + (product.variants?.find(v => v.id === selectedVariant)?.price_adjustment || 0)
+        ? product.price + (product.variants?.find((v: ProductVariant) => v.id === selectedVariant)?.price_adjustment || 0)
         : product.price;
 
     const formatCurrency = (amount: number) => {
@@ -90,8 +124,10 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
     };
 
     const maxQuantity = selectedVariant
-        ? product.variants?.find(v => v.id === selectedVariant)?.stock_quantity || 0
-        : product.stock_quantity;
+        ? product.variants?.find((v: ProductVariant) => v.id === selectedVariant)?.stock_quantity || 0
+        : (product.maximum_order_quantity ? Math.min(product.stock_quantity, product.maximum_order_quantity) : product.stock_quantity);
+
+    const minQuantity = product.minimum_order_quantity || 1;
 
     const handleAddToCart = async () => {
         // Check if user is authenticated
@@ -114,14 +150,14 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                 },
                 onError: (errors) => {
                     toast.error('Failed to add product to cart. Please check the form for errors.');
-                    console.error('Error adding to cart:', errors);
+
                 }
             });
 
         } catch (error) {
-            console.error('Error adding to cart:', error);
+
             toast.error('Failed to add product to cart. Please try again.');
-        }finally {
+        } finally {
             setIsAddingToCart(false);
         }
     };
@@ -146,7 +182,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                 setIsInWishlist(!isInWishlist);
             }
         } catch (error) {
-            console.error('Error toggling wishlist:', error);
+
         }
     };
 
@@ -155,26 +191,26 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
 
     const { auth } = usePage<SharedData>().props;
     const safeRelatedProducts = Array.isArray(relatedProducts) ? relatedProducts : [];
-
+    console.log(product)
     return (
         <>
             <Head title={`${product.name} - ${product.vendor?.business_name} | Poultry Marketplace`}>
-                <meta name="description" content={product.short_description || product.description?.substring(0, 160) || `Buy ${product.name} from ${product.vendor?.business_name}. Quality poultry equipment and supplies.`} />
+                <meta name="description" content={product.meta_description || product.short_description || product.description?.substring(0, 160) || `Buy ${product.name} from ${product.vendor?.business_name}. Quality Livestock Equipment and supplies.`} />
                 <meta name="keywords" content={`${product.name}, ${product.category?.name}, poultry equipment, ${product.vendor?.business_name}, buy poultry supplies`} />
                 <meta property="og:title" content={`${product.name} - ${product.vendor?.business_name}`} />
-                <meta property="og:description" content={product.short_description || product.description?.substring(0, 200)} />
+                <meta property="og:description" content={product.meta_description || product.short_description || product.description?.substring(0, 200)} />
                 <meta property="og:image" content={product.images?.[0]?.image_path || '/placeholder-product.jpg'} />
                 <meta property="og:type" content="product" />
                 <meta property="product:price:amount" content={product.price.toString()} />
                 <meta property="product:price:currency" content="RWF" />
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content={`${product.name} - ${product.vendor?.business_name}`} />
-                <meta name="twitter:description" content={product.short_description || product.description?.substring(0, 200)} />
+                <meta name="twitter:description" content={product.meta_description || product.short_description || product.description?.substring(0, 200)} />
                 <meta name="twitter:image" content={product.images?.[0]?.image_path || '/placeholder-product.jpg'} />
                 <link rel="canonical" href={`https://agriinnox.com/store/products/${product.slug}`} />
             </Head>
             <WelcomeNav auth={auth} />
-            <div className="py-6 pt-20 bg-gradient-to-b from-gray-50 to-white">
+            <div className="py-6  bg-gradient-to-b from-gray-50 to-white  pt-36">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     {/* Breadcrumbs for SEO */}
                     <nav className="flex mb-4 text-sm" aria-label="Breadcrumb">
@@ -206,49 +242,53 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                     </nav>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                        {/* Product Images */}
-                        <div>
+                        {/* Product Media Gallery */}
+                        <div className="space-y-4">
                             <Card className='py-0 bg-transparent border-0 shadow-none'>
                                 <CardContent className="p-0">
-                                    <div className="aspect-square relative ">
-                                        <img
-                                            src={images[selectedImageIndex].image_path}
-                                            alt={images[selectedImageIndex].alt_text || product.name}
-                                            className="w-full h-full rounded object-contain"
-                                        />
-                                        {images.length > 1 && (
+                                    <div className="aspect-square relative bg-gray-100 rounded overflow-hidden">
+                                        {currentMedia.type === 'video' ? (
+                                            <video
+                                                controls
+                                                className="w-full h-full object-contain"
+                                                src={currentMedia.path}
+                                                poster={product.images?.[0]?.image_path}
+                                            >
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        ) : (
+                                            <img
+                                                src={currentMedia.path}
+                                                alt={currentMedia.alt}
+                                                className="w-full h-full object-contain"
+                                            />
+                                        )}
+
+                                        {mediaItems.length > 1 && (
                                             <>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-500 cursor-pointer"
-                                                    onClick={() => setSelectedImageIndex(
-                                                        selectedImageIndex === 0 ? images.length - 1 : selectedImageIndex - 1
+                                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full p-1"
+                                                    onClick={() => setSelectedMediaIndex(
+                                                        selectedMediaIndex === 0 ? mediaItems.length - 1 : selectedMediaIndex - 1
                                                     )}
                                                 >
-                                                    <ChevronLeft className="h-4 w-4 text-white" />
+                                                    <ChevronLeft className="h-6 w-6" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-500 cursor-pointer"
-                                                    onClick={() => setSelectedImageIndex(
-                                                        selectedImageIndex === images.length - 1 ? 0 : selectedImageIndex + 1
+                                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full p-1"
+                                                    onClick={() => setSelectedMediaIndex(
+                                                        selectedMediaIndex === mediaItems.length - 1 ? 0 : selectedMediaIndex + 1
                                                     )}
                                                 >
-                                                    <ChevronRight className="h-4 w-4 text-white" />
+                                                    <ChevronRight className="h-6 w-6" />
                                                 </Button>
                                             </>
                                         )}
                                         <div className="absolute top-4 right-4 flex gap-2">
-                                            {/* <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="bg-white/80 hover:bg-white"
-                                                onClick={handleToggleWishlist}
-                                            >
-                                                <Heart className={`h-4 w-4 ${isInWishlist ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
-                                            </Button> */}
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -261,6 +301,36 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Media Thumbnails */}
+                            {mediaItems.length > 1 && (
+                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                    {mediaItems.map((item, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => setSelectedMediaIndex(index)}
+                                            className={`relative flex-shrink-0 w-20 h-20 rounded border-2 overflow-hidden ${selectedMediaIndex === index ? 'border-emerald-500' : 'border-transparent'
+                                                }`}
+                                        >
+                                            {item.type === 'video' ? (
+                                                <div className="w-full h-full bg-gray-900 flex items-center justify-center text-white">
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                                        <div className="bg-white/20 rounded-full p-1">
+                                                            <div className="border-[6px] border-transparent border-l-white ml-1"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={item.path}
+                                                    alt={item.alt}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Product Details */}
@@ -276,27 +346,46 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
                                 <div className="flex items-center gap-4 text-sm text-gray-600">
                                     <div className="flex items-center">
-                                        {renderStars(product.rating || 0)}
-                                        <span className="ml-2">({product.total_reviews || 0} reviews)</span>
+                                        {renderStars(product?.rating || 0)}
+                                        <span className="ml-2">({product?.total_reviews || 0} reviews)</span>
                                     </div>
-                                    <span>SKU: {product.sku || 'N/A'}</span>
+                                    <span>SKU: {product?.sku || 'N/A'}</span>
                                 </div>
+                                {Array.isArray(product.tags) && product.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-3">
+                                        {product.tags.map((tag: string, index: number) => (
+                                            <Badge key={index} variant="secondary" className="text-[10px] px-2 py-0 h-5 font-normal">
+                                                #{tag}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="">
                                 <div className="text-sm text-gray-600 mb-1">Price</div>
                                 <div className="text-4xl font-extrabold text-emerald-600 mb-2">
                                     {formatCurrency(currentPrice)}
+                                    {product?.is_negotiable && (
+                                        <Badge variant="secondary" className="ml-3 text-sm font-normal">
+                                            Negotiable
+                                        </Badge>
+                                    )}
                                 </div>
-                                {product.min_order_quantity && (
+                                {product?.minimum_order_quantity && (
                                     <p className="text-sm text-gray-600">
-                                        Minimum order: {product.min_order_quantity} units
+                                        Minimum order: {product?.minimum_order_quantity} {product?.unit_of_measure}
+                                    </p>
+                                )}
+                                {product.maximum_order_quantity && (
+                                    <p className="text-sm text-gray-600">
+                                        Maximum order: {product?.maximum_order_quantity} {product?.unit_of_measure}
                                     </p>
                                 )}
                             </div>
 
                             {product.short_description && (
-                                <p className="text-gray-700">{product.short_description}</p>
+                                <p className="text-gray-700">{product?.short_description}</p>
                             )}
 
                             {/* Variants */}
@@ -311,7 +400,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                         >
                                             Standard
                                         </Button>
-                                        {product.variants.map((variant) => (
+                                        {product.variants.map((variant: ProductVariant) => (
                                             <Button
                                                 key={variant.id}
                                                 variant={selectedVariant === variant.id ? 'default' : 'outline'}
@@ -338,18 +427,18 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                            disabled={quantity <= 1}
+                                            onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))}
+                                            disabled={quantity <= minQuantity}
                                         >
                                             <Minus className="h-4 w-4" />
                                         </Button>
                                         <Input
                                             type="number"
                                             value={quantity}
-                                            onChange={(e) => setQuantity(Math.max(1, Math.min(maxQuantity, parseInt(e.target.value) || 1)))}
-                                            className="w-20 text-center border-0"
-                                            min="1"
-                                            max={maxQuantity}
+                                            onChange={(e) => setQuantity(Math.max(minQuantity, Math.min(maxQuantity || Infinity, parseInt(e.target.value) || minQuantity)))}
+                                            className="w-20 text-center border-0 h-8"
+                                            min={minQuantity}
+                                            max={maxQuantity || undefined}
                                         />
                                         <Button
                                             variant="ghost"
@@ -372,20 +461,17 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                     onClick={handleAddToCart}
                                     disabled={maxQuantity === 0 || isAddingToCart}
                                     className="w-full cursor-pointer"
-                                    size="lg"
-
-
                                 >
-                                {isAddingToCart && 'Adding...'}
-                                {!isAddingToCart && (
-                                    <>
-                                        <ShoppingCart className="h-5 w-5 mr-2" />
-                                        {auth.user ? 'Add to Cart' : 'Login to Buy'}
-                                    </>
-                                )}
+                                    {isAddingToCart && 'Adding...'}
+                                    {!isAddingToCart && (
+                                        <>
+                                            <ShoppingCart className="h-4 w-4 mr-2" />
+                                            {auth.user ? 'Add to Cart' : 'Login to Buy'}
+                                        </>
+                                    )}
                                 </Button>
-                                <Button variant="outline" size="lg" className="w-full">
-                                    <Link href={`/store/?vendor=${product.vendor?.id}`} className="w-full">
+                                <Button variant="outline" className="w-full">
+                                    <Link href={`/store/search/?vendor=${product.vendor?.id}`} className="w-full">
                                         View Store
                                     </Link>
                                 </Button>
@@ -423,29 +509,37 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                             </Card>
                         </div>
                     </div>
-
-                    {/* Product Tabs */}
                     <Tabs defaultValue="description" className="mb-8">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
                             <TabsTrigger value="description">Description</TabsTrigger>
                             <TabsTrigger value="specifications">Specifications</TabsTrigger>
-                            <TabsTrigger value="reviews">Reviews ({product.total_reviews || 0})</TabsTrigger>
+                            <TabsTrigger value="shipping">Shipping & Returns</TabsTrigger>
+                            <TabsTrigger value="reviews">Reviews ({product?.total_reviews || 0})</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="description" className="mt-6">
-                            <Card className='shadow-none'>
-                                <CardContent className="p-6">
+                            <Card className='shadow-none border-none py-0'>
+                                <CardContent className="p-0">
                                     {product.description ? (
-                                        <div className="prose max-w-none">
-                                            {product.description.split('\n').map((paragraph, index) => (
-                                                <p key={index} className="mb-4">
-                                                    {paragraph}
-                                                </p>
-                                            ))}
-                                        </div>
+                                        <div
+                                            className="prose prose-emerald max-w-none dark:prose-invert text-gray-700 ql-editor"
+                                            dangerouslySetInnerHTML={{ __html: product.description }}
+                                        />
                                     ) : (
                                         <p className="text-gray-500">No description available.</p>
                                     )}
+
+                                    {
+                                        product.additional_info && (
+                                            <div className="mt-6">
+                                                <h3 className="font-semibold mb-4 text-gray-900 border-b pb-2">Additional Information</h3>
+                                                <div
+                                                    className="prose prose-emerald max-w-none dark:prose-invert text-gray-700 ql-editor"
+                                                    dangerouslySetInnerHTML={{ __html: product.additional_info }}
+                                                />
+                                            </div>
+                                        )
+                                    }
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -466,16 +560,66 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                         <div>
                                             <span className="font-medium">Stock:</span> {product.stock_quantity} units
                                         </div>
-                                        {product.min_order_quantity && (
+                                        {product.minimum_order_quantity && (
                                             <div>
-                                                <span className="font-medium">Min Order:</span> {product.min_order_quantity} units
+                                                <span className="font-medium">Min Order:</span> {product.minimum_order_quantity} units
                                             </div>
                                         )}
-                                        {product.max_order_quantity && (
+                                        {product.maximum_order_quantity && (
                                             <div>
-                                                <span className="font-medium">Max Order:</span> {product.max_order_quantity} units
+                                                <span className="font-medium">Max Order:</span> {product.maximum_order_quantity} units
                                             </div>
                                         )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="shipping" className="mt-6">
+                            <Card className='shadow-none'>
+                                <CardContent className="p-6">
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                                                    <Truck className="h-4 w-4 mr-2 text-emerald-600" />
+                                                    Shipping Information
+                                                </h3>
+                                                <ul className="space-y-2 text-sm text-gray-600">
+                                                    <li className="flex justify-between">
+                                                        <span>Delivery Time:</span>
+                                                        <span className="font-medium text-gray-900">{product.delivery_time || 'Check at checkout'}</span>
+                                                    </li>
+                                                    <li className="flex justify-between">
+                                                        <span>Shipping Method:</span>
+                                                        <span className="font-medium text-gray-900 capitalize">{product.shipping_option === 'free' ? 'Free Shipping' : 'Calculated at checkout'}</span>
+                                                    </li>
+                                                    {product.extra_fee && Number(product.extra_fee) > 0 && (
+                                                        <li className="flex justify-between">
+                                                            <span>Handling Fee:</span>
+                                                            <span className="font-medium text-gray-900">{formatCurrency(Number(product.extra_fee))}</span>
+                                                        </li>
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-6 border-t mt-6">
+                                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                                                <Shield className="h-4 w-4 mr-2 text-emerald-600" />
+                                                Return Policy
+                                            </h3>
+                                            {product.return_policy ? (
+                                                <div
+                                                    className="text-sm text-gray-600 leading-relaxed prose max-w-none ql-editor p-0"
+                                                    dangerouslySetInnerHTML={{ __html: product.return_policy }}
+                                                />
+                                            ) : (
+                                                <p className="text-sm text-gray-600 leading-relaxed">
+                                                    Standard 7-day return policy applies to this product if it remains in its original condition and packaging.
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

@@ -25,11 +25,14 @@ import {
 } from 'lucide-react';
 import VendorLayout from '@/layouts/vendor-layout';
 import { toast } from 'sonner';
+import RichTextEditor from '@/components/ui/rich-text-editor';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface Category {
     id: number;
     name: string;
+    parent_id?: number | null;
+    children?: Category[];
     parent?: {
         id: number;
         name: string;
@@ -40,7 +43,9 @@ interface Vendor {
     id: number;
     business_name: string;
     verification_status: string;
-    status: string;
+    status: 'approved' | 'pending' | 'rejected' | 'suspended';
+    is_verified: boolean;
+    is_active: boolean;
     subscription?: {
         plan_name: string;
         is_active: boolean;
@@ -59,7 +64,7 @@ interface CreateProductProps {
             default_commission_rate: number;
             commission_type: 'percentage' | 'fixed';
         };
-        fees: {
+        platform_fees: {
             platform_fee_rate: number;
             transaction_fee_rate: number;
         };
@@ -76,16 +81,17 @@ interface CreateProductProps {
 }
 
 export default function CreateProduct({ categories, vendor, currentSubscription, subscriptionUsage, needsUpgrade, upgradeReason, marketplaceSettings }: CreateProductProps) {
-    console.log('Subscription Data:', { currentSubscription, subscriptionUsage, allowsCOD: subscriptionUsage?.allows_cod });
-    console.log(categories)
+
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         description: '',
         price: '',
-        category_id: '',
+        category_ids: [] as string[],
         sku: '',
         stock_quantity: '',
+        unit_of_measure: 'piece',
         minimum_order_quantity: '1',
+        maximum_order_quantity: '',
         weight: '',
         dimensions: '',
         status: 'draft',
@@ -97,11 +103,12 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
         extra_fee: '',
         delivery_time: '',
         return_policy: '',
-        additional_info: ''
-
+        additional_info: '',
+        video: null as File | null,
+        is_negotiable: false
     });
-
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [selectedParentId, setSelectedParentId] = useState<string>('');
     const [currentTag, setCurrentTag] = useState('');
     const [currentTab, setCurrentTab] = useState('basic');
 
@@ -118,7 +125,10 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
     const isFirstTab = currentTabIndex === 0;
     const isLastTab = currentTabIndex === tabs.length - 1;
 
-    const goToNextTab = () => {
+    const goToNextTab = (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+        }
         if (!isLastTab) {
             setCurrentTab(tabs[currentTabIndex + 1].value);
         }
@@ -153,8 +163,8 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
             ? (price * marketplaceSettings.commission.default_commission_rate) / 100
             : marketplaceSettings.commission.default_commission_rate;
 
-        const platformFee = (price * marketplaceSettings.fees.platform_fee_rate) / 100;
-        const transactionFee = (price * marketplaceSettings.fees.transaction_fee_rate) / 100;
+        const platformFee = (price * (marketplaceSettings.platform_fees?.platform_fee_rate || 0)) / 100;
+        const transactionFee = (price * (marketplaceSettings.platform_fees?.transaction_fee_rate || 0)) / 100;
 
         const totalFees = commission + platformFee + transactionFee;
         const earnings = price - totalFees;
@@ -192,6 +202,17 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
             return;
         }
 
+        // Validate Minimum/Maximum Order Quantity
+        if (parseInt(data.minimum_order_quantity) < 1) {
+            toast.error('Minimum order quantity must be at least 1.');
+            return;
+        }
+
+        if (data.maximum_order_quantity && parseInt(data.maximum_order_quantity) < parseInt(data.minimum_order_quantity)) {
+            toast.error('Maximum order quantity cannot be less than minimum order quantity.');
+            return;
+        }
+
         post('/marketplace/vendor/products/store', {
             onSuccess: () => {
                 reset();
@@ -199,7 +220,7 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                 toast.success('Product created successfully!');
             },
             onError: (errors: Record<string, string>) => {
-                console.log(errors);
+
                 toast.error('Please fix the errors in the form and try again.');
             }
         });
@@ -209,20 +230,38 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
         if (!files) return;
 
         const newFiles = Array.from(files);
+        const validFiles: File[] = [];
         const newPreviews: string[] = [];
 
         newFiles.forEach((file) => {
+            if (file.size > 2 * 1024 * 1024) { // 2MB limit
+                toast.error(`Image ${file.name} exceeds 2MB limit.`);
+                return;
+            }
+
+            validFiles.push(file);
             const reader = new FileReader();
             reader.onload = (e) => {
                 newPreviews.push(e.target?.result as string);
-                if (newPreviews.length === newFiles.length) {
+                if (newPreviews.length === validFiles.length) {
                     setImagePreviews(prev => [...prev, ...newPreviews]);
                 }
             };
             reader.readAsDataURL(file);
         });
 
-        setData('images', [...data.images, ...newFiles]);
+        setData('images', [...data.images, ...validFiles]);
+    };
+
+    const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 9 * 1024 * 1024) { // 5MB limit
+                toast.error('Video size exceeds 5MB limit.');
+                return;
+            }
+            setData('video', file);
+        }
     };
 
     const removeImage = (index: number) => {
@@ -328,23 +367,14 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                 <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-6">
 
                     {subscriptionUsage && subscriptionUsage.products_limit !== undefined && (
-                        <Alert className="mb-6" variant={subscriptionUsage.can_create_more ? "default" : "destructive"}>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription className="ml-2">
-                                {subscriptionUsage.can_create_more ? (
-                                    <div className="space-y-1">
-                                        <p>
-                                            You are using <strong>{subscriptionUsage.products_used}</strong> of{' '}
-                                            <strong>{subscriptionUsage.products_limit}</strong> products allowed in your{' '}
-                                            <strong>{subscriptionUsage.plan_name}</strong> plan.
-                                        </p>
-                                        {subscriptionUsage.products_used >= subscriptionUsage.products_limit * 0.8 && (
-                                            <p className="text-orange-600 font-medium">
-                                                ⚠️ You're approaching your limit!
-                                            </p>
-                                        )}
-                                    </div>
-                                ) : (
+
+                        subscriptionUsage.can_create_more ? (
+                            < >
+                            </>
+                        ) : (
+                            <Alert className="mb-6" variant={subscriptionUsage.can_create_more ? "default" : "destructive"}>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription className="ml-2">
                                     <p>
                                         You've reached your product limit (<strong>{subscriptionUsage.products_limit}</strong> products).{' '}
                                         <Link
@@ -355,9 +385,11 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                         </Link>{' '}
                                         to add more products.
                                     </p>
-                                )}
-                            </AlertDescription>
-                        </Alert>
+
+                                </AlertDescription>
+                            </Alert>
+                        )
+
                     )}
 
                     <form onSubmit={handleSubmit}>
@@ -396,14 +428,12 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                         </div>
 
                                         <div>
-                                            <Label htmlFor="description">Product Description *</Label>
-                                            <Textarea
-                                                id="description"
+                                            <Label htmlFor="description" className="mb-2 block">Product Description *</Label>
+                                            <RichTextEditor
                                                 value={data.description}
-                                                onChange={(e) => setData('description', e.target.value)}
-                                                className={errors.description ? 'border-red-500' : ''}
-                                                rows={6}
+                                                onChange={(content) => setData('description', content)}
                                                 placeholder="Describe your product in detail..."
+                                                error={!!errors.description}
                                             />
                                             {errors.description && (
                                                 <p className="text-sm text-red-500 mt-1">{errors.description}</p>
@@ -412,47 +442,59 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <Label htmlFor="category_id">Category *</Label>
+                                                <Label htmlFor="parent_category">Parent Category *</Label>
                                                 <Select
-                                                    value={data.category_id}
-                                                    onValueChange={(value) => setData('category_id', value)}
+                                                    value={selectedParentId}
+                                                    onValueChange={(value) => {
+                                                        setSelectedParentId(value);
+                                                        setData('category_ids', []); // Reset child selection
+                                                    }}
                                                 >
-                                                    <SelectTrigger className={errors.category_id ? 'border-red-500' : ''}>
-                                                        <SelectValue placeholder="Select a category" />
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a parent category" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {categories.map((category) => (
                                                             <SelectItem key={category.id} value={category.id.toString()}>
-                                                                {category.parent ? `${category.parent.name} > ` : ''}
                                                                 {category.name}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                {errors.category_id && (
-                                                    <p className="text-sm text-red-500 mt-1">{errors.category_id}</p>
-                                                )}
                                             </div>
 
-                                            <div>
-                                                <Label htmlFor="status">Status</Label>
-                                                <Select
-                                                    value={data.status}
-                                                    onValueChange={(value) => setData('status', value)}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="draft">Draft</SelectItem>
-                                                        <SelectItem value="pending">Pending Review</SelectItem>
-                                                        <SelectItem value="active">Active</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
+                                            {selectedParentId && (
+                                                <div>
+                                                    <Label className="mb-2 block">Sub Categories * (Select multiple)</Label>
+                                                    <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                                                        {categories
+                                                            .find(c => c.id.toString() === selectedParentId)
+                                                            ?.children?.map((child) => (
+                                                                <div key={child.id} className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`category-${child.id}`}
+                                                                        checked={data.category_ids.includes(child.id.toString())}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const id = child.id.toString();
+                                                                            if (checked) {
+                                                                                setData('category_ids', [...data.category_ids, id]);
+                                                                            } else {
+                                                                                setData('category_ids', data.category_ids.filter(cid => cid !== id));
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <Label htmlFor={`category-${child.id}`} className="font-normal cursor-pointer text-sm">
+                                                                        {child.name}
+                                                                    </Label>
+                                                                </div>
+                                                            ))}
+                                                    </div>
+                                                    {errors.category_ids && (
+                                                        <p className="text-sm text-red-500 mt-1">{errors.category_ids}</p>
+                                                    )}
+                                                </div>
+                                            )}
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <Label htmlFor="price">Price ({marketplaceSettings?.general?.currency || 'RWF'}) *</Label>
                                                 <Input
@@ -468,24 +510,28 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                 {errors.price && (
                                                     <p className="text-sm text-red-500 mt-1">{errors.price}</p>
                                                 )}
-
-                                                {/* Earnings Calculator */}
-                                                {data.price && marketplaceSettings && parseFloat(data.price) > 0 && (
-                                                    <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                                                        <h4 className="font-medium text-emerald-900 text-sm mb-2">Your Earnings Breakdown</h4>
-                                                        {calculateVendorEarnings(parseFloat(data.price)).breakdown.map((item, index) => (
-                                                            <div key={index} className={`flex justify-between text-xs ${item.isTotal ? 'font-bold border-t pt-1 mt-1' : ''}`}>
-                                                                <span className={item.type === 'negative' ? 'text-red-700' : 'text-emerald-700'}>
-                                                                    {item.label}:
-                                                                </span>
-                                                                <span className={item.type === 'negative' ? 'text-red-700' : 'text-emerald-700'}>
-                                                                    {item.amount >= 0 ? formatCurrency(item.amount) : `-${formatCurrency(Math.abs(item.amount))}`}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
                                             </div>
+
+                                            {data.payment_methods.includes('cod') && (
+                                                <div className="flex items-start space-x-2 mt-2">
+                                                    <Checkbox
+                                                        id="is_negotiable"
+                                                        checked={data.is_negotiable}
+                                                        onCheckedChange={(checked) => setData('is_negotiable', checked as boolean)}
+                                                    />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <Label
+                                                            htmlFor="is_negotiable"
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                        >
+                                                            Negotiable Price
+                                                        </Label>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Negotiable depending on size, amount, etc.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div>
                                                 <Label htmlFor="sku">SKU (Stock Keeping Unit) *</Label>
@@ -543,6 +589,32 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                             </div>
 
                                             <div>
+                                                <Label htmlFor="unit_of_measure">Unit of Measure *</Label>
+                                                <Select
+                                                    value={data.unit_of_measure}
+                                                    onValueChange={(value) => setData('unit_of_measure', value)}
+                                                >
+                                                    <SelectTrigger className={errors.unit_of_measure ? 'border-red-500' : ''}>
+                                                        <SelectValue placeholder="Select unit" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="kg">Kilogram (kg)</SelectItem>
+                                                        <SelectItem value="g">Gram (g)</SelectItem>
+                                                        <SelectItem value="liter">Liter (L)</SelectItem>
+                                                        <SelectItem value="ml">Milliliter (ml)</SelectItem>
+                                                        <SelectItem value="piece">Piece</SelectItem>
+                                                        <SelectItem value="box">Box</SelectItem>
+                                                        <SelectItem value="bag">Bag</SelectItem>
+                                                        <SelectItem value="dozen">Dozen</SelectItem>
+                                                        <SelectItem value="pack">Pack</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                {errors.unit_of_measure && (
+                                                    <p className="text-sm text-red-500 mt-1">{errors.unit_of_measure}</p>
+                                                )}
+                                            </div>
+
+                                            <div>
                                                 <Label htmlFor="minimum_order_quantity">Minimum Order Quantity</Label>
                                                 <Input
                                                     type="number"
@@ -553,6 +625,22 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                     placeholder="1"
                                                     min="1"
                                                 />
+                                            </div>
+
+                                            <div>
+                                                <Label htmlFor="maximum_order_quantity">Maximum Order Quantity</Label>
+                                                <Input
+                                                    type="number"
+                                                    id="maximum_order_quantity"
+                                                    value={data.maximum_order_quantity}
+                                                    onChange={(e) => setData('maximum_order_quantity', e.target.value)}
+                                                    className={errors.maximum_order_quantity ? 'border-red-500' : ''}
+                                                    placeholder="Optional"
+                                                    min={data.minimum_order_quantity || "1"}
+                                                />
+                                                {errors.maximum_order_quantity && (
+                                                    <p className="text-sm text-red-500 mt-1">{errors.maximum_order_quantity}</p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -582,6 +670,14 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                         </div>
 
                                         <div className="space-y-4">
+                                            <div>
+                                                <Label htmlFor="additional-info" className="mb-2 block">Additional Information</Label>
+                                                <RichTextEditor
+                                                    value={data.additional_info}
+                                                    onChange={(content) => setData('additional_info', content)}
+                                                    placeholder="Any additional information about the product"
+                                                />
+                                            </div>
                                             <p className="text-sm text-gray-600">
                                                 Additional product options will be available after creation.
                                             </p>
@@ -590,18 +686,18 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                 </Card>
                             </TabsContent>
 
-                            {/* Product Images */}
                             <TabsContent value="images">
                                 <Card>
                                     <CardHeader className="p-4 sm:p-6">
                                         <CardTitle className="flex items-center text-base sm:text-lg">
                                             <Camera className="h-5 w-5 mr-2" />
-                                            Product Images
+                                            Product Media
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-4 p-4 sm:p-6">
+                                    <CardContent className="space-y-6 p-4 sm:p-6">
+                                        {/* Images Section */}
                                         <div>
-                                            <Label>Upload Images</Label>
+                                            <Label className="text-base font-medium">Product Images</Label>
                                             <div className="mt-2 space-y-4">
                                                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                                                     <Upload className="h-12 w-12 text-gray-400 mx-auto mb-2" />
@@ -653,12 +749,59 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* Video Section */}
+                                        <div className="pt-6 border-t">
+                                            <Label className="text-base font-medium">Product Video (Optional)</Label>
+                                            <div className="mt-2">
+                                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                                                    {data.video ? (
+                                                        <div className="relative inline-block">
+                                                            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded border">
+                                                                <Package className="h-6 w-6 text-blue-500" />
+                                                                <span className="text-sm font-medium">{data.video.name}</span>
+                                                                <span className="text-xs text-gray-500">({(data.video.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setData('video', null)}
+                                                                    className="ml-2 text-red-500 hover:text-red-700"
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                                                            <p className="text-gray-600 mb-2">Upload a product video</p>
+                                                            <input
+                                                                type="file"
+                                                                accept="video/*"
+                                                                onChange={handleVideoUpload}
+                                                                className="hidden"
+                                                                id="video-upload"
+                                                            />
+                                                            <Label
+                                                                htmlFor="video-upload"
+                                                                className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                            >
+                                                                <Plus className="h-4 w-4 mr-2" />
+                                                                Select Video
+                                                            </Label>
+                                                            <p className="text-xs text-gray-500 mt-2">
+                                                                Max size: 5MB. Formats: MP4, MOV, OGG
+                                                            </p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </TabsContent>
 
                             {/* SEO & Tags */}
-                            <TabsContent value="seo">
+                            < TabsContent value="seo" >
                                 <Card>
                                     <CardHeader className="p-4 sm:p-6">
                                         <CardTitle className="flex items-center text-base sm:text-lg">
@@ -740,31 +883,31 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                     </CardHeader>
 
                                     <CardContent className="space-y-4 p-4 sm:p-6">
-                        {/* Subscription Requirement Alert */}
-                        {(!currentSubscription || !currentSubscription.is_active) && (
-                            <Alert className="mb-4 bg-amber-50 border-amber-200">
-                                <Crown className="h-4 w-4 text-amber-600" />
-                                <AlertDescription className="text-amber-900">
-                                    <p className="font-medium mb-2">No Active Subscription</p>
-                                    <p className="text-sm mb-3">
-                                        You need an active subscription to enable payment methods for your products.
-                                    </p>
-                                    <Link href="/marketplace/subscriptions">
-                                        <Button size="sm" variant="outline" className="border-amber-600 text-amber-700 hover:bg-amber-100">
-                                            <Crown className="h-3 w-3 mr-2" />
-                                            View Subscription Plans
-                                        </Button>
-                                    </Link>
-                                </AlertDescription>
-                            </Alert>
-                        )}
+                                        {/* Subscription Requirement Alert */}
+                                        {(!currentSubscription || !currentSubscription.is_active) && (
+                                            <Alert className="mb-4 bg-amber-50 border-amber-200">
+                                                <Crown className="h-4 w-4 text-amber-600" />
+                                                <AlertDescription className="text-amber-900">
+                                                    <p className="font-medium mb-2">No Active Subscription</p>
+                                                    <p className="text-sm mb-3">
+                                                        You need an active subscription to enable payment methods for your products.
+                                                    </p>
+                                                    <Link href="/marketplace/subscriptions">
+                                                        <Button size="sm" variant="outline" className="border-amber-600 text-amber-700 hover:bg-amber-100">
+                                                            <Crown className="h-3 w-3 mr-2" />
+                                                            View Subscription Plans
+                                                        </Button>
+                                                    </Link>
+                                                </AlertDescription>
+                                            </Alert>
+                                        )}
 
-                        <Alert className="mb-4">
-                            <Info className="h-4 w-4 mr-2" />
-                            <AlertDescription>
-                                Select how customers can pay for your product.
-                            </AlertDescription>
-                        </Alert>                                        <div>
+                                        <Alert className="mb-4">
+                                            <Info className="h-4 w-4 mr-2" />
+                                            <AlertDescription>
+                                                Select how customers can pay for your product.
+                                            </AlertDescription>
+                                        </Alert>                                        <div>
                                             <Label>Supported Payment Methods</Label>
 
                                             <div className="mt-2 space-y-3">
@@ -824,12 +967,16 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                                         Cash on Delivery (COD)
                                                         {!currentSubscription?.is_active && (
                                                             <span className="text-xs text-red-500 ml-2">
-                                                                (Requires active subscription)
+                                                                <a href='/marketplace/subscriptions' target="_blank">
+                                                                    (Upgrade to premium plan)
+                                                                </a>
                                                             </span>
                                                         )}
                                                         {currentSubscription?.is_active && !subscriptionUsage?.allows_cod && (
                                                             <span className="text-xs text-orange-500 ml-2">
-                                                                (Upgrade to premium plan)
+                                                                <a href='/marketplace/subscriptions' target="_blank">
+                                                                    (Upgrade to premium plan)
+                                                                </a>
                                                             </span>
                                                         )}
                                                     </Label>
@@ -852,12 +999,12 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                     </CardHeader>
 
                                     <CardContent className="space-y-4 p-4 sm:p-6">
-                        <Alert className="mb-4">
-                            <Info className="h-4 w-4 mr-2" />
-                            <AlertDescription>
-                                Configure your shipping options for this product.
-                            </AlertDescription>
-                        </Alert>                                        {/* Shipping Methods */}
+                                        <Alert className="mb-4">
+                                            <Info className="h-4 w-4 mr-2" />
+                                            <AlertDescription>
+                                                Configure your shipping options for this product.
+                                            </AlertDescription>
+                                        </Alert>                                        {/* Shipping Methods */}
                                         <div>
                                             <Label>Shipping Methods</Label>
 
@@ -904,12 +1051,11 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
 
                                             {/* Return Policy */}
                                             <div className="mt-4 space-y-2">
-                                                <Label htmlFor="return-policy">Return Policy</Label>
-                                                <Textarea
-                                                    id="return-policy"
-                                                    placeholder="e.g. Returns accepted within 7 days of delivery"
+                                                <Label htmlFor="return-policy" className="mb-2 block">Return Policy</Label>
+                                                <RichTextEditor
                                                     value={data.return_policy}
-                                                    onChange={(e) => setData("return_policy", e.target.value)}
+                                                    onChange={(content) => setData("return_policy", content)}
+                                                    placeholder="e.g. Returns accepted within 7 days of delivery"
                                                 />
                                             </div>
                                         </div>
@@ -962,7 +1108,7 @@ export default function CreateProduct({ categories, vendor, currentSubscription,
                                     </Button>
                                 )}
                             </div>
-                        </div>
+                        </div >
                     </form>
                 </div>
             </div>

@@ -51,6 +51,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         { name: 'Feed Templates', href: '/admin/feed-templates', icon: Database },
         { name: 'Smart Scheduling', href: '/admin/smart-scheduling', icon: Shield },
         { name: 'Users', href: '/admin/users', icon: Users },
+        { name: 'Modules', href: '/admin/modules', icon: Users },
     ];
 
     const subscriptionSubNavigation = [

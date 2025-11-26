@@ -66,7 +66,7 @@ class MarketplaceSetting extends Model
      */
     protected function castValue($value)
     {
-        if ($value === null) {
+        if ($value== null) {
             return null;
         }
 

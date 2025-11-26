@@ -25,7 +25,7 @@ class ScheduleController extends Controller
             ->orderBy('scheduled_date', 'asc');
 
         // Filter by status
-        if ($request->has('status') && $request->status !== 'all') {
+        if ($request->has('status') && $request->status != 'all') {
             $query->where('status', $request->status);
         }
 
@@ -43,7 +43,7 @@ class ScheduleController extends Controller
         }
 
         // Filter by event type
-        if ($request->has('event_type') && $request->event_type !== 'all') {
+        if ($request->has('event_type') && $request->event_type != 'all') {
             $query->where('event_type', $request->event_type);
         }
 
@@ -261,7 +261,7 @@ class ScheduleController extends Controller
     public function destroy(BatchSchedule $schedule)
     {
         // Only allow deletion if not started
-        if ($schedule->status->isActive() && $schedule->status !== ScheduleStatus::PENDING) {
+        if ($schedule->status->isActive() && $schedule->status != ScheduleStatus::PENDING) {
             return back()->withErrors(['delete' => 'Cannot delete a schedule that is in progress or completed.']);
         }
 
@@ -277,7 +277,7 @@ class ScheduleController extends Controller
      */
     public function start(BatchSchedule $schedule)
     {
-        if ($schedule->status !== ScheduleStatus::PENDING) {
+        if ($schedule->status != ScheduleStatus::PENDING) {
             return back()->withErrors(['status' => 'Can only start pending schedules.']);
         }
 
@@ -321,7 +321,7 @@ class ScheduleController extends Controller
             'reason' => 'required|string|max:255',
         ]);
 
-        if ($schedule->status !== ScheduleStatus::PENDING) {
+        if ($schedule->status != ScheduleStatus::PENDING) {
             return back()->withErrors(['status' => 'Can only postpone pending schedules.']);
         }
 
@@ -427,7 +427,7 @@ class ScheduleController extends Controller
         try {
             $user = \App\Models\User::findOrFail($validated['user_id']);
 
-            if ($validated['reminder_type'] === 'before_due') {
+            if ($validated['reminder_type']== 'before_due') {
                 $reminder = ScheduleReminder::createForSchedule(
                     $schedule,
                     $user,
@@ -470,7 +470,7 @@ class ScheduleController extends Controller
             ->where('schedule_id', $schedule->id)
             ->firstOrFail();
 
-        if ($reminder->status !== 'pending') {
+        if ($reminder->status != 'pending') {
             return response()->json([
                 'message' => 'Only pending reminders can be updated',
             ], 422);
@@ -498,7 +498,7 @@ class ScheduleController extends Controller
             ->where('schedule_id', $schedule->id)
             ->firstOrFail();
 
-        if ($reminder->status === 'sent') {
+        if ($reminder->status== 'sent') {
             return response()->json([
                 'message' => 'Cannot delete sent reminders',
             ], 422);
@@ -520,7 +520,7 @@ class ScheduleController extends Controller
             ->where('schedule_id', $schedule->id)
             ->firstOrFail();
 
-        if ($reminder->status === 'sent') {
+        if ($reminder->status== 'sent') {
             return response()->json([
                 'message' => 'Cannot cancel sent reminders',
             ], 422);

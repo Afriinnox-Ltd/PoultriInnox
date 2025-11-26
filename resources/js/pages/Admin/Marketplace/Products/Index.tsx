@@ -161,14 +161,14 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
     const handleToggleStatus = (product: Product) => {
         const newStatus = product.status === 'active' ? 'inactive' : 'active';
         if (confirm(`Are you sure you want to ${newStatus === 'active' ? 'activate' : 'deactivate'} "${product.name}"?`)) {
-            router.post(`/admin/marketplace/products/${product.id}/toggle-status`, {
+            router.patch(`/admin/marketplace/products/${product.id}/toggle-status`, {
                 status: newStatus
             });
         }
     };
 
     const handleToggleFeatured = (product: Product) => {
-        router.post(`/admin/marketplace/products/${product.id}/toggle-featured`);
+        router.patch(`/admin/marketplace/products/${product.id}/toggle-featured`);
     };
 
     const viewDetails = (product: Product) => {

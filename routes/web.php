@@ -1,20 +1,21 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\BatchIncubatorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ModuleController;
-use App\Http\Controllers\BatchIncubatorController;
+use App\Http\Controllers\Modules\BatchIncubator\Controllers\ScheduleReminderController;
+use App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController;
 use App\Modules\BatchIncubator\Controllers\BatchController;
 use App\Modules\BatchIncubator\Controllers\IncubatorController;
-use App\Modules\BatchIncubator\Controllers\ScheduleController;
 use App\Modules\BatchIncubator\Controllers\ReportsController;
+use App\Modules\BatchIncubator\Controllers\ScheduleController;
 use App\Modules\BatchIncubator\Controllers\SmartSchedulingController;
-use App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController;
-use App\Http\Controllers\Modules\BatchIncubator\Controllers\ScheduleReminderController;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('website/welcome');
+    // return Inertia::render('website/welcome');
+    return redirect()->route('store.index');
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -139,13 +140,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
     // Feed Management Module Routes
-    require __DIR__ . '/feed-management.php';
+    require __DIR__.'/feed-management.php';
 
 });
 
-    // Marketplace Module Routes
-    require __DIR__ . '/marketplace.php';
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
-require __DIR__ . '/admin.php';
-require __DIR__ . '/payment.php';
+// Marketplace Module Routes
+require __DIR__.'/marketplace.php';
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';
+require __DIR__.'/admin.php';
+require __DIR__.'/payment.php';

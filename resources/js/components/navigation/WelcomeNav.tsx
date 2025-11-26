@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react'
-import { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -9,14 +9,67 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { SharedData } from '@/types'
 import MegaMenu from './MegaMenu'
-import { ChevronDown, Menu, X, ShoppingCart, MoveDown } from 'lucide-react'
+import { ChevronDown, Menu, X, ShoppingCart, MoveDown, Search, Package } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { formatCurrency } from '@/utils/formatters'
 
-function WelcomeNav({ auth }: any) {
+function WelcomeNav({ auth, categories = [], products = [] }: any) {
     const [isMegaMenuVisible, setIsMegaMenuVisible] = useState(false);
     const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    console.log(auth);
-    const { cartCount } = usePage<SharedData>().props;
+    const { cartCount, categories: sharedCategories } = usePage<SharedData>().props;
+
+    // Search state
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+    const [searchSuggestions, setSearchSuggestions] = useState<any[]>([]);
+    const searchRef = useRef<HTMLDivElement>(null);
+
+    // Safe array handling
+    const safeCategories = (Array.isArray(categories) && categories.length > 0) ? categories : (Array.isArray(sharedCategories) ? sharedCategories : []);
+    const safeProducts = Array.isArray(products) ? products : [];
+
+    // Handle search input changes and show suggestions
+    const handleSearchInput = (value: string) => {
+        setSearchTerm(value);
+
+        if (value.trim().length > 0) {
+            // Filter products based on search term
+            const filtered = safeProducts.filter((product: any) =>
+                product.name.toLowerCase().includes(value.toLowerCase()) ||
+                product.description?.toLowerCase().includes(value.toLowerCase())
+            ).slice(0, 8); // Limit to 8 suggestions
+
+            setSearchSuggestions(filtered);
+            setShowSearchDropdown(true);
+        } else {
+            setSearchSuggestions([]);
+            setShowSearchDropdown(false);
+        }
+    };
+
+    const handleSearch = () => {
+        const params = new URLSearchParams();
+        if (searchTerm) params.set('search', searchTerm);
+        if (selectedCategory) params.set('category', selectedCategory);
+
+        window.location.href = `/store/search?${params.toString()}`;
+        setShowSearchDropdown(false);
+    };
+
+    // Handle clicking outside search dropdown
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setShowSearchDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Get current URL for redirect after login
     const currentUrl = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '';
@@ -126,6 +179,106 @@ function WelcomeNav({ auth }: any) {
                     </div>
                 </div>
 
+                {/* Search Bar - Reusable Section */}
+                <div className="py-4 border-t border-emerald-50 bg-white">
+                    <div className="max-w-4xl mx-auto" ref={searchRef}>
+                        <div className="relative">
+                            <div className="flex items-center ">
+                                <select
+                                    className="hidden md:block px-4 h-10 border border-r-0 border-gray-300 rounded-l-md bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                >
+                                    <option value="">All Categories</option>
+                                    {safeCategories.map((category: any) => (
+                                        <option key={category.id} value={category.id}>
+                                            {category.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="flex-1 relative">
+                                    <Input
+                                        placeholder="Search for anything..."
+                                        value={searchTerm}
+                                        onChange={(e) => handleSearchInput(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                        className="w-full px-4 rounded-md md:rounded-l-none h-10 border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+
+                                    {/* Autocomplete Dropdown */}
+                                    {showSearchDropdown && searchSuggestions.length > 0 && (
+                                        <div className="absolute w-full top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-[60]">
+                                            <div className="max-h-96 w-full overflow-y-auto">
+                                                {searchSuggestions.map((product: any) => (
+                                                    <Link
+                                                        key={product.id}
+                                                        href={`/store/products/${product.slug}`}
+                                                        className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                                        onClick={() => setShowSearchDropdown(false)}
+                                                    >
+                                                        <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                                                            {product.images && product.images.length > 0 ? (
+                                                                <img
+                                                                    src={product.images[0].image_url}
+                                                                    alt={product.name}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center">
+                                                                    <Package className="h-6 w-6 text-gray-300" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-col sm:flex-row sm:justify-between w-full min-w-0 gap-1">
+                                                            <div className="flex-1 min-w-0 pr-2">
+                                                                <div className="font-medium text-sm text-gray-900 truncate">
+                                                                    {product.name}
+                                                                </div>
+                                                                {product.category && (
+                                                                    <div className="text-xs text-gray-500 truncate">
+                                                                        in {product.category.name}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-shrink-0">
+                                                                <div className="font-bold text-sm text-emerald-600">
+                                                                    {formatCurrency(product.price)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <Button
+                                    onClick={handleSearch}
+                                    className="ml-3"
+                                >
+                                    Search
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Category Navigation */}
+                    <div className="mt-4 lg:flex hidden items-center justify-center gap-6 text-sm  px-4">
+                        <Link href="/store" className="text-gray-700 hover:text-emerald-600 whitespace-nowrap font-medium">
+                            Shop by Category
+                        </Link>
+                        {safeCategories.slice(0, 6).map((category: any) => (
+                            <Link
+                                key={category.id}
+                                href={`/store/search?category=${category.id}`}
+                                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap"
+                            >
+                                {category.name}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+
                 {/* Mobile Menu */}
                 <div className={`md:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
                     <div className="px-2 pt-2 pb-3 space-y-1 bg-white border-t border-gray-200">
@@ -138,7 +291,7 @@ function WelcomeNav({ auth }: any) {
                         </Link>
 
                         <a
-                            href="#"
+                            href="/store"
                             className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
@@ -146,32 +299,32 @@ function WelcomeNav({ auth }: any) {
                         </a>
 
                         {/* Mobile Features Menu */}
-                        <div className="px-3 py-2">
+                        {/* <div className="px-3 py-2">
                             <div className="text-sm font-semibold text-gray-900 mb-2">Features</div>
                             <div className="pl-4 space-y-1">
                                 <Link
-                                    href="/dashboard"
+                                    href="#"
                                     className="block py-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     My Finance
                                 </Link>
                                 <Link
-                                    href="/dashboard/batch-incubator"
+                                    href="#"
                                     className="block py-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     Remote Brooding
                                 </Link>
                                 <Link
-                                    href="/dashboard"
+                                    href="#"
                                     className="block py-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     Feed Management
                                 </Link>
                             </div>
-                        </div>
+                        </div> */}
 
                         {auth?.user ? (
                             <>

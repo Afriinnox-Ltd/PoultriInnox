@@ -21,11 +21,11 @@ trait HasBasicUserAccess
         }
 
         // Check if user is the owner/manager
-        if (isset($this->owner_id) && $this->owner_id === $user->id) {
+        if (isset($this->owner_id) && $this->owner_id== $user->id) {
             return true;
         }
 
-        if (isset($this->manager_id) && $this->manager_id === $user->id) {
+        if (isset($this->manager_id) && $this->manager_id== $user->id) {
             return true;
         }
 
@@ -78,7 +78,7 @@ trait HasBasicUserAccess
     public function revokeAccess(User $user): void
     {
         $authorizedUsers = $this->authorized_users ?? [];
-        $authorizedUsers = array_filter($authorizedUsers, fn($id) => $id !== $user->id);
+        $authorizedUsers = array_filter($authorizedUsers, fn($id) => $id != $user->id);
 
         $this->update(['authorized_users' => array_values($authorizedUsers)]);
     }

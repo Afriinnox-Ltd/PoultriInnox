@@ -167,7 +167,7 @@ class Incubator extends Model
      */
     public function getUtilizationPercentage(): float
     {
-        if ($this->capacity === 0) {
+        if ($this->capacity== 0) {
             return 0;
         }
 

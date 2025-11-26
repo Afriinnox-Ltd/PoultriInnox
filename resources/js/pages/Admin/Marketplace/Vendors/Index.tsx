@@ -21,15 +21,18 @@ import {
     MoreHorizontal,
     Download,
     FileText,
-    ExternalLink
+    ExternalLink,
+    Mail
 } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -81,7 +84,7 @@ interface Vendor {
     years_in_business?: number;
     specializations?: string[] | string;
     slug?: string;
-    status: 'pending' | 'approved' | 'rejected' | 'suspended';
+    status: 'pending' | 'approved' | 'rejected' | 'suspended' | 'changes_requested';
     is_verified: boolean;
     is_active: boolean;
     rating?: number | null;
@@ -144,7 +147,19 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [verificationFilter, setVerificationFilter] = useState(filters.verification || 'all');
-    const [previewDocument, setPreviewDocument] = useState<{url: string, name: string} | null>(null);
+    const [previewDocument, setPreviewDocument] = useState<{ url: string, name: string } | null>(null);
+    const [showMessageDialog, setShowMessageDialog] = useState(false);
+    const [messageSubject, setMessageSubject] = useState('');
+    const [messageBody, setMessageBody] = useState('');
+    const [messageSending, setMessageSending] = useState(false);
+
+    // Request Changes State
+    const [showRequestChangesDialog, setShowRequestChangesDialog] = useState(false);
+    const [requestChangesSubject, setRequestChangesSubject] = useState('Changes Requested for Vendor Application');
+    const [requestChangesMessage, setRequestChangesMessage] = useState('');
+    const [requestChangesSending, setRequestChangesSending] = useState(false);
+
+
 
     const handleSearch = () => {
         router.get('/admin/marketplace/vendors', {
@@ -164,12 +179,10 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                 {},
                 {
                     onSuccess: () => {
-                        console.log('Vendor approved successfully');
                         toast.success('Vendor approved successfully');
                     },
                     onError: (error) => {
                         toast.error('Failed to approve vendor');
-                        console.error('Error approving vendor:', error);
                     }
                 }
             );
@@ -184,12 +197,10 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
             },
                 {
                     onSuccess: () => {
-                        console.log('Vendor rejected successfully');
                         toast.success('Vendor rejected successfully');
                     },
                     onError: (error) => {
                         toast.error('Failed to reject vendor');
-                        console.error('Error rejecting vendor:', error);
                     }
                 });
         }
@@ -213,12 +224,11 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                 },
                     {
                         onSuccess: () => {
-                            console.log('Vendor suspended successfully');
+
                             toast.success('Vendor suspended successfully. Email notification sent.');
                         },
                         onError: (error) => {
                             toast.error('Failed to suspend vendor');
-                            console.error('Error suspending vendor:', error);
                         }
                     });
             }
@@ -230,12 +240,11 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
             router.post(`/admin/marketplace/vendors/${vendor.id}/reactivate`, {},
                 {
                     onSuccess: () => {
-                        console.log('Vendor reactivated successfully');
+
                         toast.success('Vendor reactivated successfully');
                     },
                     onError: (error) => {
                         toast.error('Failed  to reactivate vendor');
-                        console.error('Error reactivating vendor:', error);
                     }
                 });
         }
@@ -254,7 +263,6 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                     },
                     onError: (error) => {
                         toast.error(`Failed to ${message} vendor`);
-                        console.error(`Error ${message}ing vendor:`, error);
                     }
                 });
         }
@@ -264,6 +272,68 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
         setSelectedVendor(vendor);
         setShowDetailsDialog(true);
     };
+
+    const handleMessage = (vendor: Vendor) => {
+        setSelectedVendor(vendor);
+        setMessageSubject('');
+        setMessageBody('');
+        setShowMessageDialog(true);
+    };
+
+    const submitMessage = () => {
+        if (!selectedVendor || !messageSubject || !messageBody) return;
+
+        setMessageSending(true);
+        router.post(`/admin/marketplace/vendors/${selectedVendor.id}/message`, {
+            subject: messageSubject,
+            message: messageBody
+        }, {
+            preserveState: true,
+            onSuccess: () => {
+                toast.success('Message sent successfully');
+                setShowMessageDialog(false);
+                setMessageSubject('');
+                setMessageBody('');
+            },
+            onError: () => {
+                toast.error('Failed to send message');
+            },
+            onFinish: () => {
+                setMessageSending(false);
+            }
+        });
+    };
+
+    const handleRequestChanges = (vendor: Vendor) => {
+        setSelectedVendor(vendor);
+        setRequestChangesSubject('Changes Requested for Vendor Application');
+        setRequestChangesMessage('');
+        setShowRequestChangesDialog(true);
+    };
+
+    const submitRequestChanges = () => {
+        if (!selectedVendor || !requestChangesSubject || !requestChangesMessage) return;
+
+        setRequestChangesSending(true);
+        router.post(`/admin/marketplace/vendors/${selectedVendor.id}/request-changes`, {
+            subject: requestChangesSubject,
+            message: requestChangesMessage
+        }, {
+            preserveState: true,
+            onSuccess: () => {
+                toast.success('Changes requested successfully');
+                setShowRequestChangesDialog(false);
+                setRequestChangesMessage('');
+            },
+            onError: () => {
+                toast.error('Failed to request changes');
+            },
+            onFinish: () => {
+                setRequestChangesSending(false);
+            }
+        });
+    };
+
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -275,6 +345,8 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                 return 'bg-red-100 text-red-700 border-red-300';
             case 'suspended':
                 return 'bg-gray-100 text-gray-700 border-gray-300';
+            case 'changes_requested':
+                return 'bg-yellow-100 text-yellow-700 border-yellow-300';
             default:
                 return '';
         }
@@ -287,6 +359,8 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
             case 'rejected':
                 return 'destructive';
             case 'suspended':
+                return 'secondary';
+            case 'changes_requested':
                 return 'secondary';
             default:
                 return 'outline';
@@ -449,7 +523,7 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                                     <div className="font-medium">{vendor.business_name}</div>
                                                     <div className="text-sm text-muted-foreground flex items-center">
                                                         <MapPin className="h-3 w-3 mr-1" />
-                                                            {vendor.business_address}
+                                                        {vendor.business_address}
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -458,7 +532,7 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                                     <div className="font-medium">{vendor.business_type}</div>
                                                     <div className="text-sm text-muted-foreground flex items-center">
                                                         <Phone className="h-3 w-3 mr-1" />
-                                                            {vendor.business_phone}
+                                                        {vendor.business_phone}
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -505,16 +579,26 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                                             <Eye className="h-4 w-4 mr-2" />
                                                             View Details
                                                         </DropdownMenuItem>
-                                                        {vendor.status === 'pending' && (
+                                                        <DropdownMenuItem onClick={() => handleMessage(vendor)}>
+                                                            <Mail className="h-4 w-4 mr-2" />
+                                                            Message Vendor
+                                                        </DropdownMenuItem>
+                                                        {(vendor.status === 'pending' || vendor.status === 'changes_requested') && (
                                                             <>
                                                                 <DropdownMenuItem onClick={() => handleApprove(vendor)}>
                                                                     <Check className="h-4 w-4 mr-2" />
                                                                     Approve
                                                                 </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleRequestChanges(vendor)}>
+                                                                    <FileText className="h-4 w-4 mr-2" />
+                                                                    Request Changes
+                                                                </DropdownMenuItem>
+
                                                                 <DropdownMenuItem onClick={() => handleReject(vendor)}>
                                                                     <X className="h-4 w-4 mr-2" />
                                                                     Reject
                                                                 </DropdownMenuItem>
+
                                                             </>
                                                         )}
                                                         {vendor.status === 'approved' && (
@@ -587,7 +671,6 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
 
                 {/* Vendor Details Dialog */}
                 {selectedVendor && (
-                    console.log(selectedVendor),
                     <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
                         <DialogContent className="max-w-6xl lg:min-w-6xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
@@ -743,7 +826,7 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    onClick={() => setPreviewDocument({url: selectedVendor.business_license!, name: 'Business License'})}
+                                                                    onClick={() => setPreviewDocument({ url: selectedVendor.business_license!, name: 'Business License' })}
                                                                     className="text-xs"
                                                                 >
                                                                     <ExternalLink className="h-3 w-3 mr-1" />
@@ -833,7 +916,7 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                                                         <Button
                                                                             size="sm"
                                                                             variant="outline"
-                                                                            onClick={() => setPreviewDocument({url: doc, name: fileName})}
+                                                                            onClick={() => setPreviewDocument({ url: doc, name: fileName })}
                                                                             className="text-xs"
                                                                         >
                                                                             <ExternalLink className="h-3 w-3 mr-1" />
@@ -871,7 +954,7 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    onClick={() => setPreviewDocument({url: selectedVendor.business_documents as string, name: 'Business Document'})}
+                                                                    onClick={() => setPreviewDocument({ url: selectedVendor.business_documents as string, name: 'Business Document' })}
                                                                     className="text-xs"
                                                                 >
                                                                     <ExternalLink className="h-3 w-3 mr-1" />
@@ -1106,7 +1189,95 @@ export default function VendorAdmin({ vendors, filters, stats }: VendorAdminProp
                         </DialogContent>
                     </Dialog>
                 )}
+
+                {/* Message Vendor Dialog */}
+                {selectedVendor && (
+                    <Dialog open={showMessageDialog} onOpenChange={setShowMessageDialog}>
+                        <DialogContent className="sm:max-w-[500px]">
+                            <DialogHeader>
+                                <DialogTitle>Message Vendor - {selectedVendor.business_name}</DialogTitle>
+                                <DialogDescription>
+                                    Send an email notification to the vendor.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="subject">Subject</Label>
+                                    <Input
+                                        id="subject"
+                                        value={messageSubject}
+                                        onChange={(e) => setMessageSubject(e.target.value)}
+                                        placeholder="Enter subject..."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="message">Message</Label>
+                                    <Textarea
+                                        id="message"
+                                        value={messageBody}
+                                        onChange={(e) => setMessageBody(e.target.value)}
+                                        placeholder="Type your message here..."
+                                        rows={5}
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setShowMessageDialog(false)}>Cancel</Button>
+                                <Button
+                                    onClick={submitMessage}
+                                    disabled={!messageSubject || !messageBody || messageSending}
+                                >
+                                    {messageSending ? 'Sending...' : 'Send Message'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                )}
             </div>
+
+            {/* Request Changes Dialog */}
+            {selectedVendor && (
+                <Dialog open={showRequestChangesDialog} onOpenChange={setShowRequestChangesDialog}>
+                    <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                            <DialogTitle>Request Changes - {selectedVendor.business_name}</DialogTitle>
+                            <DialogDescription>
+                                Send instructions to the vendor on what needs to be fixed. The application status will be updated to "Changes Requested".
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="req-subject">Subject</Label>
+                                <Input
+                                    id="req-subject"
+                                    value={requestChangesSubject}
+                                    onChange={(e) => setRequestChangesSubject(e.target.value)}
+                                    placeholder="Enter subject..."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="req-message">Message / Instructions</Label>
+                                <Textarea
+                                    id="req-message"
+                                    value={requestChangesMessage}
+                                    onChange={(e) => setRequestChangesMessage(e.target.value)}
+                                    placeholder="Detailed instructions on what needs to be changed..."
+                                    rows={5}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowRequestChangesDialog(false)}>Cancel</Button>
+                            <Button
+                                onClick={submitRequestChanges}
+                                disabled={!requestChangesSubject || !requestChangesMessage || requestChangesSending}
+                            >
+                                {requestChangesSending ? 'Sending...' : 'Request Changes'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
 
             {/* Document Preview Modal */}
             {previewDocument && (

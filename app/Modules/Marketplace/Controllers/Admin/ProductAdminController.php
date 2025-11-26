@@ -7,7 +7,11 @@ use App\Modules\Marketplace\Models\Product;
 use App\Modules\Marketplace\Models\Category;
 use App\Modules\Marketplace\Models\Vendor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Mail\Marketplace\ProductApproved;
+use App\Mail\Marketplace\ProductRejected;
 
 class ProductAdminController extends Controller
 {
@@ -32,22 +36,22 @@ class ProductAdminController extends Controller
         }
 
         // Filter by status
-        if ($request->has('status') && $request->status !== '') {
+        if ($request->has('status') && $request->status != '') {
             $query->where('status', $request->status);
         }
 
         // Filter by category
-        if ($request->has('category') && $request->category !== '') {
+        if ($request->has('category') && $request->category != '') {
             $query->where('category_id', $request->category);
         }
 
         // Filter by vendor
-        if ($request->has('vendor') && $request->vendor !== '') {
+        if ($request->has('vendor') && $request->vendor != '') {
             $query->where('vendor_id', $request->vendor);
         }
 
         // Filter by stock status
-        if ($request->has('stock_status') && $request->stock_status !== '') {
+        if ($request->has('stock_status') && $request->stock_status != '') {
             switch ($request->stock_status) {
                 case 'in_stock':
                     $query->where('stock_quantity', '>', 0);
@@ -135,8 +139,14 @@ class ProductAdminController extends Controller
             'admin_notes' => $request->notes,
         ]);
 
-        // Send notification to vendor
-        // TODO: Add notification logic
+        // Send approval email to vendor
+        try {
+            if ($product->vendor && $product->vendor->business_email) {
+                Mail::to($product->vendor->business_email)->send(new ProductApproved($product));
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send product approval email', ['product_id' => $product->id, 'error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'Product approved successfully.');
     }
@@ -156,8 +166,14 @@ class ProductAdminController extends Controller
             'admin_notes' => $request->get('notes'),
         ]);
 
-        // Send notification to vendor
-        // TODO: Add notification logic
+        // Send rejection email to vendor
+        try {
+            if ($product->vendor && $product->vendor->business_email) {
+                Mail::to($product->vendor->business_email)->send(new ProductRejected($product, $request->reason));
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send product rejection email', ['product_id' => $product->id, 'error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'Product rejected successfully.');
     }
@@ -167,13 +183,13 @@ class ProductAdminController extends Controller
      */
     public function toggleStatus(Product $product)
     {
-        $new_status = $product->status === 'active' ? 'inactive' : 'active';
+        $new_status = $product->status== 'active' ? 'inactive' : 'active';
 
         $product->update([
             'status' => $new_status,
         ]);
 
-        $status = $new_status === 'active' ? 'activated' : 'deactivated';
+        $status = $new_status== 'active' ? 'activated' : 'deactivated';
 
         return back()->with('success', "Product {$status} successfully.");
     }
@@ -246,6 +262,16 @@ class ProductAdminController extends Controller
                     'approved_at' => now(),
                     'admin_notes' => $validated['notes'] ?? null,
                 ]);
+                // Send bulk approval emails
+                foreach ($products->get() as $product) {
+                    try {
+                        if ($product->vendor && $product->vendor->business_email) {
+                            Mail::to($product->vendor->business_email)->send(new ProductApproved($product));
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send bulk product approval email', ['product_id' => $product->id, 'error' => $e->getMessage()]);
+                    }
+                }
                 $message = 'Products approved successfully.';
                 break;
 
@@ -255,6 +281,16 @@ class ProductAdminController extends Controller
                     'rejection_reason' => $validated['reason'],
                     'admin_notes' => $validated['notes'] ?? null,
                 ]);
+                // Send bulk rejection emails
+                foreach ($products->get() as $product) {
+                    try {
+                        if ($product->vendor && $product->vendor->business_email) {
+                            Mail::to($product->vendor->business_email)->send(new ProductRejected($product, $validated['reason']));
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send bulk product rejection email', ['product_id' => $product->id, 'error' => $e->getMessage()]);
+                    }
+                }
                 $message = 'Products rejected successfully.';
                 break;
 

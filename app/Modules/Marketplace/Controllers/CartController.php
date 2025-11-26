@@ -68,7 +68,7 @@ class CartController extends Controller
             $product = Product::findOrFail($validated['product_id']);
 
             // Check if product is available
-            if ($product->status !== 'active') {
+            if ($product->status != 'active') {
                 return redirect()->back()->with('error', 'This product is not available for purchase.');
             }
 
@@ -123,7 +123,7 @@ class CartController extends Controller
     public function update(Request $request, CartItem $cartItem)
     {
         $user = Auth::user();
-        if (!$user || $cartItem->user_id !== $user->id) {
+        if (!$user || $cartItem->user_id != $user->id) {
             return redirect()->back()->with('error', 'Unauthorized');
         }
 
@@ -157,7 +157,7 @@ class CartController extends Controller
     public function destroy(CartItem $cartItem)
     {
         $user = Auth::user();
-        if (!$user || $cartItem->user_id !== $user->id) {
+        if (!$user || $cartItem->user_id != $user->id) {
             return redirect()->back()->with('error', 'Unauthorized');
         }
 

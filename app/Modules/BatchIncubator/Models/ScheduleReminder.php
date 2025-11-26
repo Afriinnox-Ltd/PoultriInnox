@@ -58,7 +58,7 @@ class ScheduleReminder extends Model
     // Helper methods
     public function isOverdue(): bool
     {
-        return $this->reminder_type === 'overdue' && $this->status !== 'sent';
+        return $this->reminder_type== 'overdue' && $this->status != 'sent';
     }
 
     public function markAsSent(): void

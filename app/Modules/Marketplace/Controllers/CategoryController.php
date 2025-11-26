@@ -53,6 +53,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:marketplace_categories,id',
             'icon' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
             'image_url' => 'nullable|url|max:255',
             'is_featured' => 'boolean',
             'sort_order' => 'nullable|integer|min:0'
@@ -89,7 +90,7 @@ class CategoryController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -160,6 +161,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:marketplace_categories,id',
             'icon' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
             'image_url' => 'nullable|url|max:255',
             'is_featured' => 'boolean',
             'sort_order' => 'nullable|integer|min:0'
@@ -171,7 +173,7 @@ class CategoryController extends Controller
         }
 
         // Update slug if name changed
-        if ($validated['name'] !== $category->name) {
+        if ($validated['name'] != $category->name) {
             $validated['slug'] = Str::slug($validated['name']);
 
             // Ensure slug is unique

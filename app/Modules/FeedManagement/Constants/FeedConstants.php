@@ -307,7 +307,7 @@ class FeedConstants
 
         foreach ($requirements as $nutrient => $range) {
             $value = $data[$nutrient] ?? null;
-            if ($value === null) {
+            if ($value== null) {
                 $errors[] = "Missing {$nutrient} value";
                 continue;
             }

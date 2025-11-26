@@ -57,7 +57,7 @@ class ReviewController extends Controller
     public function update(Request $request, Product $product, ProductReview $review)
     {
         // Check if user owns the review
-        if ($review->user_id !== Auth::id()) {
+        if ($review->user_id != Auth::id()) {
             abort(403, 'Unauthorized to edit this review');
         }
 
@@ -85,7 +85,7 @@ class ReviewController extends Controller
     public function destroy(Product $product, ProductReview $review)
     {
         // Check if user owns the review
-        if ($review->user_id !== Auth::id()) {
+        if ($review->user_id != Auth::id()) {
             abort(403, 'Unauthorized to delete this review');
         }
 

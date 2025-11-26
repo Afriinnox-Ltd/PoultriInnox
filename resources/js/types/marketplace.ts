@@ -60,8 +60,9 @@ export interface Product {
     short_description?: string;
     price: number;
     stock_quantity: number;
-    min_order_quantity?: number;
-    max_order_quantity?: number;
+    unit_of_measure?: string;
+    minimum_order_quantity?: number;
+    maximum_order_quantity?: number;
     weight?: number;
     dimensions?: string;
     sku?: string;
@@ -78,6 +79,15 @@ export interface Product {
     rating?: number;
     total_reviews?: number;
     total_sales?: number;
+    tags?: string[];
+    payment_methods?: string[];
+    shipping_option?: string;
+    video_path?: string;
+    extra_fee?: number;
+    is_negotiable?: boolean;
+    delivery_time?: string;
+    return_policy?: string;
+    additional_info?: string;
     variants?: ProductVariant[];
 }
 
@@ -144,7 +154,7 @@ export interface CartItem {
     updated_at: string;
     product?: Product;
     variant?: ProductVariant;
-    
+
 }
 
 export interface Order {
@@ -324,8 +334,8 @@ export interface ProductFormData {
     short_description?: string;
     price: number;
     stock_quantity: number;
-    min_order_quantity?: number;
-    max_order_quantity?: number;
+    minimum_order_quantity?: number;
+    maximum_order_quantity?: number;
     weight?: number;
     dimensions?: string;
     sku?: string;

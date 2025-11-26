@@ -248,10 +248,8 @@ export default function MqttIotDeviceControl({
             fetchAlerts();
         } else if (latestMessage.topic === statusTopic) {
             // Handle status messages
-            console.log('Device status update:', latestMessage.payload);
         } else if (latestMessage.topic === discoveryTopic) {
             // Handle discovery messages
-            console.log('Device discovery:', latestMessage.payload);
             toast.info(`Device discovered: ${latestMessage.payload.device_name || deviceId}`);
         }
     }, [messages]);
@@ -272,8 +270,10 @@ export default function MqttIotDeviceControl({
 
                 setBrokerConfig(config);
 
-                // Save config to localStorage for faster reconnection
-                localStorage.setItem(MQTT_CONFIG_KEY, JSON.stringify(config));
+                // Save config with version to localStorage
+                const configWithVersion = { version: data.version || '1.2', config };
+                localStorage.setItem(MQTT_CONFIG_KEY, JSON.stringify(configWithVersion));
+ 
             }
         } catch (error) {
 
@@ -281,8 +281,14 @@ export default function MqttIotDeviceControl({
             const savedConfig = localStorage.getItem(MQTT_CONFIG_KEY);
             if (savedConfig) {
                 try {
-                    const config = JSON.parse(savedConfig);
-                    setBrokerConfig(config);
+                    const parsed = JSON.parse(savedConfig);
+                    // Check if version matches, clear if outdated
+                    if (parsed.version === '1.2' && parsed.config) {
+                        setBrokerConfig(parsed.config);
+                    } else {
+                        // Old version, clear cache and refetch
+                        localStorage.removeItem(MQTT_CONFIG_KEY);
+                    }
                 } catch (e) {
                     toast.error('Failed to parse saved boordinnox configuration');
                 }
@@ -413,7 +419,7 @@ export default function MqttIotDeviceControl({
                     toast.success('Device connected - Incubator status updated to Running');
                 }
             } catch (error) {
-                console.error('Failed to update incubator status:', error);
+                
             }
 
             // Reset after a delay since the hook doesn't provide loading state
@@ -443,7 +449,7 @@ export default function MqttIotDeviceControl({
                 toast.info('Device disconnected - Incubator status updated to Offline');
             }
         } catch (error) {
-            console.error('Failed to update incubator status:', error);
+            
         }
 
         // Reset after a delay

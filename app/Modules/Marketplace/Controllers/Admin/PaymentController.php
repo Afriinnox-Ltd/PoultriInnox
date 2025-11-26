@@ -232,9 +232,9 @@ class PaymentController extends Controller
 
         // Filter by payout requested
         if ($request->filled('payout_requested')) {
-            if ($request->payout_requested === 'yes') {
+            if ($request->payout_requested== 'yes') {
                 $query->where('payout_requested', true);
-            } elseif ($request->payout_requested === 'no') {
+            } elseif ($request->payout_requested== 'no') {
                 $query->where('payout_requested', false);
             }
         }

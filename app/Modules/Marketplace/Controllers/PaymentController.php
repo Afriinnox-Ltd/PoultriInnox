@@ -31,12 +31,12 @@ class PaymentController extends Controller
         $order = Order::with('vendor')->findOrFail($orderId);
 
         // Check if user owns this order
-        if ($order->user_id !== auth()->id()) {
+        if ($order->user_id != auth()->id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         // Check if order is already paid
-        if ($order->payment_status === 'paid') {
+        if ($order->payment_status== 'paid') {
             return response()->json(['error' => 'Order already paid'], 400);
         }
 
@@ -160,7 +160,7 @@ class PaymentController extends Controller
             }
 
             // Update payment status based on callback
-            if ($status === 'success' && $statusCode == 200) {
+            if ($status== 'success' && $statusCode == 200) {
                 $payment->update([
                     'status' => 'completed',
                     'paid_at' => now(),
@@ -220,7 +220,7 @@ class PaymentController extends Controller
         $order = Order::findOrFail($orderId);
 
         // Check if user owns this order
-        if ($order->user_id !== auth()->id()) {
+        if ($order->user_id != auth()->id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -232,7 +232,7 @@ class PaymentController extends Controller
 
         try {
             // Check status from Ishema if still pending
-            if ($payment->status === 'pending') {
+            if ($payment->status== 'pending') {
                 // Get the actual reference ID from metadata or payment record
                 $metadata = json_decode($payment->metadata, true) ?? [];
                 $ishemaResponse = $metadata['ishema_response'] ?? null;
@@ -250,13 +250,13 @@ class PaymentController extends Controller
                     $transaction = $result['transaction'];
 
                     // Update payment based on current status
-                    if ($transaction['status'] === 'success') {
+                    if ($transaction['status']== 'success') {
                         $payment->update(['status' => 'completed', 'paid_at' => now()]);
                         $order->update(['payment_status' => 'paid', 'status' => 'processing']);
 
                         // Clear user's cart after successful payment
                         \App\Modules\Marketplace\Models\CartItem::where('user_id', $order->user_id)->delete();
-                    } elseif ($transaction['status'] === 'failed') {
+                    } elseif ($transaction['status']== 'failed') {
                         $payment->update(['status' => 'failed']);
                     }
                 }
@@ -289,14 +289,14 @@ class PaymentController extends Controller
             ->findOrFail($orderId);
 
         // Check if user owns this order
-        if ($order->user_id !== auth()->id()) {
+        if ($order->user_id != auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
         $latestPayment = $order->payments()->latest()->first();
 
         // If no payment record exists, create a pending one
-        if (!$latestPayment && $order->payment_method === 'online') {
+        if (!$latestPayment && $order->payment_method== 'online') {
             // Get commission rate from settings
             $commissionRate = config('modules.marketplace.config.commission_rate', 5.0) / 100;
             $commissionAmount = $order->total_amount * $commissionRate;

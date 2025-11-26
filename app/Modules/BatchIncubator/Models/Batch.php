@@ -256,7 +256,7 @@ class Batch extends Model
      */
     public function getSurvivalRateAttribute(): float
     {
-        if ($this->initial_count === 0) {
+        if ($this->initial_count== 0) {
             return 0;
         }
 
@@ -281,7 +281,7 @@ class Batch extends Model
     public function getROI(): float
     {
         $totalCosts = $this->getTotalCosts();
-        if ($totalCosts === 0) {
+        if ($totalCosts== 0) {
             return 0;
         }
 
@@ -306,7 +306,7 @@ class Batch extends Model
      */
     private function calculateMortalityRate(): float
     {
-        if ($this->initial_count === 0) {
+        if ($this->initial_count== 0) {
             return 0;
         }
 
@@ -326,7 +326,7 @@ class Batch extends Model
      */
     public function getAverageWeightPerBird(): float
     {
-        if ($this->current_count === 0 || !$this->current_weight) {
+        if ($this->current_count== 0 || !$this->current_weight) {
             return 0;
         }
 
@@ -351,7 +351,7 @@ class Batch extends Model
     public function getDailyWeightGain(): float
     {
         $ageInDays = $this->getAgeInDays();
-        if ($ageInDays === 0) {
+        if ($ageInDays== 0) {
             return 0;
         }
 

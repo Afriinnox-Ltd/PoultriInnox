@@ -20,6 +20,7 @@ class Category extends Model
         'parent_id',
         'image',
         'icon',
+        'color',
         'sort_order',
         'is_active',
         'metadata',

@@ -88,15 +88,15 @@ export default function VendorAnalytics({
 }: VendorAnalyticsProps) {
     const formatCurrency = (amount: number) => {
         const currency = marketplaceSettings?.general?.currency || 'RWF';
-        
+
         if (currency === 'RWF') {
-            return new Intl.NumberFormat('rw-RW', { 
-                style: 'currency', 
+            return new Intl.NumberFormat('rw-RW', {
+                style: 'currency',
                 currency: 'RWF',
-                minimumFractionDigits: 0 
+                minimumFractionDigits: 0
             }).format(amount);
         }
-        
+
         const symbol = marketplaceSettings?.general?.currency_symbol || '$';
         return `${symbol}${amount.toLocaleString()}`;
     };
@@ -107,8 +107,8 @@ export default function VendorAnalytics({
         return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     };
 
-    const completionRate = stats.totalOrders > 0 
-        ? ((stats.completedOrders / stats.totalOrders) * 100).toFixed(1) 
+    const completionRate = stats.totalOrders > 0
+        ? ((stats.completedOrders / stats.totalOrders) * 100).toFixed(1)
         : '0';
 
     return (
@@ -122,7 +122,7 @@ export default function VendorAnalytics({
                         <Button variant="outline" size="sm" asChild>
                             <Link href="/marketplace/vendor/dashboard">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
-                               <span className='lg:block hidden'>Back to Dashboard</span> 
+                                <span className='lg:block hidden'>Back to Dashboard</span>
                             </Link>
                         </Button>
                         <div>
@@ -193,7 +193,6 @@ export default function VendorAnalytics({
 
                 {/* Earnings Breakdown */}
                 {marketplaceSettings && (
-                    console.log(marketplaceSettings),
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
@@ -208,53 +207,53 @@ export default function VendorAnalytics({
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {(() => {
 
-                                    const commission = marketplaceSettings.commission?.commission_type === 'percentage' 
+                                    const commission = marketplaceSettings.commission?.commission_type === 'percentage'
                                         ? (stats.totalRevenue * marketplaceSettings.commission.default_commission_rate) / 100
                                         : marketplaceSettings.commission.default_commission_rate * stats.completedOrders;
-                                    
+
                                     const platformFee = (stats.totalRevenue * marketplaceSettings.fees.platform_fee_rate) / 100;
                                     const transactionFee = (stats.totalRevenue * marketplaceSettings.fees.transaction_fee_rate) / 100;
                                     const vendorEarnings = stats.totalRevenue - commission - platformFee - transactionFee;
 
                                     return (
                                         <>
-                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                                                <div className="text-2xl font-bold text-emerald-900">
+                                            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="text-2xl font-bold text-gray-900">
                                                     {formatCurrency(stats.totalRevenue)}
                                                 </div>
-                                                <div className="text-sm font-medium text-emerald-700">Gross Revenue</div>
-                                                <div className="text-xs text-emerald-600 mt-1">
+                                                <div className="text-sm font-medium text-gray-700">Gross Revenue</div>
+                                                <div className="text-xs text-gray-600 mt-1">
                                                     Total sales amount
                                                 </div>
                                             </div>
-                                            
-                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                                                <div className="text-2xl font-bold text-emerald-900">
+
+                                            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="text-2xl font-bold text-gray-900">
                                                     {formatCurrency(commission)}
                                                 </div>
-                                                <div className="text-sm font-medium text-emerald-700">Commission</div>
-                                                <div className="text-xs text-emerald-600 mt-1">
-                                                    {marketplaceSettings.commission.default_commission_rate}% 
+                                                <div className="text-sm font-medium text-gray-700">Commission</div>
+                                                <div className="text-xs text-gray-600 mt-1">
+                                                    {marketplaceSettings.commission.default_commission_rate}%
                                                     {marketplaceSettings.commission.commission_type === 'percentage' ? ' of sales' : ' per order'}
                                                 </div>
                                             </div>
-                                            
-                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                                                <div className="text-2xl font-bold text-emerald-900">
+
+                                            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="text-2xl font-bold text-gray-900">
                                                     {formatCurrency(platformFee + transactionFee)}
                                                 </div>
-                                                <div className="text-sm font-medium text-emerald-700">Total Fees</div>
-                                                <div className="text-xs text-emerald-600 mt-1">
+                                                <div className="text-sm font-medium text-gray-700">Total Fees</div>
+                                                <div className="text-xs text-gray-600 mt-1">
                                                     Platform + Transaction
                                                 </div>
                                             </div>
-                                            
-                                            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                                                <div className="text-2xl font-bold text-emerald-900">
+
+                                            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="text-2xl font-bold text-gray-900">
                                                     {formatCurrency(vendorEarnings)}
                                                 </div>
-                                                <div className="text-sm font-medium text-emerald-700">Your Earnings</div>
-                                                <div className="text-xs text-emerald-600 mt-1">
+                                                <div className="text-sm font-medium text-gray-700">Your Earnings</div>
+                                                <div className="text-xs text-gray-600 mt-1">
                                                     {((vendorEarnings / stats.totalRevenue) * 100).toFixed(1)}% of revenue
                                                 </div>
                                             </div>

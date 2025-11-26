@@ -7,17 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  FileText,
-  Download,
-  Calendar,
-  Filter,
-  BarChart3,
-  TrendingUp,
-  DollarSign,
-  Package,
-  Settings,
-  CheckCircle,
-  ArrowLeft
+    FileText,
+    Download,
+    Calendar,
+    Filter,
+    BarChart3,
+    TrendingUp,
+    DollarSign,
+    Package,
+    Settings,
+    CheckCircle,
+    ArrowLeft
 } from 'lucide-react';
 import { Link, Head, router } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
@@ -166,8 +166,7 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                 onSuccess: () => {
                     toast.success('Report generated successfully!');
                 },
-                onError: (errors) => {
-                    console.log('Form validation errors:', errors);
+                onError: (errors) => { 
                     setFormErrors(errors);
                     const errorMessage = Object.values(errors).flat().join(', ') || 'Failed to generate report. Please check the form for errors.';
                     toast.error(errorMessage);
@@ -179,7 +178,6 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                 preserveScroll: false,
             });
         } catch (error) {
-            console.error('Error generating report:', error);
             toast.error('An unexpected error occurred while generating the report.');
             setIsGenerating(false);
         }
@@ -200,7 +198,7 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        
+
                         <QuickNav currentPage="reports" showCreateAction={false} />
                     </div>
                 </div>
@@ -227,13 +225,12 @@ export default function ReportGenerate({ reportTypes, batches, incubators }: Rep
                                             return (
                                                 <div
                                                     key={reportType.key}
-                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                                        selectedType === reportType.key
+                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedType === reportType.key
                                                             ? 'border-emerald-500 bg-emerald-50'
                                                             : formErrors.type
-                                                            ? 'border-red-300 hover:border-red-400'
-                                                            : 'border-gray-200 hover:border-gray-300'
-                                                    }`}
+                                                                ? 'border-red-300 hover:border-red-400'
+                                                                : 'border-gray-200 hover:border-gray-300'
+                                                        }`}
                                                     onClick={() => {
                                                         setSelectedType(reportType.key);
                                                         if (formErrors.type) {
