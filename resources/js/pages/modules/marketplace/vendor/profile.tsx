@@ -136,7 +136,7 @@ export default function VendorProfile({ vendor, marketplaceSettings }: VendorPro
             },
             onError: (error: Record<string, string>) => {
                 // Handle error
-                console.error('Error updating vendor profile', error);
+
             }
         });
     };

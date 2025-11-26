@@ -117,7 +117,7 @@ export default function Dashboard({
           <div>
             <h1 className="text-3xl font-bold tracking-tight">BatchIncubator Dashboard</h1>
             <p className="text-muted-foreground">
-              Comprehensive poultry batch and incubator management
+              Comprehensive livestock batch and incubator management
             </p>
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function Dashboard({
                 Batch Management
               </CardTitle>
               <CardDescription>
-                Manage your poultry batches from incubation to production
+                Manage your livestock batches from incubation to production
               </CardDescription>
             </CardHeader>
             <CardContent>

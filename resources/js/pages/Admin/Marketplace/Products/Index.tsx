@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,12 @@ import {
     TrendingUp,
     Filter,
     MoreHorizontal,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Plus,
+    Pencil,
+    Trash2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
     Dialog,
     DialogContent,
@@ -78,7 +82,7 @@ interface Product {
     };
     category: {
         name: string;
-    };
+    } | null;
     images: Array<{
         id: number;
         image_path: string;
@@ -104,6 +108,8 @@ interface ProductAdminProps {
         status?: string;
         category?: string;
         vendor?: string;
+        date_from?: string;
+        date_to?: string;
     };
     stats?: {
         total: number;
@@ -119,17 +125,28 @@ interface ProductAdminProps {
 }
 
 export default function ProductAdmin({ products, filters, stats = { total: 0, active: 0, pending: 0, rejected: 0, inactive: 0 }, categories }: ProductAdminProps) {
+    const { auth } = usePage<{ auth: { user: any; permissions: string[] } }>().props;
+    const can = (perm: string | string[]) => {
+        if (auth.user?.role === 'admin') return true;
+        const perms = auth.permissions || [];
+        return Array.isArray(perm) ? perm.some(p => perms.includes(p)) : perms.includes(perm);
+    };
+
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [categoryFilter, setCategoryFilter] = useState(filters.category || 'all');
+    const [dateFrom, setDateFrom] = useState(filters.date_from || '');
+    const [dateTo, setDateTo] = useState(filters.date_to || '');
 
     const handleSearch = () => {
         router.get('/admin/marketplace/products', {
             search: searchTerm,
             status: statusFilter !== 'all' ? statusFilter : undefined,
             category: categoryFilter !== 'all' ? categoryFilter : undefined,
+            date_from: dateFrom || undefined,
+            date_to: dateTo || undefined,
         }, {
             preserveState: true,
             replace: true,
@@ -161,14 +178,14 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
     const handleToggleStatus = (product: Product) => {
         const newStatus = product.status === 'active' ? 'inactive' : 'active';
         if (confirm(`Are you sure you want to ${newStatus === 'active' ? 'activate' : 'deactivate'} "${product.name}"?`)) {
-            router.post(`/admin/marketplace/products/${product.id}/toggle-status`, {
+            router.patch(`/admin/marketplace/products/${product.id}/toggle-status`, {
                 status: newStatus
             });
         }
     };
 
     const handleToggleFeatured = (product: Product) => {
-        router.post(`/admin/marketplace/products/${product.id}/toggle-featured`);
+        router.patch(`/admin/marketplace/products/${product.id}/toggle-featured`);
     };
 
     const viewDetails = (product: Product) => {
@@ -217,6 +234,11 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                             Review and manage marketplace products
                         </p>
                     </div>
+                    {can('create-products') && (
+                        <Link href="/admin/marketplace/products/create">
+                            <Button><Plus className="h-4 w-4 mr-1" /> Add Product</Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Stats Overview */}
@@ -324,6 +346,24 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                                     ))}
                                 </select>
                             </div>
+                            <div>
+                                <Label htmlFor="date_from">From Date</Label>
+                                <Input
+                                    id="date_from"
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) => setDateFrom(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="date_to">To Date</Label>
+                                <Input
+                                    id="date_to"
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                />
+                            </div>
                             <Button onClick={handleSearch}>
                                 <Filter className="h-4 w-4 mr-2" />
                                 Apply Filters
@@ -373,7 +413,7 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <div className="font-medium">{product.name}</div>
+                                                        <Link href={`/admin/marketplace/products/${product.id}`} className="font-medium hover:underline">{product.name}</Link>
                                                         <div className="text-sm text-muted-foreground">
                                                             SKU: {product.sku}
                                                         </div>
@@ -395,7 +435,7 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline">
-                                                    {product.category.name}
+                                                    {product.category?.name ?? '—'}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
@@ -448,11 +488,11 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => viewDetails(product)}>
+                                                        <DropdownMenuItem onClick={() => router.visit(`/admin/marketplace/products/${product.id}`)}>
                                                             <Eye className="h-4 w-4 mr-2" />
                                                             View Details
                                                         </DropdownMenuItem>
-                                                        {product.status === 'pending' && (
+                                                        {product.status === 'pending' && can('approve-products') && (
                                                             <>
                                                                 <DropdownMenuItem onClick={() => handleApprove(product)}>
                                                                     <Check className="h-4 w-4 mr-2" />
@@ -464,7 +504,7 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                                                                 </DropdownMenuItem>
                                                             </>
                                                         )}
-                                                        {(product.status === 'active' || product.status === 'inactive') && (
+                                                        {(product.status === 'active' || product.status === 'inactive') && can('edit-products') && (
                                                             <DropdownMenuItem onClick={() => handleToggleStatus(product)}>
                                                                 {product.status === 'active' ? (
                                                                     <>
@@ -479,10 +519,34 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                                                                 )}
                                                             </DropdownMenuItem>
                                                         )}
+                                                        {can('edit-products') && (
                                                         <DropdownMenuItem onClick={() => handleToggleFeatured(product)}>
                                                             <Star className="h-4 w-4 mr-2" />
                                                             {product.is_featured ? 'Remove Featured' : 'Make Featured'}
                                                         </DropdownMenuItem>
+                                                        )}
+                                                        {can('edit-products') && (
+                                                            <DropdownMenuItem onClick={() => router.visit(`/admin/marketplace/products/${product.id}/edit`)}>
+                                                                <Pencil className="h-4 w-4 mr-2" />
+                                                                Edit Product
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        {can('delete-products') && (
+                                                            <DropdownMenuItem
+                                                                className="text-red-600 focus:text-red-600"
+                                                                onClick={() => {
+                                                                    if (confirm(`Are you sure you want to delete "${product.name}"? This cannot be undone.`)) {
+                                                                        router.delete(`/admin/marketplace/products/${product.id}`, {
+                                                                            onSuccess: () => toast.success('Product deleted'),
+                                                                            onError: () => toast.error('Failed to delete product'),
+                                                                        });
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                                Delete Product
+                                                            </DropdownMenuItem>
+                                                        )}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
@@ -577,19 +641,13 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                                         </div>
                                         <div>
                                             <Label>Category</Label>
-                                            <p className="text-sm">{selectedProduct.category.name}</p>
+                                            <p className="text-sm">{selectedProduct.category?.name ?? '—'}</p>
                                         </div>
                                         <div>
                                             <Label>Vendor</Label>
                                             <p className="text-sm">{selectedProduct.vendor.business_name}</p>
                                         </div>
                                     </div>
-                                </div>
-
-                                {/* Description */}
-                                <div>
-                                    <Label>Description</Label>
-                                    <p className="text-sm mt-1">{selectedProduct.description}</p>
                                 </div>
 
                                 {/* Pricing */}
@@ -735,10 +793,10 @@ export default function ProductAdmin({ products, filters, stats = { total: 0, ac
                                             <Label>Meta Title</Label>
                                             <p className="text-sm">{selectedProduct.meta_title || 'Not set'}</p>
                                         </div>
-                                        <div>
+                                        {/* <div>
                                             <Label>Meta Description</Label>
                                             <p className="text-sm">{selectedProduct.meta_description || 'Not set'}</p>
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </div>
 

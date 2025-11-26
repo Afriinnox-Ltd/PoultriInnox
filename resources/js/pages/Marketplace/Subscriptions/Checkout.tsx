@@ -90,22 +90,19 @@ export default function CheckoutPage({ plan, currentSubscription, pricing }: Che
             return;
         }
 
-        console.log('Submitting checkout form with phone:', phoneNumber);
-
+       
         // Update form data with phone number and submit
         form.transform((data) => ({
             ...data,
             phone_number: phoneNumber,
         }));
 
-        console.log('Form data:', form.data);
-
+       
         form.post('/marketplace/subscriptions/upgrade', {
             onSuccess: () => {
-                console.log('Form submission successful');
+                
             },
-            onError: (errors: any) => {
-                console.error('Form submission error:', errors);
+            onError: (errors: any) => { 
                 setError(errors.message || 'Failed to process payment');
             },
         });

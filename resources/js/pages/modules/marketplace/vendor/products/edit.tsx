@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,10 +25,37 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import VendorLayout from '@/layouts/vendor-layout';
 import { toast } from 'sonner';
+import RichTextEditor from '@/components/ui/rich-text-editor';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy
+} from '@dnd-kit/sortable';
+import { SortableImageItem } from '@/components/modules/marketplace/vendor/SortableImageItem';
+
+interface UnifiedImage {
+    id: string; // "existing-{id}" or "new-{base64}"
+    url: string;
+    type: 'existing' | 'new';
+    originalId?: number;
+    file?: File;
+}
 
 interface Category {
     id: number;
     name: string;
+    parent_id?: number | null;
+    children?: Category[];
     parent?: {
         id: number;
         name: string;
@@ -49,9 +76,12 @@ interface Product {
     description: string;
     price: number;
     category_id: number;
+    categories?: Category[]; // For multi-select loaded relation
     sku: string;
     stock_quantity: number;
+    unit_of_measure?: string;
     minimum_order_quantity: number;
+    maximum_order_quantity?: number;
     weight?: number;
     dimensions?: string;
     status: string;
@@ -64,12 +94,16 @@ interface Product {
     delivery_time?: string;
     return_policy?: string;
     additional_info?: string;
+    video_path?: string;
+    is_negotiable?: boolean;
 }
 
 interface Vendor {
     id: number;
     business_name: string;
-    status: string;
+    status: 'approved' | 'pending' | 'rejected' | 'suspended';
+    is_verified: boolean;
+    is_active: boolean;
     subscription?: {
         plan_name: string;
         is_active: boolean;
@@ -137,14 +171,16 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
         return [];
     })();
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         name: product.name || '',
         description: product.description || '',
         price: product.price?.toString() || '',
-        category_id: product.category_id?.toString() || '',
+        category_ids: product.categories?.map(c => c.id.toString()) || (product.category_id ? [product.category_id.toString()] : []),
         sku: product.sku || '',
         stock_quantity: product.stock_quantity?.toString() || '',
+        unit_of_measure: product.unit_of_measure || 'piece',
         minimum_order_quantity: product.minimum_order_quantity?.toString() || '1',
+        maximum_order_quantity: product.maximum_order_quantity?.toString() || '',
         weight: product.weight?.toString() || '',
         dimensions: product.dimensions || '',
         status: product.status || 'draft',
@@ -158,25 +194,98 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
         return_policy: product.return_policy || '',
         additional_info: product.additional_info || '',
         remove_images: [] as number[],
+        video: null as File | null,
+        remove_video: false,
+        is_negotiable: product.is_negotiable || false,
+        images_order: '[]',
+        _method: 'PUT'
     });
 
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [currentTag, setCurrentTag] = useState('');
     const [existingImages, setExistingImages] = useState<ProductImage[]>(product.images || []);
+    const [allImages, setAllImages] = useState<UnifiedImage[]>([]);
     const [currentTab, setCurrentTab] = useState('basic');
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // Initialize allImages
+    useEffect(() => {
+        const initialImages: UnifiedImage[] = product.images.map(img => ({
+            id: `existing-${img.id}`,
+            url: img.image_path,
+            type: 'existing',
+            originalId: img.id
+        }));
+        setAllImages(initialImages);
+    }, [product.images]);
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setAllImages((items) => {
+                const oldIndex = items.findIndex(img => img.id === active.id);
+                const newIndex = items.findIndex(img => img.id === over.id);
+                const newList = arrayMove(items, oldIndex, newIndex);
+
+                // We'll update the form data with the new order in handleSubmit
+                return newList;
+            });
+        }
+    };
+
+    // Initialize selectedParentId
+    const [selectedParentId, setSelectedParentId] = useState<string>(() => {
+        // Helper to find parent for a given category ID
+        const findParentId = (id: string) => {
+            // Check if it's a parent category
+            const isParent = categories.some(c => c.id.toString() === id);
+            if (isParent) return id;
+
+            // Check if it's a child category and find its parent
+            for (const cat of categories) {
+                if (cat.children?.some(child => child.id.toString() === id)) {
+                    return cat.id.toString();
+                }
+            }
+            return null;
+        };
+
+        // 1. Try product.category_id first
+        if (product.category_id) {
+            const parent = findParentId(product.category_id.toString());
+            if (parent) return parent;
+        }
+
+        // 2. Fallback: Check all associated categories
+        if (product.categories && product.categories.length > 0) {
+            for (const cat of product.categories) {
+                const parent = findParentId(cat.id.toString());
+                if (parent) return parent;
+            }
+        }
+
+        return '';
+    });
 
     // Format currency based on marketplace settings
     const formatCurrency = (amount: number) => {
         const currency = marketplaceSettings?.general?.currency || 'RWF';
         const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
-        
+
         if (currency === 'RWF') {
             return new Intl.NumberFormat('rw-RW', {
                 style: 'currency',
                 currency: 'RWF'
             }).format(amount);
         }
-        
+
         return `${symbol}${amount.toLocaleString()}`;
     };
 
@@ -184,12 +293,12 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
     const calculateVendorEarnings = (price: number) => {
         if (!marketplaceSettings || !price) return { earnings: 0, breakdown: [] };
 
-        const commission = marketplaceSettings.commission.commission_type === 'percentage' 
+        const commission = marketplaceSettings.commission.commission_type === 'percentage'
             ? (price * marketplaceSettings.commission.default_commission_rate) / 100
             : marketplaceSettings.commission.default_commission_rate;
-        
-        const platformFee = (price * marketplaceSettings?.platform_fees?.platform_fee_rate) / 100;
-        const transactionFee = (price * marketplaceSettings?.platform_fees?.transaction_fee_rate) / 100;
+
+        const platformFee = (price * (marketplaceSettings?.platform_fees?.platform_fee_rate || 0)) / 100;
+        const transactionFee = (price * (marketplaceSettings?.platform_fees?.transaction_fee_rate || 0)) / 100;
 
         const totalFees = commission + platformFee + transactionFee;
         const earnings = price - totalFees;
@@ -219,7 +328,10 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
     const isFirstTab = currentTabIndex === 0;
     const isLastTab = currentTabIndex === tabs.length - 1;
 
-    const goToNextTab = () => {
+    const goToNextTab = (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+        }
         if (!isLastTab) {
             setCurrentTab(tabs[currentTabIndex + 1].value);
         }
@@ -234,14 +346,40 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        put(`/marketplace/vendor/products/${product.id}`, {
+        // Validate Minimum/Maximum Order Quantity
+        if (parseInt(data.minimum_order_quantity) < 1) {
+            toast.error('Minimum order quantity must be at least 1.');
+            return;
+        }
+
+        if (data.maximum_order_quantity && parseInt(data.maximum_order_quantity) < parseInt(data.minimum_order_quantity)) {
+            toast.error('Maximum order quantity cannot be less than minimum order quantity.');
+            return;
+        }
+
+        // Prepare images order
+        const imagesOrder = allImages.map((img, index) => ({
+            id: img.type === 'existing' ? img.originalId : null,
+            type: img.type,
+            sort_order: index + 1,
+            is_primary: index === 0,
+            temp_id: img.type === 'new' ? img.url : null // Using base64/url as temporary ID for new images
+        }));
+
+        transform((data: any) => ({
+            ...data,
+            images_order: JSON.stringify(imagesOrder),
+            images: allImages.filter(img => img.type === 'new').map(img => img.file as File)
+        }));
+
+        // Use post with _method: 'PUT' for file uploads
+        post(`/marketplace/vendor/products/${product.id}`, {
             onSuccess: () => {
                 setImagePreviews([]);
                 toast.success('Product updated successfully!');
             },
-            onError: (errors: Record<string, string>) => {
-                console.log(errors);
-                toast.error('Please fix the errors in the form and try again.');
+            onError: (err) => {
+                toast.error('Failed to update product. Please check the form.');
             }
         });
     };
@@ -250,32 +388,52 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
         if (!files) return;
 
         const newFiles = Array.from(files);
+        const validFiles: File[] = [];
         const newPreviews: string[] = [];
 
         newFiles.forEach((file) => {
+            if (file.size > 2 * 1024 * 1024) { // 2MB limit
+                toast.error(`Image ${file.name} exceeds 2MB limit.`);
+                return;
+            }
+
+            validFiles.push(file);
             const reader = new FileReader();
             reader.onload = (e) => {
-                newPreviews.push(e.target?.result as string);
-                if (newPreviews.length === newFiles.length) {
-                    setImagePreviews(prev => [...prev, ...newPreviews]);
-                }
+                const url = e.target?.result as string;
+                const newImg: UnifiedImage = {
+                    id: `new-${url}`,
+                    url,
+                    type: 'new',
+                    file
+                };
+                setAllImages(prev => [...prev, newImg]);
             };
             reader.readAsDataURL(file);
         });
-
-        setData('images', [...data.images, ...newFiles]);
     };
 
-    const removeNewImage = (index: number) => {
-        const newImages = data.images.filter((_, i) => i !== index);
-        const newPreviews = imagePreviews.filter((_, i) => i !== index);
-        setData('images', newImages);
-        setImagePreviews(newPreviews);
+    const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 9 * 1024 * 1024) { // 5MB limit
+                toast.error('Video size exceeds 5MB limit.');
+                return;
+            }
+            setData('video', file);
+            setData(data => ({ ...data, video: file, remove_video: false }));
+        }
     };
 
-    const removeExistingImage = (imageId: number) => {
-        setExistingImages(prev => prev.filter(img => img.id !== imageId));
-        setData('remove_images', [...data.remove_images, imageId]);
+    const removeImage = (id: string) => {
+        const imageToRemove = allImages.find(img => img.id === id);
+        if (!imageToRemove) return;
+
+        if (imageToRemove.type === 'existing' && imageToRemove.originalId) {
+            setData('remove_images', [...data.remove_images, imageToRemove.originalId]);
+        }
+
+        setAllImages(prev => prev.filter(img => img.id !== id));
     };
 
     const addTag = () => {
@@ -299,7 +457,7 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
             title={`Edit ${product.name}`}
             breadcrumbItems={[
                 { title: 'Products', href: '/marketplace/vendor/products' },
-                { title: product.name, href: `/marketplace/vendor/products/${product.id}` },
+                { title: product.name },
                 { title: 'Edit' }
             ]}
             vendor={vendor}
@@ -370,14 +528,12 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                         </div>
 
                                         <div>
-                                            <Label htmlFor="description">Product Description *</Label>
-                                            <Textarea
-                                                id="description"
+                                            <Label htmlFor="description" className="mb-2 block">Product Description *</Label>
+                                            <RichTextEditor
                                                 value={data.description}
-                                                onChange={(e) => setData('description', e.target.value)}
-                                                className={errors.description ? 'border-red-500' : ''}
-                                                rows={6}
+                                                onChange={(content) => setData('description', content)}
                                                 placeholder="Describe your product in detail..."
+                                                error={!!errors.description}
                                             />
                                             {errors.description && (
                                                 <p className="text-sm text-red-500 mt-1">{errors.description}</p>
@@ -386,27 +542,58 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <Label htmlFor="category_id">Category *</Label>
+                                                <Label htmlFor="parent_category">Parent Category *</Label>
                                                 <Select
-                                                    value={data.category_id}
-                                                    onValueChange={(value) => setData('category_id', value)}
+                                                    value={selectedParentId}
+                                                    onValueChange={(value) => {
+                                                        setSelectedParentId(value);
+                                                        setData('category_ids', []); // Reset child selection when parent changes
+                                                    }}
                                                 >
-                                                    <SelectTrigger className={errors.category_id ? 'border-red-500' : ''}>
-                                                        <SelectValue placeholder="Select a category" />
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a parent category" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {categories.map((category) => (
                                                             <SelectItem key={category.id} value={category.id.toString()}>
-                                                                {category.parent ? `${category.parent.name} > ` : ''}
                                                                 {category.name}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                {errors.category_id && (
-                                                    <p className="text-sm text-red-500 mt-1">{errors.category_id}</p>
-                                                )}
                                             </div>
+
+                                            {selectedParentId && (
+                                                <div>
+                                                    <Label className="mb-2 block">Sub Categories * (Select multiple)</Label>
+                                                    <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                                                        {categories
+                                                            .find(c => c.id.toString() === selectedParentId)
+                                                            ?.children?.map((child) => (
+                                                                <div key={child.id} className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`category-${child.id}`}
+                                                                        checked={data.category_ids.includes(child.id.toString())}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const id = child.id.toString();
+                                                                            if (checked) {
+                                                                                setData('category_ids', [...data.category_ids, id]);
+                                                                            } else {
+                                                                                setData('category_ids', data.category_ids.filter(cid => cid !== id));
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <Label htmlFor={`category-${child.id}`} className="font-normal cursor-pointer text-sm">
+                                                                        {child.name}
+                                                                    </Label>
+                                                                </div>
+                                                            ))}
+                                                    </div>
+                                                    {errors.category_ids && (
+                                                        <p className="text-sm text-red-500 mt-1">{errors.category_ids}</p>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             <div>
                                                 <Label htmlFor="status">Status</Label>
@@ -441,8 +628,29 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                                 />
                                                 {errors.price && (
                                                     <p className="text-sm text-red-500 mt-1">{errors.price}</p>
-                                                )} 
+                                                )}
                                             </div>
+
+                                            {data.payment_methods.includes('cod') && (
+                                                <div className="flex items-start space-x-2 mt-2">
+                                                    <Checkbox
+                                                        id="is_negotiable"
+                                                        checked={data.is_negotiable}
+                                                        onCheckedChange={(checked) => setData('is_negotiable', checked as boolean)}
+                                                    />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <Label
+                                                            htmlFor="is_negotiable"
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                        >
+                                                            Negotiable Price
+                                                        </Label>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Negotiable depending on size, amount, etc.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div>
                                                 <Label htmlFor="sku">SKU (Stock Keeping Unit) *</Label>
@@ -490,6 +698,32 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                             </div>
 
                                             <div>
+                                                <Label htmlFor="unit_of_measure">Unit of Measure *</Label>
+                                                <Select
+                                                    value={data.unit_of_measure}
+                                                    onValueChange={(value) => setData('unit_of_measure', value)}
+                                                >
+                                                    <SelectTrigger className={errors.unit_of_measure ? 'border-red-500' : ''}>
+                                                        <SelectValue placeholder="Select unit" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="kg">Kilogram (kg)</SelectItem>
+                                                        <SelectItem value="g">Gram (g)</SelectItem>
+                                                        <SelectItem value="liter">Liter (L)</SelectItem>
+                                                        <SelectItem value="ml">Milliliter (ml)</SelectItem>
+                                                        <SelectItem value="piece">Piece</SelectItem>
+                                                        <SelectItem value="box">Box</SelectItem>
+                                                        <SelectItem value="bag">Bag</SelectItem>
+                                                        <SelectItem value="dozen">Dozen</SelectItem>
+                                                        <SelectItem value="pack">Pack</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                {errors.unit_of_measure && (
+                                                    <p className="text-sm text-red-500 mt-1">{errors.unit_of_measure}</p>
+                                                )}
+                                            </div>
+
+                                            <div>
                                                 <Label htmlFor="minimum_order_quantity">Minimum Order Quantity</Label>
                                                 <Input
                                                     type="number"
@@ -500,6 +734,22 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                                     placeholder="1"
                                                     min="1"
                                                 />
+                                            </div>
+
+                                            <div>
+                                                <Label htmlFor="maximum_order_quantity">Maximum Order Quantity</Label>
+                                                <Input
+                                                    type="number"
+                                                    id="maximum_order_quantity"
+                                                    value={data.maximum_order_quantity}
+                                                    onChange={(e) => setData('maximum_order_quantity', e.target.value)}
+                                                    className={errors.maximum_order_quantity ? 'border-red-500' : ''}
+                                                    placeholder="Optional"
+                                                    min={data.minimum_order_quantity || "1"}
+                                                />
+                                                {errors.maximum_order_quantity && (
+                                                    <p className="text-sm text-red-500 mt-1">{errors.maximum_order_quantity}</p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -547,40 +797,34 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        {/* Existing Images */}
-                                        {existingImages.length > 0 && (
-                                            <div>
-                                                <Label>Current Images</Label>
+                                        <DndContext
+                                            sensors={sensors}
+                                            collisionDetection={closestCenter}
+                                            onDragEnd={handleDragEnd}
+                                        >
+                                            <SortableContext
+                                                items={allImages.map(img => img.id)}
+                                                strategy={rectSortingStrategy}
+                                            >
                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                                                    {existingImages.map((image) => (
-                                                        <div key={image.id} className="relative group">
-                                                            <img
-                                                                src={image.image_path}
-                                                                alt={image.alt_text}
-                                                                className="w-full h-32 object-cover rounded-lg border"
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removeExistingImage(image.id)}
-                                                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            >
-                                                                <X className="h-3 w-3" />
-                                                            </button>
-                                                            {image.is_primary && (
-                                                                <div className="absolute bottom-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                                                                    Primary
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                    {allImages.map((image, index) => (
+                                                        <SortableImageItem
+                                                            key={image.id}
+                                                            id={image.id}
+                                                            url={image.url}
+                                                            index={index}
+                                                            onRemove={() => removeImage(image.id)}
+                                                            isPrimary={index === 0}
+                                                        />
                                                     ))}
                                                 </div>
-                                            </div>
-                                        )}
+                                            </SortableContext>
+                                        </DndContext>
 
                                         {/* Upload New Images */}
-                                        <div>
-                                            <Label>Upload New Images</Label>
-                                            <div className="mt-2 space-y-4">
+                                        <div className="pt-4">
+                                            <Label>Add More Images</Label>
+                                            <div className="mt-2">
                                                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                                                     <Upload className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                                                     <p className="text-gray-600 mb-2">Drag and drop images here, or click to browse</p>
@@ -603,30 +847,92 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                                         Recommended: 800x800px, JPG or PNG, max 2MB each
                                                     </p>
                                                 </div>
+                                            </div>
+                                        </div>
 
-                                                {imagePreviews.length > 0 && (
-                                                    <div>
-                                                        <Label>New Images to Upload</Label>
-                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                                                            {imagePreviews.map((preview, index) => (
-                                                                <div key={index} className="relative group">
-                                                                    <img
-                                                                        src={preview}
-                                                                        alt={`Preview ${index + 1}`}
-                                                                        className="w-full h-32 object-cover rounded-lg border"
-                                                                    />
+                                        {/* Video Section */}
+                                        <div className="pt-6 border-t">
+                                            <Label className="text-base font-medium">Product Video</Label>
+                                            <div className="mt-2">
+                                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                                                    {data.video ? (
+                                                        // Case 1: New video selected
+                                                        <div className="relative inline-block">
+                                                            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded border">
+                                                                <Package className="h-6 w-6 text-blue-500" />
+                                                                <span className="text-sm font-medium">{data.video.name}</span>
+                                                                <span className="text-xs text-gray-500">({(data.video.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setData('video', null)}
+                                                                    className="ml-2 text-red-500 hover:text-red-700"
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-xs text-green-600 mt-1">New video selected (will replace existing)</p>
+                                                        </div>
+                                                    ) : !data.remove_video && product.video_path ? (
+                                                        // Case 2: Existing video present and not marked for removal
+                                                        <div className="relative inline-block">
+                                                            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded border">
+                                                                <Package className="h-6 w-6 text-blue-500" />
+                                                                <span className="text-sm font-medium">Current Video</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setData('remove_video', true)}
+                                                                    className="ml-2 text-red-500 hover:text-red-700"
+                                                                    title="Remove Video"
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                            <a
+                                                                href={product.video_path}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-xs text-blue-600 hover:underline mt-1 block"
+                                                            >
+                                                                View current video
+                                                            </a>
+                                                        </div>
+                                                    ) : (
+                                                        // Case 3: No video or video marked for removal
+                                                        <>
+                                                            <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                                                            <p className="text-gray-600 mb-2">Upload a product video</p>
+                                                            <input
+                                                                type="file"
+                                                                accept="video/*"
+                                                                onChange={handleVideoUpload}
+                                                                className="hidden"
+                                                                id="video-upload"
+                                                            />
+                                                            <Label
+                                                                htmlFor="video-upload"
+                                                                className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                            >
+                                                                <Plus className="h-4 w-4 mr-2" />
+                                                                Select Video
+                                                            </Label>
+                                                            <p className="text-xs text-gray-500 mt-2">
+                                                                Max size: 5MB. Formats: MP4, MOV, OGG
+                                                            </p>
+                                                            {product.video_path && data.remove_video && (
+                                                                <p className="text-xs text-red-500 mt-2" >
+                                                                    Current video marked for removal.
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => removeNewImage(index)}
-                                                                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        onClick={() => setData('remove_video', false)}
+                                                                        className="underline ml-1"
                                                                     >
-                                                                        <X className="h-3 w-3" />
+                                                                        Undo
                                                                     </button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                                </p>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </CardContent>
@@ -702,7 +1008,7 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                     </CardContent>
                                 </Card>
                             </TabsContent>
-                            
+
                             {/* Payment Tab */}
                             <TabsContent value="payment">
                                 <Card>
@@ -785,7 +1091,6 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
                                 </Card>
                             </TabsContent>
 
-
                             {/* Shipping & Delivery Tab */}
                             <TabsContent value="shipping">
                                 <Card>
@@ -851,30 +1156,27 @@ export default function EditProduct({ product, categories, vendor, currentSubscr
 
                                             {/* Return Policy */}
                                             <div className="mt-4 space-y-2">
-                                                <Label htmlFor="return-policy">Return Policy</Label>
-                                                <Textarea
-                                                    id="return-policy"
-                                                    placeholder="e.g. Returns accepted within 7 days of delivery"
+                                                <Label htmlFor="return-policy" className="mb-2 block">Return Policy</Label>
+                                                <RichTextEditor
                                                     value={data.return_policy}
-                                                    onChange={(e) => setData("return_policy", e.target.value)}
+                                                    onChange={(content) => setData("return_policy", content)}
+                                                    placeholder="e.g. Returns accepted within 7 days of delivery"
                                                 />
                                             </div>
 
                                             {/* Additional Info */}
                                             <div className="mt-4 space-y-2">
-                                                <Label htmlFor="additional-info">Additional Information</Label>
-                                                <Textarea
-                                                    id="additional-info"
-                                                    placeholder="Any additional information about the product"
+                                                <Label htmlFor="additional-info" className="mb-2 block">Additional Information</Label>
+                                                <RichTextEditor
                                                     value={data.additional_info}
-                                                    onChange={(e) => setData("additional_info", e.target.value)}
+                                                    onChange={(content) => setData("additional_info", content)}
+                                                    placeholder="Any additional information about the product"
                                                 />
                                             </div>
                                         </div>
                                     </CardContent>
                                 </Card>
                             </TabsContent>
-
                         </Tabs>
 
                         {/* Navigation and Submit Buttons */}

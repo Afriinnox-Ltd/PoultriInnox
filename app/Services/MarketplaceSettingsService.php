@@ -29,7 +29,7 @@ class MarketplaceSettingsService
             $settingKey = is_array($setting) ? $setting['key'] : $setting->key;
             $settingValue = is_array($setting) ? $setting['value'] : $setting->value;
 
-            if ($settingKey === $key) {
+            if ($settingKey== $key) {
                 return $settingValue;
             }
         }
@@ -133,7 +133,7 @@ class MarketplaceSettingsService
         $feeSettings = $this->getFeeSettings();
 
         $commission = 0;
-        if ($commissionSettings['commission_type'] === 'fixed') {
+        if ($commissionSettings['commission_type']== 'fixed') {
             $commission = $commissionSettings['default_commission_rate'];
         } else {
             $commission = ($orderAmount * $commissionSettings['default_commission_rate']) / 100;

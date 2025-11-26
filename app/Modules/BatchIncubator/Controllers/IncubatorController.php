@@ -103,7 +103,7 @@ class IncubatorController extends Controller
                 ],
                 // User access info
                 'can_edit' => $incubator->userHasAccess($user) || $user->isAdmin(),
-                'is_owner' => $incubator->owner_id === $user->id,
+                'is_owner' => $incubator->owner_id== $user->id,
             ];
         });
 
@@ -231,7 +231,7 @@ class IncubatorController extends Controller
 
         // Get all users for access management (only if user is owner)
         $availableUsers = [];
-        if ($incubator->owner_id === Auth::id()) {
+        if ($incubator->owner_id== Auth::id()) {
             $availableUsers = User::select('id', 'name', 'email')
                 ->where('id', '!=', $incubator->owner_id)
                 ->orderBy('name')
@@ -297,8 +297,8 @@ class IncubatorController extends Controller
                 ],
                 // User permissions
                 'can_edit' => $incubator->userHasAccess($user) || $user->isAdmin(),
-                'is_owner' => $incubator->owner_id === $user->id,
-                'can_manage_access' => $incubator->owner_id === $user->id || $user->isAdmin(),
+                'is_owner' => $incubator->owner_id== $user->id,
+                'can_manage_access' => $incubator->owner_id== $user->id || $user->isAdmin(),
             ],
             'availableUsers' => $availableUsers,
         ]);
@@ -321,7 +321,7 @@ class IncubatorController extends Controller
         try {
 
             // Only owner can modify access
-            if ($incubator->owner_id !== Auth::id()) {
+            if ($incubator->owner_id != Auth::id()) {
                 return back()->withErrors(['error' => 'Only the owner can modify access settings.']);
             }
 
@@ -367,7 +367,7 @@ class IncubatorController extends Controller
             'email' => 'required|email',
         ]);
 
-        if ($incubator->owner_id !== Auth::id()) {
+        if ($incubator->owner_id != Auth::id()) {
             return back()->withErrors(['error' => 'Only the owner can search for users.']);
         }
 
@@ -400,7 +400,7 @@ class IncubatorController extends Controller
         ]);
 
         // Only owner can add users
-        if ($incubator->owner_id !== Auth::id()) {
+        if ($incubator->owner_id != Auth::id()) {
             return back()->withErrors(['error' => 'Only the owner can add users.']);
         }
 
@@ -456,12 +456,12 @@ class IncubatorController extends Controller
     public function revokeAccess(Request $request, Incubator $incubator, User $user)
     {
         // Only owner can revoke access
-        if ($incubator->owner_id !== Auth::id()) {
+        if ($incubator->owner_id != Auth::id()) {
             return back()->withErrors(['error' => 'Only the owner can revoke access.']);
         }
 
         // Cannot revoke access from owner
-        if ($user->id === $incubator->owner_id) {
+        if ($user->id== $incubator->owner_id) {
             return back()->withErrors(['error' => 'Cannot revoke access from the owner.']);
         }
 
@@ -475,7 +475,7 @@ class IncubatorController extends Controller
         try {
             // Remove user from authorized users
             $newAuthorizedUsers = array_filter($currentAuthorizedUsers, function($userId) use ($user) {
-                return $userId !== $user->id;
+                return $userId != $user->id;
             });
 
             Log::info('Revoking user access from incubator', [
@@ -614,7 +614,7 @@ class IncubatorController extends Controller
         $user = Auth::user();
 
         // Check if user has access to delete this incubator (only owner or admin)
-        if (!$user->isAdmin() && $incubator->owner_id !== $user->id) {
+        if (!$user->isAdmin() && $incubator->owner_id != $user->id) {
             abort(403, 'You do not have permission to delete this incubator.');
         }
 

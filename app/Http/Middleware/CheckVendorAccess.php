@@ -29,7 +29,7 @@ class CheckVendorAccess
                 ->with('error', 'You need to register as a vendor to access this area.');
         }
 
-        if ($vendor->verification_status !== 'verified') {
+        if ($vendor->verification_status != 'verified') {
             return redirect()->route('marketplace.index')
                 ->with('error', 'Your vendor application is pending verification or has been rejected.');
         }

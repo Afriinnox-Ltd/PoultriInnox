@@ -8,7 +8,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Modules\Marketplace\Models\Payment;
 
-class VendorPayoutCompletedNotification extends Notification implements ShouldQueue
+class VendorPayoutCompletedNotification extends Notification 
 {
     use Queueable;
 

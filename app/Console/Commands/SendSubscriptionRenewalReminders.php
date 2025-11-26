@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Modules\Marketplace\Models\Subscription;
 use App\Notifications\SubscriptionRenewalReminderNotification;
+use App\Mail\Marketplace\SubscriptionExpiring;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
 
@@ -48,8 +50,16 @@ class SendSubscriptionRenewalReminders extends Command
 
                     // Only send reminder if auto-renew is disabled
                     // or if it's the final reminder (1 day)
-                    if (!$subscription->auto_renew || $days === 1) {
+                    if (!$subscription->auto_renew || $days== 1) {
                         $user->notify(new SubscriptionRenewalReminderNotification($subscription, $days));
+                        
+                        // Send professional email
+                        try {
+                            Mail::to($user->email)->send(new SubscriptionExpiring($subscription, $days));
+                        } catch (\Exception $e) {
+                            $this->error("✗ Failed to send email to {$user->email}: {$e->getMessage()}");
+                        }
+
                         $totalSent++;
 
                         $this->line("✓ Reminder sent to {$user->email} - {$subscription->plan_name} expires in {$days} day(s)");

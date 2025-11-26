@@ -22,21 +22,29 @@ class CategoryAdminController extends Controller
         // Search
         if ($request->has('search') && $request->search) {
             $query->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%');
+                ->orWhere('description', 'like', '%' . $request->search . '%');
         }
 
         // Filter by status
-        if ($request->has('status') && $request->status !== '') {
-            $query->where('is_active', $request->status === 'active');
+        if ($request->has('status') && $request->status != '') {
+            $query->where('is_active', $request->status== 'active');
         }
 
         // Filter by category type (parent/subcategory)
-        if ($request->has('type') && $request->type !== '') {
-            if ($request->type === 'parent') {
+        if ($request->has('type') && $request->type != '') {
+            if ($request->type== 'parent') {
                 $query->whereNull('parent_id');
-            } elseif ($request->type === 'subcategory') {
+            } elseif ($request->type== 'subcategory') {
                 $query->whereNotNull('parent_id');
             }
+        }
+
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
         }
 
         // Sort
@@ -44,11 +52,11 @@ class CategoryAdminController extends Controller
         $sort_direction = $request->get('sort_direction', 'asc');
         $query->orderBy($sort_by, $sort_direction);
 
-        $categories = $query->paginate(15);
+        $categories = $query->paginate(55);
 
         return Inertia::render('Admin/Marketplace/Categories/Index', [
             'categories' => $categories,
-            'filters' => $request->only(['search', 'status', 'type', 'sort_by', 'sort_direction']),
+            'filters' => $request->only(['search', 'status', 'type', 'date_from', 'date_to', 'sort_by', 'sort_direction']),
             'parent_categories' => Category::whereNull('parent_id')->where('is_active', true)->orderBy('name')->get(),
         ]);
     }
@@ -79,6 +87,7 @@ class CategoryAdminController extends Controller
             'parent_id' => 'nullable|exists:marketplace_categories,id',
             'image_url' => 'nullable|url|max:255',
             'icon' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'is_active' => 'boolean',
@@ -112,9 +121,12 @@ class CategoryAdminController extends Controller
      */
     public function show(Category $category)
     {
-        $category->load(['children', 'products' => function($query) {
-            $query->take(10);
-        }]);
+        $category->load([
+            'children',
+            'products' => function ($query) {
+                $query->take(10);
+            }
+        ]);
 
         return Inertia::render('Admin/Marketplace/Categories/Show', [
             'category' => $category,
@@ -158,6 +170,7 @@ class CategoryAdminController extends Controller
             ],
             'image_url' => 'nullable|url|max:255',
             'icon' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'is_active' => 'boolean',
@@ -166,7 +179,7 @@ class CategoryAdminController extends Controller
         ]);
 
         // Update slug if name changed
-        if ($validated['name'] !== $category->name) {
+        if ($validated['name'] != $category->name) {
             $validated['slug'] = Str::slug($validated['name']);
 
             // Ensure unique slug
@@ -290,7 +303,7 @@ class CategoryAdminController extends Controller
             case 'delete':
                 // Check if any category has products or children
                 $categories_with_products = $categories->withCount(['products', 'children'])->get();
-                $cannot_delete = $categories_with_products->filter(function($category) {
+                $cannot_delete = $categories_with_products->filter(function ($category) {
                     return $category->products_count > 0 || $category->children_count > 0;
                 });
 

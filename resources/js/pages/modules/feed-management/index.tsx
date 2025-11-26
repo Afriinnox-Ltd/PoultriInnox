@@ -134,7 +134,7 @@ export default function FeedManagementDashboard({ stats, inventory_alerts, feed_
         setIncubators(data.incubators);
       }
     } catch (error) {
-      console.error('Error fetching incubator data:', error);
+
     } finally {
       setLoadingIncubators(false);
     }
@@ -164,23 +164,13 @@ export default function FeedManagementDashboard({ stats, inventory_alerts, feed_
 
   const calculateRequirements = async () => {
     if (!selectedProgram || !selectedFeedType || !birdCount || !birdAge) {
-      console.warn('Missing required fields:', {
-        selectedProgram,
-        selectedFeedType,
-        birdCount,
-        birdAge
-      });
+
       return;
     }
 
     setIsCalculating(true);
     try {
-      console.log('Sending calculation request:', {
-        program_id: selectedProgram,
-        feed_type_id: selectedFeedType,
-        bird_count: birdCount,
-        bird_age_days: birdAge,
-      });
+
 
       const response = await fetch('/feed-management/api/calculate-requirements', {
         method: 'POST',
@@ -196,22 +186,21 @@ export default function FeedManagementDashboard({ stats, inventory_alerts, feed_
         }),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
+
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Calculation response:', data);
+
 
         setRequirements(data.requirements || []);
       } else {
         const errorText = await response.text();
-        console.error('Error response:', errorText);
+
         alert(`Error calculating requirements: ${response.status} - ${errorText}`);
         toast.error(`Error calculating requirements: ${response.status}`);
       }
     } catch (error) {
-      console.error('Error calculating requirements:', error);
+
       toast.error('An error occurred while calculating requirements. Please try again.');
     } finally {
       setIsCalculating(false);
@@ -255,17 +244,17 @@ export default function FeedManagementDashboard({ stats, inventory_alerts, feed_
               <p className="text-gray-600">Monitor and manage your feed inventory and consumption</p>
             </div>
             <div className="flex space-x-2">
-              <Link  href={'/feed-management/inventory'}>
+              <Link href={'/feed-management/inventory'}>
                 <Button className='flex ' variant={'secondary'}>
-                <Package className="h-4 w-4 mr-2" />
-               <span>Inventory</span>
-               </Button>
+                  <Package className="h-4 w-4 mr-2" />
+                  <span>Inventory</span>
+                </Button>
               </Link>
               <Link href={'/feed-management/consumption'} >
-            <Button className='flex ' variant={'secondary'}>
-                <Utensils className="h-4 w-4 mr-2" />
-                <span>Consumption</span>
-              </Button>
+                <Button className='flex ' variant={'secondary'}>
+                  <Utensils className="h-4 w-4 mr-2" />
+                  <span>Consumption</span>
+                </Button>
 
               </Link>
             </div>

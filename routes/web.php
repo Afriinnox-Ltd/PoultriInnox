@@ -1,29 +1,52 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\BatchIncubatorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ModuleController;
-use App\Http\Controllers\BatchIncubatorController;
+use App\Http\Controllers\Modules\BatchIncubator\Controllers\ScheduleReminderController;
+use App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController;
 use App\Modules\BatchIncubator\Controllers\BatchController;
 use App\Modules\BatchIncubator\Controllers\IncubatorController;
-use App\Modules\BatchIncubator\Controllers\ScheduleController;
 use App\Modules\BatchIncubator\Controllers\ReportsController;
+use App\Modules\BatchIncubator\Controllers\ScheduleController;
 use App\Modules\BatchIncubator\Controllers\SmartSchedulingController;
-use App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController;
-use App\Http\Controllers\Modules\BatchIncubator\Controllers\ScheduleReminderController;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('website/welcome');
+    // return Inertia::render('website/welcome');
+    return redirect()->route('store.index');
 })->name('home');
+
+// Language switcher
+Route::get('/lang/{locale}', function (string $locale) {
+    session(['locale' => $locale]);
+    return back();
+})->where('locale', 'en|rw')->name('lang.switch');
+
+
+// Help & Support page
+Route::get('help', function () {
+    return Inertia::render('help');
+})->name('help');
+
+// Public Partners Programme page
+Route::get('partners', function () {
+    return Inertia::render('Public/Partners');
+})->name('partners.landing');
+
+// Marketplace Documentation
+Route::prefix('docs/marketplace')->name('docs.marketplace.')->group(function () {
+    Route::get('buyer', function () {
+        return Inertia::render('Docs/Marketplace/Buyer');
+    })->name('buyer');
+    Route::get('vendor', function () {
+        return Inertia::render('Docs/Marketplace/Vendor');
+    })->name('vendor');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // Help & Support page
-    Route::get('help', function () {
-        return Inertia::render('help');
-    })->name('help');
 
     // Module management routes
     Route::prefix('modules')->name('modules.')->group(function () {
@@ -113,7 +136,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             });
 
             // Admin Protocol Management Routes
-            Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+            Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin.access', 'permission:manage-protocols'])->group(function () {
                 Route::prefix('protocols')->name('protocols.')->group(function () {
                     Route::get('/', [ProtocolManagementController::class, 'index'])->name('index');
                     Route::get('statistics', [ProtocolManagementController::class, 'getStatistics'])->name('statistics');
@@ -139,13 +162,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
     // Feed Management Module Routes
-    require __DIR__ . '/feed-management.php';
+    require __DIR__.'/feed-management.php';
 
 });
 
-    // Marketplace Module Routes
-    require __DIR__ . '/marketplace.php';
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
-require __DIR__ . '/admin.php';
-require __DIR__ . '/payment.php';
+// Marketplace Module Routes
+require __DIR__.'/marketplace.php';
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';
+require __DIR__.'/admin.php';
+require __DIR__.'/payment.php';
+require __DIR__.'/partners.php';

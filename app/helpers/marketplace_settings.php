@@ -23,7 +23,7 @@ if (!function_exists('marketplace_settings')) {
      */
     function marketplace_settings(?array $keys = null): array
     {
-        if ($keys === null) {
+        if ($keys== null) {
             return \App\Models\MarketplaceSetting::getPublic();
         }
 
@@ -198,7 +198,7 @@ if (!function_exists('calculate_vendor_commission')) {
         $rate = $customRate ?? marketplace_commission_rate();
         $type = marketplace_setting('commission_type', 'percentage');
 
-        if ($type === 'fixed') {
+        if ($type== 'fixed') {
             return $rate;
         }
 

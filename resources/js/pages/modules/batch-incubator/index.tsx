@@ -189,7 +189,7 @@ export default function BatchIncubatorIndex({
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Batch Incubator Management</h1>
             <p className="text-muted-foreground">
-              Complete poultry batch and incubator management system
+              Complete livestock batch and incubator management system
             </p>
           </div>
           <div className="flex gap-2">
@@ -336,7 +336,7 @@ export default function BatchIncubatorIndex({
                       Manage Batches
                     </CardTitle>
                     <CardDescription>
-                      View and manage all your poultry batches
+                      View and manage all your livestock batches
                     </CardDescription>
                   </CardHeader>
                 </Link>

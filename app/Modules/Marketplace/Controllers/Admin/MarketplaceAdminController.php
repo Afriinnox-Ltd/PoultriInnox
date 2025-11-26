@@ -7,6 +7,9 @@ use App\Modules\Marketplace\Models\Category;
 use App\Modules\Marketplace\Models\Product;
 use App\Modules\Marketplace\Models\Vendor;
 use App\Modules\Marketplace\Models\Order;
+use App\Modules\Marketplace\Models\Payment;
+use App\Modules\Marketplace\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -23,8 +26,8 @@ class MarketplaceAdminController extends Controller
             'active_products' => Product::where('status', 'active')->count(),
             'pending_products' => Product::where('status', 'pending')->count(),
             'total_vendors' => Vendor::count(),
-            'approved_vendors' => Vendor::where('verification_status', 'verified')->count(),
-            'pending_vendors' => Vendor::where('verification_status', 'pending')->count(),
+            'approved_vendors' => Vendor::where('status', 'approved')->count(),
+            'pending_vendors' => Vendor::where('status', 'pending')->count(),
             'total_orders' => Order::count(),
             'pending_orders' => Order::where('status', 'pending')->count(),
             'completed_orders' => Order::where('status', 'completed')->count(),
@@ -50,8 +53,8 @@ class MarketplaceAdminController extends Controller
         // Sales analytics - SQLite compatible
         $monthly_sales = Order::where('status', 'completed')
             ->where('created_at', '>=', now()->subMonths(12))
-            ->selectRaw("strftime('%Y', created_at) as year, strftime('%m', created_at) as month, SUM(total_amount) as total")
-            ->groupByRaw("strftime('%Y', created_at), strftime('%m', created_at)")
+            ->selectRaw("DATE_FORMAT(created_at, '%Y') as year, DATE_FORMAT(created_at, '%m') as month, SUM(total_amount) as total")
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y'), DATE_FORMAT(created_at, '%m')")
             ->orderByRaw("year, month")
             ->get();
 
@@ -86,9 +89,9 @@ class MarketplaceAdminController extends Controller
             ],
             'vendors' => [
                 'total' => Vendor::count(),
-                'approved' => Vendor::where('verification_status', 'verified')->count(),
-                'pending' => Vendor::where('verification_status', 'pending')->count(),
-                'rejected' => Vendor::where('verification_status', 'rejected')->count(),
+                'approved' => Vendor::where('status', 'approved')->count(),
+                'pending' => Vendor::where('status', 'pending')->count(),
+                'rejected' => Vendor::where('status', 'rejected')->count(),
                 'suspended' => Vendor::where('is_active', false)->count(),
             ],
             'orders' => [
@@ -116,11 +119,11 @@ class MarketplaceAdminController extends Controller
                 ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
                 ->sum('total_amount'),
             'this_month' => Order::where('status', 'completed')
-                ->whereRaw("strftime('%m', created_at) = ?", [now()->format('m')])
-                ->whereRaw("strftime('%Y', created_at) = ?", [now()->format('Y')])
+                ->whereRaw("DATE_FORMAT(created_at, '%m') = ?", [now()->format('m')])
+                ->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [now()->format('Y')])
                 ->sum('total_amount'),
             'this_year' => Order::where('status', 'completed')
-                ->whereRaw("strftime('%Y', created_at) = ?", [now()->format('Y')])
+                ->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [now()->format('Y')])
                 ->sum('total_amount'),
         ];
 
@@ -135,16 +138,20 @@ class MarketplaceAdminController extends Controller
      */
     public function getAnalytics(Request $request)
     {
-        $period = $request->get('period', 'month'); // day, week, month, year
+        $request->validate([
+            'period' => 'nullable|in:day,week,month,year,custom',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+        ]);
+
+        $period = $request->get('period', 'month');
         $start_date = $request->get('start_date');
         $end_date = $request->get('end_date');
 
-        // If custom date range provided, use it
         if ($start_date && $end_date) {
             $start = \Carbon\Carbon::parse($start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($end_date)->endOfDay();
         } else {
-            // Use period-based dates
             $start = match($period) {
                 'day' => now()->startOfDay(),
                 'week' => now()->startOfWeek(),
@@ -155,7 +162,15 @@ class MarketplaceAdminController extends Controller
             $end = now()->endOfDay();
         }
 
-        // Sales analytics - include all order statuses that count as sales
+        // ── Revenue Stats ──
+        $revenue_stats = [
+            'today' => Order::where('status', 'completed')->whereDate('created_at', today())->sum('total_amount'),
+            'this_week' => Order::where('status', 'completed')->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->sum('total_amount'),
+            'this_month' => Order::where('status', 'completed')->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_amount'),
+            'this_year' => Order::where('status', 'completed')->whereYear('created_at', now()->year)->sum('total_amount'),
+        ];
+
+        // ── Daily Sales (period) ──
         $sales_data = Order::whereIn('status', ['completed', 'delivered', 'shipped', 'processing'])
             ->whereBetween('created_at', [$start, $end])
             ->selectRaw("date(created_at) as date, COUNT(*) as orders, SUM(total_amount) as revenue")
@@ -163,83 +178,168 @@ class MarketplaceAdminController extends Controller
             ->orderBy('date')
             ->get();
 
-        // Product performance - with date range
+        // ── Order Stats ──
+        $order_stats = [
+            'total' => Order::count(),
+            'period_total' => Order::whereBetween('created_at', [$start, $end])->count(),
+            'pending' => Order::where('status', 'pending')->count(),
+            'processing' => Order::where('status', 'processing')->count(),
+            'shipped' => Order::where('status', 'shipped')->count(),
+            'delivered' => Order::where('status', 'delivered')->count(),
+            'completed' => Order::where('status', 'completed')->count(),
+            'cancelled' => Order::where('status', 'cancelled')->count(),
+            'refunded' => Order::where('status', 'refunded')->count(),
+        ];
+
+        // ── Vendor Stats ──
+        $vendor_stats = [
+            'total' => Vendor::count(),
+            'approved' => Vendor::where('status', 'approved')->count(),
+            'pending' => Vendor::where('status', 'pending')->count(),
+            'rejected' => Vendor::where('status', 'rejected')->count(),
+            'suspended' => Vendor::where('status', 'suspended')->count(),
+            'verified' => Vendor::where('is_verified', true)->count(),
+            'new_this_month' => Vendor::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
+        ];
+
+        // ── Product Stats ──
+        $product_stats = [
+            'total' => Product::count(),
+            'active' => Product::where('status', 'active')->count(),
+            'pending' => Product::where('status', 'pending')->count(),
+            'inactive' => Product::where('status', 'inactive')->count(),
+            'out_of_stock' => Product::where('stock_quantity', 0)->count(),
+            'new_this_month' => Product::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
+        ];
+
+        // ── Payment Stats (filtered by period) ──
+        $periodPayments = Payment::where('type', 'payment')->whereBetween('created_at', [$start, $end]);
+        $periodPaymentsCompleted = (clone $periodPayments)->where('status', 'completed');
+        $totalPeriodPayments = (clone $periodPayments)->count();
+        $successfulPeriodPayments = (clone $periodPaymentsCompleted)->count();
+        $payment_stats = [
+            'total_revenue' => (clone $periodPaymentsCompleted)->sum('net_amount'),
+            'total_commission' => (clone $periodPaymentsCompleted)->sum('commission_amount'),
+            'pending_payouts' => Payment::where('status', 'completed')->where('type', 'payment')->where('vendor_paid', false)->sum('vendor_amount'),
+            'completed_payouts' => Payment::where('status', 'completed')->where('type', 'payment')->where('vendor_paid', true)->sum('vendor_amount'),
+            'total_payments' => $totalPeriodPayments,
+            'successful' => $successfulPeriodPayments,
+            'failed' => (clone $periodPayments)->where('status', 'failed')->count(),
+            'success_rate' => $totalPeriodPayments > 0
+                ? round(($successfulPeriodPayments / $totalPeriodPayments) * 100, 1)
+                : 0,
+        ];
+
+        // ── Subscription Stats ──
+        $subscription_stats = [
+            'total_plans' => SubscriptionPlan::count(),
+            'active_plans' => SubscriptionPlan::where('is_active', true)->count(),
+            'total_subscriptions' => Subscription::count(),
+            'active_subscriptions' => Subscription::where('is_active', true)->count(),
+            'subscription_revenue' => Payment::where('status', 'completed')->where('type', 'subscription')->sum('amount'),
+            'new_this_month' => Subscription::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
+        ];
+
+        // ── Monthly Revenue Trend (12 months) ──
+        $monthly_trend = Order::where('status', 'completed')
+            ->where('created_at', '>=', now()->subMonths(12)->startOfMonth())
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as orders, SUM(total_amount) as revenue")
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+            ->orderBy('month')
+            ->get();
+
+        // ── Monthly New Vendors (12 months) ──
+        $monthly_vendors = Vendor::where('created_at', '>=', now()->subMonths(12)->startOfMonth())
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count")
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+            ->orderBy('month')
+            ->get();
+
+        // ── Monthly New Orders (12 months) ──
+        $monthly_orders = Order::where('created_at', '>=', now()->subMonths(12)->startOfMonth())
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count, SUM(total_amount) as revenue")
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+            ->orderBy('month')
+            ->get();
+
+        // ── Top Products (period) ──
         $product_performance = Product::withCount(['orderItems' => function($query) use ($start, $end) {
                 $query->whereHas('order', function($q) use ($start, $end) {
                     $q->whereBetween('created_at', [$start, $end]);
                 });
             }])
             ->with('category')
-            ->get()
-            ->filter(function($product) {
-                return $product->order_items_count > 0;
-            })
-            ->sortByDesc('order_items_count')
+            ->having('order_items_count', '>', 0)
+            ->orderByDesc('order_items_count')
             ->take(10)
-            ->values();
+            ->get();
 
-        // Vendor performance - with date range
+        // ── Top Vendors (period) ──
         $vendor_performance = Vendor::withCount(['orders' => function($query) use ($start, $end) {
                 $query->whereBetween('created_at', [$start, $end]);
             }])
-            ->with(['orders' => function($query) use ($start, $end) {
+            ->withSum(['orders' => function($query) use ($start, $end) {
                 $query->whereBetween('created_at', [$start, $end]);
-            }])
+            }], 'total_amount')
             ->withCount('products')
-            ->get()
-            ->map(function($vendor) {
-                $vendor->orders_sum_total_amount = $vendor->orders->sum('total_amount');
-                return $vendor;
-            })
-            ->sortByDesc('orders_sum_total_amount')
+            ->having('orders_count', '>', 0)
+            ->orderByDesc('orders_sum_total_amount')
             ->take(10)
-            ->values();
+            ->get();
 
-        // Category performance
+        // ── Category Performance (period) ──
         $category_performance = Category::withCount('products')
-            ->with(['products' => function($query) {
-                $query->withCount('orderItems');
+            ->with(['products' => function($query) use ($start, $end) {
+                $query->withCount(['orderItems' => function($q) use ($start, $end) {
+                    $q->whereHas('order', function($oq) use ($start, $end) {
+                        $oq->whereBetween('created_at', [$start, $end]);
+                    });
+                }]);
             }])
             ->get()
-            ->map(function($category) {
-                $total_sales = $category->products->sum('order_items_count');
-                return [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'products_count' => $category->products_count,
-                    'total_sales' => $total_sales,
-                ];
-            })
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'products_count' => $c->products_count,
+                'total_sales' => $c->products->sum('order_items_count'),
+            ])
             ->sortByDesc('total_sales')
             ->take(10)
             ->values();
 
-        // Revenue statistics for overview
-        $revenue_stats = [
-            'today' => Order::where('status', 'completed')
-                ->whereDate('created_at', today())
-                ->sum('total_amount'),
-            'this_week' => Order::where('status', 'completed')
-                ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
-                ->sum('total_amount'),
-            'this_month' => Order::where('status', 'completed')
-                ->whereRaw("strftime('%m', created_at) = ?", [now()->format('m')])
-                ->whereRaw("strftime('%Y', created_at) = ?", [now()->format('Y')])
-                ->sum('total_amount'),
-            'this_year' => Order::where('status', 'completed')
-                ->whereRaw("strftime('%Y', created_at) = ?", [now()->format('Y')])
-                ->sum('total_amount'),
-        ];
+        // ── Payment Method Breakdown (period) ──
+        $payment_methods = Payment::where('status', 'completed')
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw("payment_method, COUNT(*) as count, SUM(amount) as total_amount")
+            ->groupBy('payment_method')
+            ->orderByDesc('total_amount')
+            ->get();
+
+        // ── Subscription Plan Distribution ──
+        $plan_distribution = SubscriptionPlan::withCount(['subscriptions', 'subscriptions as active_subscriptions_count' => function($q) {
+                $q->where('is_active', true);
+            }])
+            ->get(['id', 'name', 'price', 'billing_cycle']);
 
         return Inertia::render('Admin/Marketplace/Analytics', [
             'period' => $period,
             'start_date' => $start_date ?? $start->format('Y-m-d'),
             'end_date' => $end_date ?? $end->format('Y-m-d'),
             'sales_data' => $sales_data,
+            'revenue_stats' => $revenue_stats,
+            'order_stats' => $order_stats,
+            'vendor_stats' => $vendor_stats,
+            'product_stats' => $product_stats,
+            'payment_stats' => $payment_stats,
+            'subscription_stats' => $subscription_stats,
+            'monthly_trend' => $monthly_trend,
+            'monthly_vendors' => $monthly_vendors,
+            'monthly_orders' => $monthly_orders,
             'product_performance' => $product_performance,
             'vendor_performance' => $vendor_performance,
             'category_performance' => $category_performance,
-            'revenue_stats' => $revenue_stats,
+            'payment_methods' => $payment_methods,
+            'plan_distribution' => $plan_distribution,
         ]);
     }
 }

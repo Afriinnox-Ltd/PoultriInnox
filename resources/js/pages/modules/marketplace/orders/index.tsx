@@ -216,13 +216,13 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                             ? String((errors as Record<string, unknown>).error)
                             : 'Failed to update order status. Please try again.';
                         toast.error(errorMessage);
-                        console.error('Error updating order status:', errors);
+
                     }
                 }
             );
 
         } catch (error) {
-            console.error('Error updating order status:', error);
+
             alert('Failed to update order status. Please try again.');
         }
     };
@@ -476,7 +476,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
 
                 <div class="footer">
                     <p>Thank you for your business!</p>
-                    <p>Agriinnox Marketplace - Your trusted partner in poultry solutions</p>
+                    <p>Agriinnox Marketplace - Your trusted partner in livestock solutions</p>
                     <p>This is a computer-generated invoice. For any questions, please contact our support team.</p>
                 </div>
             </body>
@@ -508,26 +508,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
             <div className="flex justify-between items-center p-6 pb-0">
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
                     {getPageTitle()}
-                </h2>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={() => window.open('/marketplace/orders/export')}
-                        variant="outline"
-                        size="sm"
-                    >
-                        <Download className="h-4 w-4 mr-2" />
-                        Export
-                    </Button>
-                    {user_type === 'vendor' && (
-                        <Button
-                            onClick={() => window.location.href = '/marketplace/vendor/dashboard'}
-                            variant="outline"
-                            size="sm"
-                        >
-                            Dashboard
-                        </Button>
-                    )}
-                </div>
+                </h2> 
             </div>
             <div className="py-6">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -655,9 +636,9 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                         <div className="flex items-center">
                                                             <DollarSign className="h-4 w-4 mr-1" />
                                                             {order.payment_method === 'cash_on_delivery' ? 'COD' :
-                                                             order.payment_method === 'credit_card' ? 'Credit Card' :
-                                                             order.payment_method === 'paypal' ? 'PayPal' :
-                                                             order.payment_method === 'bank_transfer' ? 'Bank Transfer' : 'Online'}
+                                                                order.payment_method === 'credit_card' ? 'Credit Card' :
+                                                                    order.payment_method === 'paypal' ? 'PayPal' :
+                                                                        order.payment_method === 'bank_transfer' ? 'Bank Transfer' : 'Online'}
                                                         </div>
                                                     )}
                                                 </div>
@@ -824,7 +805,21 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                 </div>
                                             </>
                                         )}
-
+                                        {/* Customer Notes / Negotiation Details */}
+                                        {order.notes && (
+                                            <>
+                                                <Separator className="mb-4" />
+                                                <div className="bg-amber-50 p-4 rounded-lg mb-4 border border-amber-200">
+                                                    <h4 className="font-medium flex items-center text-amber-900 mb-2">
+                                                        <Package className="h-4 w-4 mr-2" />
+                                                        Customer Notes {order.payment_method === 'cash_on_delivery' && '(May Include Negotiation Details)'}
+                                                    </h4>
+                                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                                        {order.notes}
+                                                    </p>
+                                                </div>
+                                            </>
+                                        )}
                                         {/* Shipping Information */}
                                         {order.shipping && (
                                             <>
@@ -945,7 +940,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                                     },
                                                                     onError: (error) => {
                                                                         toast.error('Failed to confirm order. Please try again.');
-                                                                        console.error('Error confirming order:', error);
+
                                                                     }
                                                                 });
                                                             }
@@ -1084,7 +1079,7 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                 <MapPin className="h-5 w-5 mr-2" />
                                                 Shipping Address
                                             </h3>
-                                            {selectedOrder.shipping_address &&  JSON.parse( selectedOrder.shipping_address) ? (
+                                            {selectedOrder.shipping_address && JSON.parse(selectedOrder.shipping_address) ? (
                                                 <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
                                                     {(() => {
                                                         const addr = JSON.parse(selectedOrder.shipping_address) as ShippingAddress;
@@ -1156,10 +1151,10 @@ export default function OrdersPage({ orders, filters, user_type }: OrdersPagePro
                                                 <DollarSign className="h-5 w-5 mr-2" />
                                                 Billing Address
                                             </h3>
-                                            {selectedOrder.billing_address && typeof  JSON.parse(selectedOrder.billing_address) === 'object' ? (
+                                            {selectedOrder.billing_address && typeof JSON.parse(selectedOrder.billing_address) === 'object' ? (
                                                 <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
                                                     {(() => {
-                                                        const addr =  JSON.parse(selectedOrder.billing_address) as ShippingAddress;
+                                                        const addr = JSON.parse(selectedOrder.billing_address) as ShippingAddress;
                                                         return (
                                                             <>
                                                                 <div className="flex justify-between">

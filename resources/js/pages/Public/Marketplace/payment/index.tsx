@@ -29,11 +29,19 @@ import {
 
 interface PaymentPageProps {
     order: any;
+    orders: any[]; // New: support multiple orders
     payment: any;
     phoneNumber?: string;
+    groupId?: string; // New: support group ID
 }
 
-export default function PaymentPage({ order, payment: initialPayment, phoneNumber: initialPhone = '' }: PaymentPageProps) {
+export default function PaymentPage({
+    order,
+    orders = [],
+    payment: initialPayment,
+    phoneNumber: initialPhone = '',
+    groupId
+}: PaymentPageProps) {
     const { auth } = usePage<SharedData>().props;
     const [phoneNumber, setPhoneNumber] = useState(initialPhone);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -48,8 +56,11 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
     useEffect(() => {
         if (initialPhone && !isProcessing) {
             // Check if payment was already initiated (has metadata with ishema response)
-            const hasInitiatedPayment = initialPayment?.metadata &&
-                JSON.parse(initialPayment.metadata).ishema_response;
+            const metadata = typeof initialPayment?.metadata === 'string'
+                ? JSON.parse(initialPayment.metadata)
+                : initialPayment?.metadata;
+
+            const hasInitiatedPayment = metadata?.ishema_response;
 
             if (!hasInitiatedPayment) {
                 handleInitiatePayment();
@@ -115,7 +126,10 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                body: JSON.stringify({ phone_number: phoneNumber })
+                body: JSON.stringify({
+                    phone_number: phoneNumber,
+                    group_id: groupId
+                })
             });
 
             const data = await response.json();
@@ -145,9 +159,10 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                 setPayment(data.payment);
 
                 if (data.payment.status === 'completed') {
-                    // Redirect to order confirmation
+                    // Redirect to order confirmation with all orders in the group
+                    const orderIds = orders.length > 0 ? orders.map(o => o.id).join(',') : order.id;
                     setTimeout(() => {
-                        router.visit(`/orders/${order.id}`);
+                        router.visit(`/orders/confirmation?orders=${orderIds}`);
                     }, 2000);
                 } else if (data.payment.status === 'failed') {
                     // Close timeout modal if payment failed
@@ -155,7 +170,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                 }
             }
         } catch (err) {
-            console.error('Status check failed:', err);
+
         } finally {
             setCheckingStatus(false);
         }
@@ -252,25 +267,43 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                         </CardContent>
                     </Card>
 
-                    {/* Order Details */}
+                    {/* Grouped Order Details */}
                     <Card className="mb-6">
                         <CardHeader>
-                            <CardTitle>Order Details</CardTitle>
+                            <CardTitle>Payment Summary</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3">
+                            <div className="space-y-4">
+                                {orders.length > 1 && (
+                                    <div className="border-b pb-3 mb-3">
+                                        <p className="text-sm font-medium text-gray-500 mb-2">Paying for {orders.length} orders:</p>
+                                        <div className="space-y-2">
+                                            {orders.map((o) => (
+                                                <div key={o.id} className="flex justify-between text-sm">
+                                                    <span>Order #{o.order_number} ({o.vendor?.business_name})</span>
+                                                    <span>{formatCurrency(o.total_amount)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Order Number:</span>
-                                    <span className="font-semibold">#{order.order_number}</span>
+                                    <span className="text-gray-600">
+                                        {orders.length > 1 ? 'Total Order Amount:' : 'Order Number:'}
+                                    </span>
+                                    <span className="font-semibold">
+                                        {orders.length > 1 ? formatCurrency(orders.reduce((acc, o) => acc + parseFloat(o.total_amount), 0)) : `#${order.order_number}`}
+                                    </span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Amount to Pay:</span>
-                                    <span className="font-bold text-xl text-emerald-600">
-                                        {formatCurrency(payment?.amount || order.total_amount)}
+                                <div className="flex justify-between items-center pt-2 border-t mt-2">
+                                    <span className="text-lg font-bold">Total to Pay:</span>
+                                    <span className="font-bold text-2xl text-emerald-600">
+                                        {formatCurrency(payment?.amount || orders.reduce((acc, o) => acc + parseFloat(o.total_amount), 0))}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Payment Method:</span>
+                                    <span className="text-gray-600">Payment Gateway:</span>
                                     <div className="flex items-center">
                                         <Smartphone className="h-4 w-4 mr-1 text-yellow-500" />
                                         <span>MTN Mobile Money</span>
@@ -339,7 +372,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                                         ) : (
                                             <>
                                                 <Smartphone className="h-5 w-5 mr-2" />
-                                                Pay Now - {formatCurrency(order.total_amount)}
+                                                Pay Now - {formatCurrency(orders.reduce((acc, o) => acc + parseFloat(o.total_amount), 0))}
                                             </>
                                         )}
                                     </Button>
@@ -408,7 +441,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
             <Dialog open={showTimeoutModal} onOpenChange={setShowTimeoutModal}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="flex items-center text-orange-600">
+                        <DialogTitle className="flex items-center text-emerald-600">
                             <Clock className="h-5 w-5 mr-2" />
                             Payment Timeout
                         </DialogTitle>
@@ -423,7 +456,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                             </div>
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="flex gap-2 sm:gap-0">
+                    <DialogFooter className="flex gap-4 sm:gap-3">
                         <Button
                             variant="outline"
                             onClick={handleCancelPayment}
@@ -432,7 +465,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                         </Button>
                         <Button
                             onClick={handleRetryPayment}
-                            className="bg-orange-600 hover:bg-orange-700"
+                            className="bg-emerald-600 hover:bg-emerald-700"
                         >
                             Try Again
                         </Button>

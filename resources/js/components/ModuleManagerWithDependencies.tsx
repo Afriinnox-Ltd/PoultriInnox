@@ -61,8 +61,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
       const response = await fetch('/api/modules/with-dependencies');
       const data = await response.json();
       setModules(data);
-    } catch (error) {
-      console.error('Error fetching modules:', error);
+    } catch (error) { 
     } finally {
       setLoading(false);
     }
@@ -89,8 +88,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
       } else {
         alert(result.message);
       }
-    } catch (error) {
-      console.error('Error enabling module:', error);
+    } catch (error) { 
     } finally {
       setLoading(false);
     }
@@ -116,8 +114,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
       } else {
         alert(result.message);
       }
-    } catch (error) {
-      console.error('Error disabling module:', error);
+    } catch (error) { 
     } finally {
       setLoading(false);
     }
@@ -142,8 +139,7 @@ const ModuleManagerWithDependencies: React.FC = () => {
       } else {
         alert(result.message);
       }
-    } catch (error) {
-      console.error('Error enabling module with dependencies:', error);
+    } catch (error) { 
     } finally {
       setLoading(false);
     }

@@ -65,7 +65,7 @@ class FeedTemplateController extends Controller
             ],
             'suppliers' => [
                 'total' => FeedSupplier::count(),
-                'averageRating' => FeedSupplier::avg('rating'),
+                'averageRating' => FeedSupplier::avg('quality_rating'),
                 'withCertifications' => FeedSupplier::whereNotNull('certifications')->count(),
                 'recentlyAdded' => FeedSupplier::where('created_at', '>=', now()->subDays(7))->count()
             ]
@@ -270,7 +270,7 @@ class FeedTemplateController extends Controller
 
                 $row = str_getcsv($line);
 
-                if (count($row) !== count($headers)) {
+                if (count($row) != count($headers)) {
                     $errors[] = "Line " . ($i + 1) . ": Column count mismatch";
                     continue;
                 }
@@ -323,7 +323,7 @@ class FeedTemplateController extends Controller
 
                 $row = str_getcsv($line);
 
-                if (count($row) !== count($headers)) {
+                if (count($row) != count($headers)) {
                     $errors[] = "Line " . ($i + 1) . ": Column count mismatch. Expected " . count($headers) . ", got " . count($row);
                     continue;
                 }
@@ -377,7 +377,7 @@ class FeedTemplateController extends Controller
 
                 $row = str_getcsv($line);
 
-                if (count($row) !== count($headers)) {
+                if (count($row) != count($headers)) {
                     $errors[] = "Line " . ($i + 1) . ": Column count mismatch. Expected " . count($headers) . ", got " . count($row);
                     continue;
                 }

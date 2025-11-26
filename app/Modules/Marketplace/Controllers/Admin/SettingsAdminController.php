@@ -172,7 +172,7 @@ class SettingsAdminController extends Controller
         $content = file_get_contents($file->getPathname());
         $settings = json_decode($content, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (json_last_error() != JSON_ERROR_NONE) {
             return back()->with('error', 'Invalid JSON file.');
         }
 
@@ -262,7 +262,7 @@ class SettingsAdminController extends Controller
             case 'array':
                 if (is_string($value)) {
                     json_decode($value);
-                    if (json_last_error() !== JSON_ERROR_NONE) {
+                    if (json_last_error() != JSON_ERROR_NONE) {
                         return 'Value must be valid JSON';
                     }
                 }

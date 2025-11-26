@@ -125,13 +125,7 @@ export default function Analytics({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link 
-              href="/admin/marketplace/subscriptions"
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 text-xs"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Link>
+            
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Subscription Analytics</h1>
               <p className="text-gray-600">Detailed insights into subscription performance and revenue</p>

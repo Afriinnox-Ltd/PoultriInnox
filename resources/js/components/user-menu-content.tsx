@@ -4,7 +4,7 @@ import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Link2, LogOut, Settings } from 'lucide-react';
 
 interface UserMenuContentProps {
@@ -13,6 +13,8 @@ interface UserMenuContentProps {
 
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
+    const { auth } = usePage<{ auth: { permissions: string[] } }>().props;
+    const hasAdminAccess = user.role === 'admin' || (auth.permissions && auth.permissions.length > 0);
 
     const handleLogout = () => {
         cleanup();
@@ -35,13 +37,12 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         Settings
                     </Link>
                 </DropdownMenuItem>
-                {
-                    user.role == 'admin' ? (
+                {hasAdminAccess ? (
 
                         <DropdownMenuItem asChild>
                             <Link className="block w-full" href={'/admin'} as="button" prefetch onClick={cleanup}>
                                 <Link2 className="mr-2" />
-                                Admin
+                                Admin Dashboard
                             </Link>
                         </DropdownMenuItem>
                     ) : null}

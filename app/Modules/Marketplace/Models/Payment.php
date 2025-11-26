@@ -2,11 +2,11 @@
 
 namespace App\Modules\Marketplace\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
 
 class Payment extends Model
 {
@@ -135,7 +135,7 @@ class Payment extends Model
                 break;
             case 'month':
                 $query->whereMonth('processed_at', now()->month)
-                      ->whereYear('processed_at', now()->year);
+                    ->whereYear('processed_at', now()->year);
                 break;
             case 'year':
                 $query->whereYear('processed_at', now()->year);
@@ -158,7 +158,7 @@ class Payment extends Model
         $monthlyData = static::where('status', 'completed')
             ->where('type', 'payment')
             ->whereYear('processed_at', now()->year)
-            ->selectRaw('strftime("%m", processed_at) as month, SUM(net_amount) as revenue, COUNT(*) as transactions')
+            ->selectRaw('DATE_FORMAT(processed_at, "%m") as month, SUM(net_amount) as revenue, COUNT(*) as transactions')
             ->groupBy('month')
             ->orderBy('month')
             ->get();
@@ -220,7 +220,7 @@ class Payment extends Model
     public function scopePendingVendorPayout(Builder $query): Builder
     {
         return $query->where('status', 'completed')
-                    ->where('vendor_paid', false);
+            ->where('vendor_paid', false);
     }
 
     /**
@@ -249,7 +249,7 @@ class Payment extends Model
      */
     public function getFormattedAmountAttribute(): string
     {
-        return $this->currency . ' ' . number_format($this->amount, 2);
+        return $this->currency.' '.number_format($this->amount, 2);
     }
 
     /**
@@ -257,6 +257,6 @@ class Payment extends Model
      */
     public function getFormattedNetAmountAttribute(): string
     {
-        return $this->currency . ' ' . number_format($this->net_amount, 2);
+        return $this->currency.' '.number_format($this->net_amount, 2);
     }
 }

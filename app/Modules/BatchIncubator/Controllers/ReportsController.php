@@ -215,7 +215,7 @@ class ReportsController extends Controller
             $content[] = str_repeat('-', 7);
             foreach ($data['summary'] as $key => $value) {
                 // Skip raw values in text output
-                if (strpos($key, '_raw') !== false) {
+                if (strpos($key, '_raw') != false) {
                     continue;
                 }
                 $content[] = ucwords(str_replace('_', ' ', $key)) . ': ' . $value;
@@ -327,7 +327,7 @@ class ReportsController extends Controller
             $csv[] = '"Metric","Value"';
             foreach ($data['summary'] as $key => $value) {
                 // Skip raw values in CSV output
-                if (strpos($key, '_raw') !== false) {
+                if (strpos($key, '_raw') != false) {
                     continue;
                 }
                 $csv[] = '"' . ucwords(str_replace('_', ' ', $key)) . '","' . $value . '"';
@@ -362,7 +362,7 @@ class ReportsController extends Controller
             // Get headers from first batch financial record, excluding raw values
             $firstBatch = $data['batch_financials'][0];
             $headers = array_filter(array_keys($firstBatch), function($key) {
-                return strpos($key, '_raw') === false;
+                return strpos($key, '_raw')== false;
             });
             $csv[] = '"' . implode('","', array_map('ucwords', array_map(function($h) { return str_replace('_', ' ', $h); }, $headers))) . '"';
 
@@ -384,7 +384,7 @@ class ReportsController extends Controller
             // Get headers from first batch feed record, excluding raw values
             $firstBatch = $data['batch_feed_details'][0];
             $headers = array_filter(array_keys($firstBatch), function($key) {
-                return strpos($key, '_raw') === false;
+                return strpos($key, '_raw')== false;
             });
             $csv[] = '"' . implode('","', array_map('ucwords', array_map(function($h) { return str_replace('_', ' ', $h); }, $headers))) . '"';
 

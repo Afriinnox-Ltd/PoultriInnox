@@ -167,9 +167,11 @@ export default function PaymentsIndex({
             <Button variant="default" asChild>
               <a href="/admin/marketplace/payments/list">View All Payments</a>
             </Button>
-
-            <Button variant="outline" asChild>
-              <a href="/admin/marketplace/payments/export">Export Data</a>
+            <Button className="w-full" asChild>
+              <a href="/admin/marketplace/payments/vendor-payouts">
+                <Users className="mr-2 h-4 w-4" />
+                Manage Payouts
+              </a>
             </Button>
           </div>
         </div>

@@ -407,7 +407,7 @@ class ProtocolManagementController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
-        if ($request->type === 'medication') {
+        if ($request->type== 'medication') {
             $protocol = MedicationProtocol::findOrFail($request->id);
         } else {
             $protocol = VaccinationProtocol::findOrFail($request->id);

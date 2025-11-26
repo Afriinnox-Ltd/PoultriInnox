@@ -12,11 +12,13 @@ use Illuminate\Notifications\Notifiable;
 use App\Modules\BatchIncubator\Models\UserReminderPreference;
 use App\Modules\Marketplace\Models\Vendor;
 use App\Modules\Marketplace\Models\Subscription;
+use Illuminate\Support\Facades\Cache;
+use App\Traits\LogsActivity;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -84,7 +86,7 @@ class User extends Authenticatable
      */
     public function hasRole(string $role): bool
     {
-        return $this->role === $role;
+        return $this->role == $role;
     }
 
     /**
@@ -93,6 +95,60 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->hasRole('admin');
+    }
+
+    /**
+     * Get the Role model for this user's role
+     */
+    public function roleModel()
+    {
+        return Role::where('slug', $this->role)->first();
+    }
+
+    /**
+     * Check if user has a specific permission via their role
+     */
+    public function hasPermission(string $permissionSlug): bool
+    {
+        // Admin has all permissions
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return Cache::remember(
+            "user_{$this->id}_permission_{$permissionSlug}",
+            300, // 5 minutes
+            function () use ($permissionSlug) {
+                $role = Role::where('slug', $this->role)->first();
+                return $role ? $role->hasPermission($permissionSlug) : false;
+            }
+        );
+    }
+
+    /**
+     * Check if user has any of the given permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get all permissions for this user's role
+     */
+    public function getPermissions(): array
+    {
+        if ($this->isAdmin()) {
+            return Permission::pluck('slug')->toArray();
+        }
+
+        $role = Role::where('slug', $this->role)->first();
+        return $role ? $role->permissions()->pluck('slug')->toArray() : [];
     }
 
     /**
@@ -173,5 +229,13 @@ class User extends Authenticatable
     {
         $subscription = $this->getCurrentSubscription();
         return $subscription && $subscription->allowsCOD();
+    }
+
+    /**
+     * Get the partner profile for this user
+     */
+    public function partnerProfile(): HasOne
+    {
+        return $this->hasOne(\App\Models\PartnerProfile::class);
     }
 }

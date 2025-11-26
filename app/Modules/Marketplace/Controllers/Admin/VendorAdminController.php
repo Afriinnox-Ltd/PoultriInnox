@@ -4,9 +4,13 @@ namespace App\Modules\Marketplace\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Marketplace\Models\Vendor;
+use App\Modules\Marketplace\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Notifications\VendorSuspensionNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class VendorAdminController extends Controller
@@ -33,13 +37,21 @@ class VendorAdminController extends Controller
         }
 
         // Filter by status
-        if ($request->has('status') && $request->status !== '') {
+        if ($request->has('status') && $request->status != '') {
             $query->where('status', $request->status);
         }
 
         // Filter by verification status
-        if ($request->has('verification') && $request->verification !== '') {
-            $query->where('is_verified', $request->verification === 'verified');
+        if ($request->has('verification') && $request->verification != '') {
+            $query->where('is_verified', $request->verification== 'verified');
+        }
+
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
         }
 
         // Sort
@@ -60,7 +72,7 @@ class VendorAdminController extends Controller
 
         return Inertia::render('Admin/Marketplace/Vendors/Index', [
             'vendors' => $vendors,
-            'filters' => $request->only(['search', 'status', 'verification', 'sort_by', 'sort_direction']),
+            'filters' => $request->only(['search', 'status', 'verification', 'date_from', 'date_to', 'sort_by', 'sort_direction']),
             'stats' => $stats,
             'status_options' => [
                 'pending' => 'Pending',
@@ -100,6 +112,95 @@ class VendorAdminController extends Controller
             'vendor' => $vendor,
             'stats' => $stats,
         ]);
+    }
+
+    /**
+     * Show the form for creating a new vendor.
+     */
+    public function create()
+    {
+        $availableUsers = User::whereDoesntHave('vendor')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return Inertia::render('Admin/Marketplace/Vendors/Create', [
+            'users' => $availableUsers,
+        ]);
+    }
+
+    /**
+     * Store a newly created vendor.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id|unique:marketplace_vendors,user_id',
+            'business_name' => 'required|string|max:255',
+            'business_type' => 'nullable|string|max:100',
+            'business_description' => 'nullable|string',
+            'business_email' => 'required|email|max:255',
+            'business_phone' => 'required|string|max:30',
+            'business_website' => 'nullable|url|max:255',
+            'business_address' => 'required|string|max:500',
+            'business_registration_number' => 'nullable|string|max:100',
+            'city' => 'required|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'required|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
+            'bank_name' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_name' => 'nullable|string|max:255',
+            'bank_branch' => 'nullable|string|max:255',
+            'tax_id' => 'nullable|string|max:50',
+            'commission_rate' => 'nullable|numeric|min:0|max:100',
+            'years_in_business' => 'nullable|integer|min:0',
+            'status' => 'required|in:pending,approved',
+            'is_verified' => 'nullable|boolean',
+            'additional_info' => 'nullable|string',
+            'admin_notes' => 'nullable|string|max:2000',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        // Generate slug
+        $slug = Str::slug($validated['business_name']);
+        $count = Vendor::where('slug', $slug)->count();
+        $validated['slug'] = $count > 0 ? $slug . '-' . ($count + 1) : $slug;
+
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            $validated['logo'] = '/storage/' . $request->file('logo')->store('marketplace/vendors/logos', 'public');
+        }
+
+        // Set defaults
+        $validated['is_active'] = true;
+        if (!empty($validated['is_verified'])) {
+            $validated['verified_at'] = now();
+        }
+        if ($validated['status'] == 'approved') {
+            $validated['approved_at'] = now();
+        }
+
+        // Set contact info from user
+        $user = User::findOrFail($validated['user_id']);
+        $validated['email'] = $user->email;
+        $validated['phone'] = $validated['business_phone'];
+
+        $vendor = Vendor::create($validated);
+
+        // Auto-assign free subscription plan if available
+        $freePlan = SubscriptionPlan::where('price', 0)->where('is_active', 1)->first();
+        if ($freePlan) {
+            Subscription::create([
+                'vendor_id' => $vendor->id,
+                'plan_id' => $freePlan->id,
+                'start_date' => now(),
+                'end_date' => null,
+                'is_active' => true,
+            ]);
+        }
+
+        return redirect()->route('admin.marketplace.vendors.show', $vendor)
+            ->with('success', 'Vendor created successfully.');
     }
 
     /**
@@ -263,6 +364,63 @@ class VendorAdminController extends Controller
     }
 
     /**
+     * Send a specific message/email to a vendor.
+     */
+    public function sendMessage(Request $request, Vendor $vendor)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        if ($vendor->user) {
+            // Send email
+            try {
+                // Using a generic notification for now, or raw mail if no notification class exists
+                // For better structure, we should creat a generic VendorMessageNotification
+                // But for now, let's assuming we can send a simple notification
+                $vendor->user->notify(new \App\Notifications\VendorMessageNotification($request->subject, $request->message));
+                
+                return back()->with('success', 'Message sent to vendor successfully.');
+            } catch (\Exception $e) {
+                // Fallback or error logging
+                return back()->with('error', 'Failed to send email: ' . $e->getMessage());
+            }
+        }
+
+        return back()->with('error', 'Vendor has no associated user account.');
+    }
+
+    /**
+     * Request changes from a vendor (updates status to changes_requested).
+     */
+    public function requestChanges(Request $request, Vendor $vendor)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        $vendor->update([
+            'status' => 'changes_requested',
+            'admin_notes' => $request->message // Optionally save the message as a note
+        ]);
+
+        if ($vendor->user) {
+            try {
+                // Send email notification
+                $vendor->user->notify(new \App\Notifications\VendorMessageNotification($request->subject, $request->message));
+                
+                return back()->with('success', 'Changes requested successfully. Vendor has been notified.');
+            } catch (\Exception $e) {
+                return back()->with('warning', 'Changes requested, but failed to send email: ' . $e->getMessage());
+            }
+        }
+
+        return back()->with('success', 'Changes requested successfully.');
+    }
+
+    /**
      * Bulk actions for vendors.
      */
     public function bulkAction(Request $request)
@@ -362,5 +520,118 @@ class VendorAdminController extends Controller
         ];
 
         return response()->json($stats);
+    }
+
+    /**
+     * Show the form for editing the specified vendor.
+     */
+    public function edit(Vendor $vendor)
+    {
+        $vendor->load('user');
+
+        return Inertia::render('Admin/Marketplace/Vendors/Edit', [
+            'vendor' => $vendor,
+        ]);
+    }
+
+    /**
+     * Update the specified vendor.
+     */
+    public function update(Request $request, Vendor $vendor)
+    {
+        $validated = $request->validate([
+            'business_name' => 'required|string|max:255',
+            'business_type' => 'nullable|string|max:100',
+            'business_description' => 'nullable|string',
+            'business_email' => 'nullable|email|max:255',
+            'business_phone' => 'nullable|string|max:30',
+            'business_website' => 'nullable|url|max:255',
+            'business_address' => 'nullable|string|max:500',
+            'business_registration_number' => 'nullable|string|max:100',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
+            'bank_name' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_name' => 'nullable|string|max:255',
+            'bank_branch' => 'nullable|string|max:255',
+            'tax_id' => 'nullable|string|max:50',
+            'commission_rate' => 'nullable|numeric|min:0|max:100',
+            'years_in_business' => 'nullable|integer|min:0',
+            'status' => 'nullable|in:pending,approved,rejected,suspended,changes_requested',
+            'is_verified' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+            'additional_info' => 'nullable|string',
+            'admin_notes' => 'nullable|string|max:2000',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'remove_logo' => 'nullable|boolean',
+        ]);
+
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            // Delete old logo
+            if ($vendor->logo) {
+                $oldPath = str_replace('/storage/', '', parse_url($vendor->logo, PHP_URL_PATH) ?? '');
+                Storage::disk('public')->delete($oldPath);
+            }
+            $validated['logo'] = '/storage/' . $request->file('logo')->store('marketplace/vendors/logos', 'public');
+        } elseif ($request->boolean('remove_logo') && $vendor->logo) {
+            $oldPath = str_replace('/storage/', '', parse_url($vendor->logo, PHP_URL_PATH) ?? '');
+            Storage::disk('public')->delete($oldPath);
+            $validated['logo'] = null;
+        }
+        unset($validated['remove_logo']);
+
+        // Update slug if business name changed
+        if ($validated['business_name'] !== $vendor->business_name) {
+            $slug = Str::slug($validated['business_name']);
+            $count = Vendor::where('slug', $slug)->where('id', '!=', $vendor->id)->count();
+            $validated['slug'] = $count > 0 ? $slug . '-' . ($count + 1) : $slug;
+        }
+
+        // Handle verification changes
+        if (isset($validated['is_verified']) && $validated['is_verified'] !== $vendor->is_verified) {
+            $validated['verified_at'] = $validated['is_verified'] ? now() : null;
+        }
+
+        $vendor->update($validated);
+
+        return redirect()->route('admin.marketplace.vendors.show', $vendor)
+            ->with('success', 'Vendor updated successfully.');
+    }
+
+    /**
+     * Delete the specified vendor.
+     */
+    public function destroy(Vendor $vendor)
+    {
+        // Check for active orders
+        $activeOrders = $vendor->orders()
+            ->whereNotIn('status', ['completed', 'cancelled', 'refunded'])
+            ->count();
+
+        if ($activeOrders > 0) {
+            return back()->with('error', "Cannot delete vendor with {$activeOrders} active order(s).");
+        }
+
+        // Delete logo
+        if ($vendor->logo) {
+            $oldPath = str_replace('/storage/', '', parse_url($vendor->logo, PHP_URL_PATH) ?? '');
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        // Delete product images
+        foreach ($vendor->products as $product) {
+            Storage::disk('public')->deleteDirectory("marketplace/products/{$product->id}");
+        }
+
+        // Delete products (cascade will handle images, cart items etc.)
+        $vendor->products()->delete();
+
+        $vendor->delete();
+
+        return redirect()->route('admin.marketplace.vendors.index')
+            ->with('success', 'Vendor deleted successfully.');
     }
 }

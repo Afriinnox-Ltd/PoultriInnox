@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\ActivityLog;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -47,6 +48,13 @@ class AuthenticatedSessionController extends Controller
             return redirect($intendedUrl);
         }
 
+        ActivityLog::log('login', 'User logged in');
+
+        // Redirect partners to their own dashboard
+        if (Auth::user()->role === 'partner') {
+            return redirect('/partner/dashboard');
+        }
+
         // Default redirect to dashboard
         return redirect()->intended(route('dashboard', absolute: false));
     }
@@ -56,6 +64,8 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        ActivityLog::log('logout', 'User logged out');
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

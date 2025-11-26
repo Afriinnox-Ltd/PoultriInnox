@@ -29,15 +29,25 @@ interface User {
     updated_at?: string;
 }
 
+interface Role {
+    id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+}
+
 interface UserDataTableProps {
     users: User[];
+    roles: Role[];
     onEdit?: (user: User) => void;
     onDelete?: (id: number) => void;
 }
 
-export default function UserDataTable({ users, onEdit, onDelete }: UserDataTableProps) {
+export default function UserDataTable({ users, roles, onEdit, onDelete }: UserDataTableProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [editFormData, setEditFormData] = useState<any>({});
@@ -50,11 +60,14 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
         const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             user.email.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-        return matchesSearch && matchesRole;
+        const userDate = new Date(user.created_at);
+        const matchesFrom = !dateFrom || userDate >= new Date(dateFrom);
+        const matchesTo = !dateTo || userDate <= new Date(dateTo + 'T23:59:59');
+        return matchesSearch && matchesRole && matchesFrom && matchesTo;
     });
 
     // Get unique roles for filter dropdown
-    const availableRoles = ['all', ...Array.from(new Set(users.map(user => user.role).filter(Boolean)))].filter(role => role !== undefined) as string[];
+    const availableRoles = ['all', ...roles.map(r => r.slug)];
 
     const handleSelectUser = (userId: number, checked: boolean) => {
         if (checked) {
@@ -92,7 +105,7 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
             },
             onError: (errors) => {
                 toast.error('Failed to update user');
-                console.error(errors);
+                
             }
         });
     };
@@ -162,8 +175,8 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
             {/* Search and Filter Controls */}
             <Card>
                 <CardContent className="pt-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
+                    <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+                        <div className="relative flex-1 min-w-48">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Search users by name or email..."
@@ -172,7 +185,7 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
                                 className="pl-10"
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             <Select value={roleFilter} onValueChange={setRoleFilter}>
                                 <SelectTrigger className="w-40">
                                     <SelectValue placeholder="Filter by role" />
@@ -185,6 +198,24 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs text-muted-foreground">From</Label>
+                                <Input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) => setDateFrom(e.target.value)}
+                                    className="w-36"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs text-muted-foreground">To</Label>
+                                <Input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                    className="w-36"
+                                />
+                            </div>
                             {selectedUsers.length > 0 && (
                                 <Button
                                     variant="destructive"
@@ -398,10 +429,11 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
                                     <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="user">User</SelectItem>
-                                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                                    <SelectItem value="manager">Manager</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
+                                    {roles.map((role) => (
+                                        <SelectItem key={role.id} value={role.slug}>
+                                            {role.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

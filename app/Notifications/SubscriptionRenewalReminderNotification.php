@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class SubscriptionRenewalReminderNotification extends Notification implements ShouldQueue
+class SubscriptionRenewalReminderNotification extends Notification 
 {
     use Queueable;
 

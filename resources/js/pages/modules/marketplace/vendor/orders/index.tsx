@@ -216,7 +216,7 @@ export default function VendorOrdersPage({ orders, filters, stats, marketplaceSe
                 alert('Failed to update order status. Please try again.');
             }
         } catch (error) {
-            console.error('Error updating order status:', error);
+
             alert('Failed to update order status. Please try again.');
         }
     };
@@ -462,6 +462,7 @@ export default function VendorOrdersPage({ orders, filters, stats, marketplaceSe
         }, 250);
     };
 
+
     return (
         <AppLayout>
             <Head title="Vendor Orders" />
@@ -616,8 +617,8 @@ export default function VendorOrdersPage({ orders, filters, stats, marketplaceSe
                                     <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                                         <div className="text-2xl font-bold text-emerald-900">
                                             {(100 - marketplaceSettings.commission.default_commission_rate -
-                                              marketplaceSettings.fees.platform_fee_rate -
-                                              marketplaceSettings.fees.transaction_fee_rate).toFixed(1)}%
+                                                marketplaceSettings.fees.platform_fee_rate -
+                                                marketplaceSettings.fees.transaction_fee_rate).toFixed(1)}%
                                         </div>
                                         <div className="text-sm font-medium text-emerald-700">Your Take Rate</div>
                                         <div className="text-xs text-emerald-600 mt-1">
@@ -743,6 +744,7 @@ export default function VendorOrdersPage({ orders, filters, stats, marketplaceSe
                     {/* Orders List */}
                     <div className="space-y-4">
                         {orders.data.length === 0 ? (
+
                             <Card>
                                 <CardContent className="p-12 text-center">
                                     <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
@@ -758,7 +760,7 @@ export default function VendorOrdersPage({ orders, filters, stats, marketplaceSe
                                 </CardContent>
                             </Card>
                         ) : (
-                            orders.data.map((order) => (
+                            orders.data.map((order) => ( 
                                 <Card key={order.id}>
                                     <CardContent className="p-6">
                                         {/* Order Header */}
@@ -890,6 +892,22 @@ export default function VendorOrdersPage({ orders, filters, stats, marketplaceSe
                                                 </div>
                                             ))}
                                         </div>
+
+                                        {/* Customer Notes / Negotiation Details */}
+                                        {order.notes && (
+                                            <>
+                                                <Separator className="mb-4" />
+                                                <div className="bg-amber-50 p-4 rounded-lg mb-4 border border-amber-200">
+                                                    <h4 className="font-medium flex items-center text-amber-900 mb-2">
+                                                        <Package className="h-4 w-4 mr-2" />
+                                                        Customer Notes {order.payment_method === 'cash_on_delivery' && '(May Include Negotiation Details)'}
+                                                    </h4>
+                                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                                        {order.notes}
+                                                    </p>
+                                                </div>
+                                            </>
+                                        )}
 
                                         {/* Shipping Information */}
                                         {order.shipping && (

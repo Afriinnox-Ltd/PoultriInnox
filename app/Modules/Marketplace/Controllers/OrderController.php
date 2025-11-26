@@ -75,7 +75,7 @@ class OrderController extends Controller
         $user = Auth::user();
 
         // Check if user owns this order or is admin
-        if (!$user || ($order->user_id !== $user->id && !$user->isAdmin())) {
+        if (!$user || ($order->user_id != $user->id && !$user->isAdmin())) {
             abort(403, 'Unauthorized access to order');
         }
 
@@ -100,7 +100,7 @@ class OrderController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $order->user_id !== $user->id) {
+        if (!$user || $order->user_id != $user->id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -119,7 +119,7 @@ class OrderController extends Controller
         }
 
         // Update payment status if needed
-        if ($order->payments->isNotEmpty() && $order->payments->first()->status === 'pending') {
+        if ($order->payments->isNotEmpty() && $order->payments->first()->status== 'pending') {
             $order->payments->first()->update(['status' => 'cancelled']);
         }
 
@@ -135,12 +135,12 @@ class OrderController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $order->user_id !== $user->id) {
+        if (!$user || $order->user_id != $user->id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         // Check if order can be returned
-        if ($order->status !== 'delivered') {
+        if ($order->status != 'delivered') {
             return response()->json([
                 'error' => 'Only delivered orders can be returned'
             ], 400);
@@ -229,7 +229,7 @@ class OrderController extends Controller
             if (!isset($marketplaceSettings[$group])) return $default;
             
             foreach ($marketplaceSettings[$group] as $setting) {
-                if ($setting['key'] === $key) {
+                if ($setting['key']== $key) {
                     return $setting['value'];
                 }
             }
@@ -276,7 +276,7 @@ class OrderController extends Controller
         $user = Auth::user();
         $vendor = $user->vendor ?? null;
 
-        if (!$vendor || $order->vendor_id !== $vendor->id) {
+        if (!$vendor || $order->vendor_id != $vendor->id) {
             return redirect()->back()
                 ->with('error', 'Unauthorized access to order.');
         }
@@ -300,7 +300,7 @@ class OrderController extends Controller
         ]);
 
         // If status is delivered, use the special method that confirms payment
-        if ($validated['status'] === 'delivered') {
+        if ($validated['status']== 'delivered') {
             $order->markAsDeliveredWithPayment();
 
             // Update shipping information
@@ -314,7 +314,7 @@ class OrderController extends Controller
             // Regular status update
             $updateData = ['status' => $validated['status']];
 
-            if ($validated['status'] === 'shipped' && !empty($validated['tracking_number'])) {
+            if ($validated['status']== 'shipped' && !empty($validated['tracking_number'])) {
                 $updateData['tracking_number'] = $validated['tracking_number'];
                 $updateData['shipped_at'] = now();
             }
@@ -326,7 +326,7 @@ class OrderController extends Controller
             $order->update($updateData);
 
             // Update shipping information if order is shipped
-            if ($validated['status'] === 'shipped' && $order->shipping) {
+            if ($validated['status']== 'shipped' && $order->shipping) {
                 $order->shipping->update([
                     'status' => 'dispatched',
                     'tracking_number' => $validated['tracking_number'] ?? null,
@@ -346,7 +346,7 @@ class OrderController extends Controller
         $user = Auth::user();
         
         // Verify this user is the vendor for this order
-        if (!$user->vendor || $user->vendor->id !== $order->vendor_id) {
+        if (!$user->vendor || $user->vendor->id != $order->vendor_id) {
             abort(403, 'Unauthorized to confirm this order.');
         }
 
@@ -374,7 +374,7 @@ class OrderController extends Controller
         $user = Auth::user();
 
         // Check if user owns this order
-        if (!$user || $order->user_id !== $user->id) {
+        if (!$user || $order->user_id != $user->id) {
             abort(403, 'Unauthorized access to order');
         }
 
@@ -399,7 +399,7 @@ class OrderController extends Controller
         $user = Auth::user();
 
         // Check if user owns this order
-        if (!$user || $order->user_id !== $user->id) {
+        if (!$user || $order->user_id != $user->id) {
             abort(403, 'Unauthorized access to order');
         }
 

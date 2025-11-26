@@ -50,7 +50,7 @@ class FeedManagementService
 
         // Sort by suitability and availability
         usort($recommendations, function ($a, $b) {
-            if ($a['suitable'] !== $b['suitable']) {
+            if ($a['suitable'] != $b['suitable']) {
                 return $b['suitable'] - $a['suitable']; // Suitable feeds first
             }
             return $b['days_of_stock'] <=> $a['days_of_stock']; // More stock first
@@ -324,7 +324,7 @@ class FeedManagementService
      */
     private function determineFeedCategory(int $ageDays, string $birdType = 'broiler'): string
     {
-        if ($birdType === 'layer') {
+        if ($birdType== 'layer') {
             return $ageDays >= 140 ? FeedCategory::LAYER : FeedCategory::GROWER;
         }
 
@@ -378,12 +378,12 @@ class FeedManagementService
             $instructions[] = "Check feeding frequency every 2 hours";
         }
 
-        if ($category === FeedCategory::STARTER) {
+        if ($category== FeedCategory::STARTER) {
             $instructions[] = "Use crumbled feed for easy consumption";
             $instructions[] = "Maintain consistent feeding times";
         }
 
-        if ($category === FeedCategory::FINISHER) {
+        if ($category== FeedCategory::FINISHER) {
             $instructions[] = "Monitor for optimal weight gain";
             $instructions[] = "Reduce feeding frequency as birds mature";
         }
@@ -476,7 +476,7 @@ class FeedManagementService
     {
         $daysUntilStockout = $inventory->getEstimatedDaysUntilStockOut();
 
-        if ($daysUntilStockout === null) return 'unknown';
+        if ($daysUntilStockout== null) return 'unknown';
         if ($daysUntilStockout <= 1) return 'critical';
         if ($daysUntilStockout <= 3) return 'high';
         if ($daysUntilStockout <= 7) return 'medium';
@@ -616,7 +616,7 @@ class FeedManagementService
         }
 
         $poorConsumptions = $consumptions->filter(function ($c) {
-            return $c->getFeedConversionRating() === 'poor';
+            return $c->getFeedConversionRating()== 'poor';
         });
 
         if ($poorConsumptions->count() > $consumptions->count() * 0.3) {

@@ -143,7 +143,7 @@ class MqttListenerCommand extends Command
         try {
             $data = json_decode($message, true);
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            if (json_last_error() != JSON_ERROR_NONE) {
                 $this->warn("Invalid JSON received: {$message}");
                 return;
             }
@@ -197,7 +197,7 @@ class MqttListenerCommand extends Command
             // Only save temperature reading every 60 seconds or when significant change (>0.5°C)
             $shouldSaveTemp = $this->shouldSaveTemperature($incubator, $temperature);
 
-            if ($temperature !== 'N/A' && $shouldSaveTemp) {
+            if ($temperature != 'N/A' && $shouldSaveTemp) {
                 $updateData['current_temperature'] = $temperature;
 
                 // Store temperature reading in database
@@ -212,7 +212,7 @@ class MqttListenerCommand extends Command
                     'cycle_day' => $data['cycle_day'] ?? 0,
                     'total_days' => $data['total_days'] ?? 21,
                 ]);
-            } elseif ($temperature !== 'N/A') {
+            } elseif ($temperature != 'N/A') {
                 // Still update current temperature in incubator record
                 $updateData['current_temperature'] = $temperature;
             }
@@ -223,13 +223,13 @@ class MqttListenerCommand extends Command
                 $lastState = $this->lastRelayState[$deviceId] ?? null;
 
                 // Save only if state changed
-                if ($lastState !== $currentRelayState) {
+                if ($lastState != $currentRelayState) {
                     \App\Models\IotRelayHistory::create([
                         'device_id' => $deviceId,
                         'incubator_id' => $incubator->id,
                         'state' => $currentRelayState,
                         'mode' => $data['relay_mode'] ?? 'AUTO',
-                        'temperature_at_switch' => $temperature !== 'N/A' ? $temperature : null,
+                        'temperature_at_switch' => $temperature != 'N/A' ? $temperature : null,
                     ]);
 
                     // Update last known state
@@ -288,7 +288,7 @@ class MqttListenerCommand extends Command
      */
     protected function parseTemp($val)
     {
-        if ($val === null || $val === 'NaN' || $val === 'null' || $val === 'inf' || $val === '-inf') {
+        if ($val== null || $val== 'NaN' || $val== 'null' || $val== 'inf' || $val== '-inf') {
             return 'N/A';
         }
 
@@ -311,7 +311,7 @@ class MqttListenerCommand extends Command
      */
     protected function shouldSaveTemperature(Incubator $incubator, $currentTemp): bool
     {
-        if ($currentTemp === 'N/A') {
+        if ($currentTemp== 'N/A') {
             return false;
         }
 
@@ -370,7 +370,7 @@ class MqttListenerCommand extends Command
                 $this->line("     Expected End: {$activeBatch->expected_completion_date->format('Y-m-d')} | Days Remaining: {$daysRemaining}");
 
                 // Check for batch completion alerts
-                if ($daysRemaining !== null) {
+                if ($daysRemaining != null) {
                     // Alert 3 days before completion
                     if ($daysRemaining <= 3 && $daysRemaining > 0) {
                         $this->addAlert(
@@ -625,7 +625,7 @@ class MqttListenerCommand extends Command
             $updateData = [];
             $sensorsDataUpdate = $incubator->sensors_data ?? [];
 
-            if ($temperature !== null) {
+            if ($temperature != null) {
                 $updateData['current_temperature'] = (float) $temperature;
                 $sensorsDataUpdate['temperature'] = [
                     'value' => (float) $temperature,
@@ -633,7 +633,7 @@ class MqttListenerCommand extends Command
                 ];
             }
 
-            if ($humidity !== null) {
+            if ($humidity != null) {
                 $updateData['current_humidity'] = (float) $humidity;
                 $sensorsDataUpdate['humidity'] = [
                     'value' => (float) $humidity,

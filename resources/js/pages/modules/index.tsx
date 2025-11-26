@@ -4,30 +4,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Package,
-  ShoppingCart,
-  Heart,
-  DollarSign,
-  TrendingUp,
-  Settings,
-  CheckCircle,
-  Circle,
-  Calendar,
-  Info,
-  ArrowRight,
-  Users,
-  BarChart3,
-  Activity,
-  Eye,
-  Store
+    Package,
+    ShoppingCart,
+    Heart,
+    DollarSign,
+    TrendingUp,
+    Settings,
+    CheckCircle,
+    Circle,
+    Calendar,
+    Info,
+    ArrowRight,
+    Users,
+    BarChart3,
+    Activity,
+    Eye,
+    Store
 } from 'lucide-react';
 import { Link, Head, useForm } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
@@ -111,7 +111,7 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">Module Management</h1>
                         <p className="text-muted-foreground">
-                            Choose which modules to activate for your poultry management system
+                            Choose which modules to activate for your livestock management system
                         </p>
                     </div>
                     <Button asChild>
@@ -121,48 +121,21 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                     </Button>
                 </div>
 
-                {/* Statistics */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Active Modules</CardTitle>
-                            <CheckCircle className="h-4 w-4 text-emerald-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-emerald-600">{enabledModules.length}</div>
-                        </CardContent>
-                    </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Available Modules</CardTitle>
-                            <Circle className="h-4 w-4 text-emerald-600" />
+                {/* Warning when no modules are enabled */}
+                {enabledModules.length === 0 && (
+                    <Card className="border-orange-200 bg-orange-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-orange-800">
+                                <Info className="h-5 w-5" />
+                                No Active Modules
+                            </CardTitle>
+                            <CardDescription className="text-orange-700">
+                                You currently have no active modules. Activate at least one module below to start using the system features.
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-emerald-600">{availableModules.length}</div>
-                        </CardContent>
                     </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Inactive Modules</CardTitle>
-                            <Circle className="h-4 w-4 text-gray-400" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-gray-600">{inactiveModules.length}</div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Modules</CardTitle>
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{modules.length}</div>
-                        </CardContent>
-                    </Card>
-                </div>
+                )}
 
                 {/* Active Modules */}
                 {enabledModules.length > 0 && (

@@ -69,7 +69,7 @@ export default function Dashboard({
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight">Agriinnox Dashboard</h1>
                             <p className="text-muted-foreground">
-                                Modular poultry management system - Choose your tools, manage your way
+                                Modular livestock management system - Choose your tools, manage your way
                             </p>
                         </div>
                         <Button asChild>
@@ -88,7 +88,7 @@ export default function Dashboard({
                             <Package className="h-16 w-16 text-emerald-600 mx-auto mb-4" />
                             <h2 className="text-2xl font-bold mb-2">Welcome to Agriinnox</h2>
                             <p className="text-muted-foreground mb-6">
-                                Get started by activating modules that match your poultry operation needs.
+                                Get started by activating modules that match your livestock operation needs.
                                 Each module provides specialized tools and features.
                             </p>
 
@@ -111,7 +111,7 @@ export default function Dashboard({
                                 <CardContent className="">
                                     <p className="text-sm text-emerald-800">
                                         💡 <strong>Tip:</strong> Start with
-                                        agriinnox marketplace to sell your poultry products
+                                        agriinnox marketplace to sell your livestock products
                                         directly from the dashboard.
                                     </p>
                                 </CardContent>
@@ -173,7 +173,7 @@ export default function Dashboard({
                             <CardHeader>
                                 <CardTitle className="text-emerald-800">Expand Your System</CardTitle>
                                 <CardDescription className="text-emerald-700">
-                                    Discover more modules to enhance your poultry management capabilities
+                                    Discover more modules to enhance your livestock management capabilities
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>

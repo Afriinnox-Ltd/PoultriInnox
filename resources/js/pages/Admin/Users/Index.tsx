@@ -15,7 +15,14 @@ interface User {
     updated_at?: string;
 }
 
-function Index({ users }: { users: User[] }) {
+interface Role {
+    id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+}
+
+function Index({ users, roles }: { users: User[]; roles: Role[] }) {
     return (
         <AdminLayout>
             <Head title="Users Management" />
@@ -38,7 +45,7 @@ function Index({ users }: { users: User[] }) {
                 </div>
 
                 {/* Data Table */}
-                <UserDataTable users={users} />
+                <UserDataTable users={users} roles={roles} />
             </div>
         </AdminLayout>
     );

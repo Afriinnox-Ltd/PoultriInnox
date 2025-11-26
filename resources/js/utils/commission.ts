@@ -158,7 +158,7 @@ export function calculateVendorEarnings(
  * Calculate vendor take rate as a percentage
  */
 export function calculateVendorTakeRate(settings: MarketplaceSettings): number {
-    console.log(settings)
+    
     if (!settings?.commission) {
         return 95; // Default 95% take rate if settings not available
     }

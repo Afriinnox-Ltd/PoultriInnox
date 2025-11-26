@@ -107,10 +107,10 @@ export default function Index({ products, categories, vendors, filters, sort }: 
                 <div className="mb-8 rounded-lg bg-gradient-to-r from-emerald-600 to-blue-600 p-8 text-white">
                     <div className="max-w-2xl">
                         <h1 className="mb-4 text-4xl font-bold">
-                            Poultry Marketplace
+                            Marketplace
                         </h1>
                         <p className="mb-6 text-lg opacity-90">
-                            Find everything you need for your poultry business - from feed and equipment
+                            Find everything you need for your Livestock business - from feed and equipment
                             to live birds and health supplies. Connect with trusted vendors across the region.
                         </p>
                         <div className="flex gap-4">

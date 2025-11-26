@@ -28,8 +28,7 @@ export default function CreateIncubator() {
         onSuccess: () => {
             toast.success('Incubator created successfully!');
         },
-        onError: () => {
-            console.log(errors);
+        onError: () => { 
             toast.error('Failed to create incubator. Please check the form for errors.');
         }
     });

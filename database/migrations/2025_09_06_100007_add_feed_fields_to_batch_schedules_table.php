@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -46,16 +45,22 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('batch_schedules', function (Blueprint $table) {
-            $table->dropForeign(['feed_type_id']);
-            $table->dropForeign(['feed_program_id']);
-            $table->dropColumn([
-                'feed_type_id',
-                'feed_program_id',
-                'actual_quantity',
-                'feed_cost',
-                'feed_data'
-            ]);
-        });
+        try {
+            Schema::table('batch_schedules', function (Blueprint $table) {
+                $table->dropForeign(['feed_type_id']);
+                $table->dropForeign(['feed_program_id']);
+                $table->dropColumn([
+                    'feed_type_id',
+                    'feed_program_id',
+                    'actual_quantity',
+                    'feed_cost',
+                    'feed_data'
+                ]);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            if (!str_contains($e->getMessage(), "Can't DROP FOREIGN KEY")) {
+                throw $e;
+            }
+        }
     }
 };
