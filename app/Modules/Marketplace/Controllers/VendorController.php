@@ -11,6 +11,7 @@ use App\Modules\Marketplace\Models\Order;
 use App\Modules\Marketplace\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Notifications\NewVendorRegistrationNotification;
+use App\Models\Module;
 use App\Services\MarketplaceSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,8 +27,152 @@ class VendorController extends Controller
     use AuthorizesRequests;
 
     /**
-     * Display a listing of vendors.
+     * Show the form for public vendor registration (combined user + vendor).
      */
+    public function showPublicRegister()
+    {
+        if (Auth::check()) {
+            return redirect()->route('marketplace.vendor.register');
+        }
+
+        // Get marketplace settings
+        $settingsService = new MarketplaceSettingsService();
+        $formattedSettings = $settingsService->getFormattedSettings();
+
+        return Inertia::render('modules/marketplace/vendor/public-register', [
+            'marketplaceGroupedSettings' => $formattedSettings,
+        ]);
+    }
+
+    /**
+     * Handle public vendor registration (create user + vendor).
+     */
+    public function publicRegister(Request $request)
+    {
+        // Combined validation
+        $validated = $request->validate([
+            // User details
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|confirmed|min:8',
+            'phone' => 'required|string|max:20',
+
+            // Business details
+            'business_name' => 'required|string|max:255',
+            'business_registration_number' => 'required|string|max:100|unique:marketplace_vendors',
+            'business_type' => 'required',
+            'business_description' => 'required|string',
+            'business_address' => 'required|string',
+            'business_phone' => 'required|string|max:20',
+            'business_email' => 'required|email|max:255',
+            'business_website' => 'nullable|url|max:255',
+
+            // Banking details - Removed as they will be added in dashboard
+            // 'bank_name' => 'required|string|max:255',
+            // 'bank_account_number' => 'required|string|max:50',
+            // 'bank_account_name' => 'required|string|max:255',
+            // 'bank_branch' => 'nullable|string|max:255',
+
+            'business_documents' => 'required|array|min:1',
+            'business_documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
+
+            // Additional info
+            'tax_number' => 'nullable|string|max:100',
+            'years_in_business' => 'nullable|integer|min:0',
+            'specializations' => 'nullable|string',
+            'terms' => 'required|accepted',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // 1. Create User
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'phone' => $validated['phone'], // Assuming user table has phone
+                'role' => 'user', // Default role
+            ]);
+
+            // Enable marketplace module
+            $marketplaceModule = Module::where('slug', 'marketplace')->first();
+            if ($marketplaceModule) {
+                $user->modules()->attach($marketplaceModule->id, [
+                    'is_enabled' => true,
+                    'activated_at' => now(),
+                    'settings' => json_encode([]),
+                ]);
+            }
+
+            // 2. Create Vendor
+            $vendorData = collect($validated)->except([
+                'name',
+                'email',
+                'password',
+                'password_confirmation',
+                'phone',
+                'terms'
+            ])->toArray();
+
+            $vendorData['user_id'] = $user->id;
+            $vendorData['status'] = 'pending';
+            $vendorData['slug'] = Str::slug($validated['business_name']);
+
+            if ($request->hasFile('business_documents')) {
+                $documentPaths = [];
+                foreach ($request->file('business_documents') as $document) {
+                    $path = $document->store('marketplace/vendor-documents/', 'public');
+                    $documentPaths[] = asset(Storage::url($path));
+                }
+                $vendorData['business_documents'] = $documentPaths;
+            }
+
+            // Ensure unique slug
+            $originalSlug = $vendorData['slug'];
+            $counter = 1;
+            while (Vendor::where('slug', $vendorData['slug'])->exists()) {
+                $vendorData['slug'] = $originalSlug . '-' . $counter;
+                $counter++;
+            }
+
+            $vendor = Vendor::create($vendorData);
+
+            // 3. Assign Free Subscription
+            $freePlan = SubscriptionPlan::where('price', 0)
+                ->where('is_active', 1)
+                ->first();
+
+            if ($freePlan) {
+                Subscription::create([
+                    'vendor_id' => $vendor->id,
+                    'plan_id' => $freePlan->id,
+                    'start_date' => now(),
+                    'end_date' => null,
+                    'is_active' => true,
+                ]);
+            }
+
+            // 4. Notify Admin
+            $admins = User::where('is_admin', true)->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new \App\Notifications\NewVendorRegistrationNotification($vendor));
+            }
+
+            DB::commit();
+
+            // 5. Login and Redirect
+            Auth::login($user);
+
+            return redirect()->route('marketplace.vendor.pending')
+                ->with('success', 'Registration successful! Your vendor application is pending review.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['message' => 'Registration failed: ' . $e->getMessage()])->withInput();
+        }
+    }
+
     public function index(Request $request)
     {
         $query = Vendor::with(['user', 'products'])
@@ -38,11 +183,11 @@ class VendorController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('business_name', 'like', "%{$search}%")
-                  ->orWhere('business_description', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  });
+                    ->orWhere('business_description', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -101,9 +246,9 @@ class VendorController extends Controller
         // Get marketplace settings for commission calculations
         $settingsService = new MarketplaceSettingsService();
         $formattedSettings = $settingsService->getFormattedSettings();
- 
+
         return Inertia::render('modules/marketplace/vendor/register', [
-            'marketplaceGroupedSettings'=>$formattedSettings,
+            'marketplaceGroupedSettings' => $formattedSettings,
             'user' => Auth::user(),
             'existing_application' => $existingVendor
         ]);
@@ -147,13 +292,13 @@ class VendorController extends Controller
             'business_email' => 'required|email|max:255',
             'business_website' => 'nullable|url|max:255',
 
-            // Banking details
-            'bank_name' => 'required|string|max:255',
-            'bank_account_number' => 'required|string|max:50',
-            'bank_account_name' => 'required|string|max:255',
-            'bank_branch' => 'nullable|string|max:255',
+            // Banking details - Removed as they will be added in dashboard
+            // 'bank_name' => 'required|string|max:255',
+            // 'bank_account_number' => 'required|string|max:50',
+            // 'bank_account_name' => 'required|string|max:255',
+            // 'bank_branch' => 'nullable|string|max:255',
 
-            'business_documents'=> 'required|array|min:1',
+            'business_documents' => 'required|array|min:1',
             'business_documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
             // Additional info
             'tax_number' => 'nullable|string|max:100',
@@ -161,7 +306,7 @@ class VendorController extends Controller
             'specializations' => 'nullable|string'
         ]);
 
-                // Create vendor profile
+        // Create vendor profile
         $vendorData = collect($validated)->except(['name', 'email', 'password', 'password_confirmation', 'phone'])->toArray();
         $vendorData['user_id'] = Auth::id();
         $vendorData['status'] = 'pending'; // Requires admin approval
@@ -216,9 +361,12 @@ class VendorController extends Controller
      */
     public function show(Vendor $vendor)
     {
-        $vendor->load(['user', 'products' => function ($query) {
-            $query->where('status', 'active')->with(['images', 'category']);
-        }]);
+        $vendor->load([
+            'user',
+            'products' => function ($query) {
+                $query->where('status', 'active')->with(['images', 'category']);
+            }
+        ]);
 
         return Inertia::render('modules/marketplace/vendor/show', [
             'vendor' => $vendor,
@@ -328,11 +476,13 @@ class VendorController extends Controller
 
         // Top performing products - based on actual sales data
         $topProducts = $vendor->products()
-            ->withCount(['orderItems as total_sold' => function ($query) {
-                $query->whereHas('order', function ($orderQuery) {
-                    $orderQuery->whereIn('status', ['delivered', 'completed']);
-                });
-            }])
+            ->withCount([
+                'orderItems as total_sold' => function ($query) {
+                    $query->whereHas('order', function ($orderQuery) {
+                        $orderQuery->whereIn('status', ['delivered', 'completed']);
+                    });
+                }
+            ])
             ->where('status', 'active')
             ->orderBy('total_sold', 'desc')
             ->limit(5)
@@ -408,7 +558,7 @@ class VendorController extends Controller
         $currentSubscription = $vendor->subscriptions()->where('is_active', true)->first();
         $subscriptionUsage = null;
         $needsUpgrade = false;
-        
+
         if ($currentSubscription) {
             $subscriptionUsage = [
                 'plan_name' => $currentSubscription->plan_name,
@@ -427,12 +577,12 @@ class VendorController extends Controller
                     ->whereYear('created_at', now()->year)
                     ->count(),
                 'order_limit' => $currentSubscription->order_limit,
-                'can_create_products' => $currentSubscription->product_limit ? 
+                'can_create_products' => $currentSubscription->product_limit ?
                     ($vendor->products()->count() < $currentSubscription->product_limit) : true,
                 'usage_percentage' => [
-                    'products' => $currentSubscription->product_limit ? 
+                    'products' => $currentSubscription->product_limit ?
                         min(100, ($vendor->products()->count() / $currentSubscription->product_limit) * 100) : 0,
-                    'orders' => $currentSubscription->order_limit ? 
+                    'orders' => $currentSubscription->order_limit ?
                         min(100, (Order::where('vendor_id', $vendor->id)
                             ->whereMonth('created_at', now()->month)
                             ->whereYear('created_at', now()->year)
@@ -443,14 +593,14 @@ class VendorController extends Controller
 
         // Check if upgrade is needed
         if ($currentSubscription) {
-            $needsUpgrade = ($currentSubscription->product_limit && 
-                           $vendor->products()->count() >= $currentSubscription->product_limit * 0.9) ||
-                           ($currentSubscription->order_limit && 
-                           Order::where('vendor_id', $vendor->id)
-                               ->whereMonth('created_at', now()->month)
-                               ->whereYear('created_at', now()->year)
-                               ->count() >= $currentSubscription->order_limit * 0.9) ||
-                           ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
+            $needsUpgrade = ($currentSubscription->product_limit &&
+                $vendor->products()->count() >= $currentSubscription->product_limit * 0.9) ||
+                ($currentSubscription->order_limit &&
+                    Order::where('vendor_id', $vendor->id)
+                        ->whereMonth('created_at', now()->month)
+                        ->whereYear('created_at', now()->year)
+                        ->count() >= $currentSubscription->order_limit * 0.9) ||
+                ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
         } else {
             $needsUpgrade = true;
         }
@@ -528,7 +678,7 @@ class VendorController extends Controller
         // Get marketplace settings for commission calculations
         $settingsService = new MarketplaceSettingsService();
         $formattedSettings = $settingsService->getFormattedSettings();
-   
+
         return Inertia::render('modules/marketplace/vendor/profile', [
             'vendor' => $vendorData,
             'marketplaceSettings' => $formattedSettings
@@ -587,53 +737,53 @@ class VendorController extends Controller
         try {
 
 
-        // Handle image uploads
-        $updateData = collect($validated)->except(['logo', 'banner_image', 'facebook', 'twitter', 'instagram', 'linkedin', 'description', 'email', 'phone', 'address', 'website', 'tax_identification_number'])->toArray();
+            // Handle image uploads
+            $updateData = collect($validated)->except(['logo', 'banner_image', 'facebook', 'twitter', 'instagram', 'linkedin', 'description', 'email', 'phone', 'address', 'website', 'tax_identification_number'])->toArray();
 
-        // Map simplified field names to business field names
-        $updateData['business_description'] = $validated['description'];
-        $updateData['business_email'] = $validated['email'];
-        $updateData['business_phone'] = $validated['phone'];
-        $updateData['business_address'] = $validated['address'];
-        $updateData['business_website'] = $validated['website'];
-        $updateData['tax_id'] = $validated['tax_identification_number'];
+            // Map simplified field names to business field names
+            $updateData['business_description'] = $validated['description'];
+            $updateData['business_email'] = $validated['email'];
+            $updateData['business_phone'] = $validated['phone'];
+            $updateData['business_address'] = $validated['address'];
+            $updateData['business_website'] = $validated['website'];
+            $updateData['tax_id'] = $validated['tax_identification_number'];
 
-        // Handle social media as JSON
-        $socialMedia = [
-            'facebook' => $validated['facebook'] ?? null,
-            'twitter' => $validated['twitter'] ?? null,
-            'instagram' => $validated['instagram'] ?? null,
-            'linkedin' => $validated['linkedin'] ?? null,
-        ];
-        $updateData['social_media'] = json_encode(array_filter($socialMedia));
+            // Handle social media as JSON
+            $socialMedia = [
+                'facebook' => $validated['facebook'] ?? null,
+                'twitter' => $validated['twitter'] ?? null,
+                'instagram' => $validated['instagram'] ?? null,
+                'linkedin' => $validated['linkedin'] ?? null,
+            ];
+            $updateData['social_media'] = json_encode(array_filter($socialMedia));
 
-        // Handle file uploads
-        if ($request->hasFile('logo')) {
-            // Delete old logo if exists
-            if ($vendor->logo) {
+            // Handle file uploads
+            if ($request->hasFile('logo')) {
+                // Delete old logo if exists
+                if ($vendor->logo) {
 
-                Storage::delete(str_replace('/storage/', '', $vendor->logo));
+                    Storage::delete(str_replace('/storage/', '', $vendor->logo));
 
+                }
+
+                $logoPath = $request->file('logo')->store('vendor-logos', 'public');
+                $updateData['logo'] = asset(Storage::url($logoPath));
             }
 
-            $logoPath = $request->file('logo')->store('vendor-logos', 'public');
-            $updateData['logo'] = asset(Storage::url($logoPath));
-        }
+            if ($request->hasFile('banner_image')) {
+                // Delete old banner if exists
+                if ($vendor->banner_image) {
+                    Storage::delete(str_replace('/storage/', '', $vendor->banner_image));
+                }
 
-        if ($request->hasFile('banner_image')) {
-            // Delete old banner if exists
-            if ($vendor->banner_image) {
-                Storage::delete(str_replace('/storage/', '', $vendor->banner_image));
+                $bannerPath = $request->file('banner_image')->store('vendor-banners', 'public');
+                $updateData['banner_image'] = asset(Storage::url($bannerPath));
             }
 
-            $bannerPath = $request->file('banner_image')->store('vendor-banners', 'public');
-            $updateData['banner_image'] = asset(Storage::url($bannerPath));
-        }
+            // Update vendor record
+            $vendor->update($updateData);
 
-        // Update vendor record
-        $vendor->update($updateData);
-
-        return redirect()->back()->with('success', 'Vendor profile updated successfully!');
+            return redirect()->back()->with('success', 'Vendor profile updated successfully!');
         } catch (\Throwable $th) {
             return redirect()->back()->with('error', 'Failed to update vendor profile.');
         }
@@ -706,7 +856,7 @@ class VendorController extends Controller
     {
 
         $vendor = Auth::user()->vendor;
- 
+
         if (!$vendor) {
             return redirect()->route('marketplace.vendor.register');
         }
@@ -797,7 +947,7 @@ class VendorController extends Controller
         // Get marketplace settings for commission calculations
         $settingsService = new MarketplaceSettingsService();
         $formattedSettings = $settingsService->getFormattedSettings();
-                
+
         return Inertia::render('modules/marketplace/vendor/analytics', [
             'stats' => [
                 'totalProducts' => $totalProducts,

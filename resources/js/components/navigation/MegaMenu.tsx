@@ -50,12 +50,12 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ isVisible, onMouseEnter, onMouseLea
             title: 'My Finance',
             icon: <DollarSign className="w-6 h-6 text-emerald-600" />,
             description: 'Track expenses and manage farm finances',
-            link: '/dashboard',
+            link: '#',
             features: [
-                { name: 'Income Tracking', icon: <TrendingUp className="w-4 h-4" />, link: '/dashboard' },
-                { name: 'Expense Management', icon: <CreditCard className="w-4 h-4" />, link: '/dashboard' },
-                { name: 'Budget Calculator', icon: <Calculator className="w-4 h-4" />, link: '/dashboard' },
-                { name: 'Financial Reports', icon: <PieChart className="w-4 h-4" />, link: '/dashboard' },
+                { name: 'Income Tracking', icon: <TrendingUp className="w-4 h-4" />, link: '#', },
+                { name: 'Expense Management', icon: <CreditCard className="w-4 h-4" />, link: '#', },
+                { name: 'Budget Calculator', icon: <Calculator className="w-4 h-4" />, link: '#', },
+                { name: 'Financial Reports', icon: <PieChart className="w-4 h-4" />, link: '#', },
             ]
         },
         {
@@ -63,12 +63,12 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ isVisible, onMouseEnter, onMouseLea
             title: 'Remote Brooding',
             icon: <Thermometer className="w-6 h-6 text-emerald-600" />,
             description: 'Monitor and control brooding conditions remotely',
-            link: '/dashboard/batch-incubator',
+            link: '#',
             features: [
-                { name: 'Live Monitoring', icon: <Activity className="w-4 h-4" />, link: '/dashboard/batch-incubator' },
-                { name: 'Temperature Control', icon: <Thermometer className="w-4 h-4" />, link: '/dashboard/batch-incubator/incubators' },
-                { name: 'Batch Management', icon: <Egg className="w-4 h-4" />, link: '/dashboard/batch-incubator/batches' },
-                { name: 'Smart Alerts', icon: <Bell className="w-4 h-4" />, link: '/dashboard/batch-incubator/schedules' },
+                { name: 'Live Monitoring', icon: <Activity className="w-4 h-4" />, link: '#', },
+                { name: 'Temperature Control', icon: <Thermometer className="w-4 h-4" />, link: '#', },
+                { name: 'Batch Management', icon: <Egg className="w-4 h-4" />, link: '#', },
+                { name: 'Smart Alerts', icon: <Bell className="w-4 h-4" />, link: '#', },
             ]
         },
         {
@@ -76,12 +76,12 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ isVisible, onMouseEnter, onMouseLea
             title: 'Feed Management',
             icon: <Utensils className="w-6 h-6 text-emerald-600" />,
             description: 'Optimize feeding schedules and nutrition',
-            link: '/dashboard',
+            link: '#',
             features: [
-                { name: 'Feed Programs', icon: <Utensils className="w-4 h-4" />, link: '/dashboard' },
-                { name: 'Nutrition Tracking', icon: <BarChart3 className="w-4 h-4" />, link: '/dashboard' },
-                { name: 'Feed Inventory', icon: <Package className="w-4 h-4" />, link: '/dashboard' },
-                { name: 'Consumption Reports', icon: <PieChart className="w-4 h-4" />, link: '/dashboard' },
+                { name: 'Feed Programs', icon: <Utensils className="w-4 h-4" />, link: '#', },
+                { name: 'Nutrition Tracking', icon: <BarChart3 className="w-4 h-4" />, link: '#', },
+                { name: 'Feed Inventory', icon: <Package className="w-4 h-4" />, link: '#', },
+                { name: 'Consumption Reports', icon: <PieChart className="w-4 h-4" />, link: '#', },
             ]
         }
     ];
