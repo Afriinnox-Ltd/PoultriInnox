@@ -15,7 +15,6 @@ function WelcomeNav({ auth }: any) {
     const [isMegaMenuVisible, setIsMegaMenuVisible] = useState(false);
     const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    console.log(auth);
     const { cartCount } = usePage<SharedData>().props;
 
     // Get current URL for redirect after login
@@ -138,7 +137,7 @@ function WelcomeNav({ auth }: any) {
                         </Link>
 
                         <a
-                            href="#"
+                            href="/store"
                             className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
@@ -146,32 +145,32 @@ function WelcomeNav({ auth }: any) {
                         </a>
 
                         {/* Mobile Features Menu */}
-                        <div className="px-3 py-2">
+                        {/* <div className="px-3 py-2">
                             <div className="text-sm font-semibold text-gray-900 mb-2">Features</div>
                             <div className="pl-4 space-y-1">
                                 <Link
-                                    href="/dashboard"
+                                    href="#"
                                     className="block py-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     My Finance
                                 </Link>
                                 <Link
-                                    href="/dashboard/batch-incubator"
+                                    href="#"
                                     className="block py-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     Remote Brooding
                                 </Link>
                                 <Link
-                                    href="/dashboard"
+                                    href="#"
                                     className="block py-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     Feed Management
                                 </Link>
                             </div>
-                        </div>
+                        </div> */}
 
                         {auth?.user ? (
                             <>

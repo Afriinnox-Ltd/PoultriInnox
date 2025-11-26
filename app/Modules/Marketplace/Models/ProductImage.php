@@ -25,6 +25,19 @@ class ProductImage extends Model
         'is_primary' => 'boolean',
     ];
 
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        if (!$this->image_path) {
+            return null;
+        }
+        if (filter_var($this->image_path, FILTER_VALIDATE_URL)) {
+            return $this->image_path;
+        }
+        return asset('storage/' . $this->image_path);
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

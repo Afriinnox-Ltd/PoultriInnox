@@ -31,6 +31,8 @@ import { toast } from 'sonner';
 
 interface ProductShowProps {
     product: Product & {
+        is_negotiable?: boolean;
+        video_path?: string;
         images: Array<{ id: number; image_path: string; alt_text?: string; is_primary: boolean }>;
         reviews: (ProductReview & { user: { id: number; name: string } })[];
         variants: ProductVariant[];
@@ -59,15 +61,50 @@ interface ProductShowProps {
 }
 
 export default function ProductShow({ product, user_review, is_in_wishlist, relatedProducts, currentUser }: ProductShowProps) {
-    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
     const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(product.minimum_order_quantity || 1);
     const [isInWishlist, setIsInWishlist] = useState(is_in_wishlist);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-    const images = product.images?.length > 0 ? product.images : [
-        { id: 0, image_path: '/placeholder-product.jpg', alt_text: product.name, is_primary: true }
-    ];
+    // Combine images and video into a single media array
+    const mediaItems = React.useMemo(() => {
+        const items = [];
+
+        // Add images
+        if (product.images && product.images.length > 0) {
+            items.push(...product.images.map(img => ({
+                type: 'image' as const,
+                id: img.id,
+                path: img.image_path,
+                alt: img.alt_text || product.name,
+                is_primary: img.is_primary
+            })));
+        } else {
+            items.push({
+                type: 'image' as const,
+                id: 0,
+                path: '/placeholder-product.jpg',
+                alt: product.name,
+                is_primary: true
+            });
+        }
+
+        // Add video if exists
+        if (product.video_path) {
+            items.push({
+                type: 'video' as const,
+                id: 'video',
+                path: product.video_path,
+                alt: 'Product Video',
+                is_primary: false
+            });
+        }
+
+        return items;
+    }, [product]);
+
+    const currentMedia = mediaItems[selectedMediaIndex];
 
     const currentPrice = selectedVariant
         ? product.price + (product.variants?.find(v => v.id === selectedVariant)?.price_adjustment || 0)
@@ -91,7 +128,9 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
 
     const maxQuantity = selectedVariant
         ? product.variants?.find(v => v.id === selectedVariant)?.stock_quantity || 0
-        : product.stock_quantity;
+        : (product.maximum_order_quantity ? Math.min(product.stock_quantity, product.maximum_order_quantity) : product.stock_quantity);
+
+    const minQuantity = product.minimum_order_quantity || 1;
 
     const handleAddToCart = async () => {
         // Check if user is authenticated
@@ -114,14 +153,14 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                 },
                 onError: (errors) => {
                     toast.error('Failed to add product to cart. Please check the form for errors.');
-                    console.error('Error adding to cart:', errors);
+
                 }
             });
 
         } catch (error) {
-            console.error('Error adding to cart:', error);
+
             toast.error('Failed to add product to cart. Please try again.');
-        }finally {
+        } finally {
             setIsAddingToCart(false);
         }
     };
@@ -146,7 +185,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                 setIsInWishlist(!isInWishlist);
             }
         } catch (error) {
-            console.error('Error toggling wishlist:', error);
+
         }
     };
 
@@ -206,49 +245,53 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                     </nav>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                        {/* Product Images */}
-                        <div>
+                        {/* Product Media Gallery */}
+                        <div className="space-y-4">
                             <Card className='py-0 bg-transparent border-0 shadow-none'>
                                 <CardContent className="p-0">
-                                    <div className="aspect-square relative ">
-                                        <img
-                                            src={images[selectedImageIndex].image_path}
-                                            alt={images[selectedImageIndex].alt_text || product.name}
-                                            className="w-full h-full rounded object-contain"
-                                        />
-                                        {images.length > 1 && (
+                                    <div className="aspect-square relative bg-gray-100 rounded overflow-hidden">
+                                        {currentMedia.type === 'video' ? (
+                                            <video
+                                                controls
+                                                className="w-full h-full object-contain"
+                                                src={currentMedia.path}
+                                                poster={product.images?.[0]?.image_path}
+                                            >
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        ) : (
+                                            <img
+                                                src={currentMedia.path}
+                                                alt={currentMedia.alt}
+                                                className="w-full h-full object-contain"
+                                            />
+                                        )}
+
+                                        {mediaItems.length > 1 && (
                                             <>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-500 cursor-pointer"
-                                                    onClick={() => setSelectedImageIndex(
-                                                        selectedImageIndex === 0 ? images.length - 1 : selectedImageIndex - 1
+                                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full p-1"
+                                                    onClick={() => setSelectedMediaIndex(
+                                                        selectedMediaIndex === 0 ? mediaItems.length - 1 : selectedMediaIndex - 1
                                                     )}
                                                 >
-                                                    <ChevronLeft className="h-4 w-4 text-white" />
+                                                    <ChevronLeft className="h-6 w-6" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-500 cursor-pointer"
-                                                    onClick={() => setSelectedImageIndex(
-                                                        selectedImageIndex === images.length - 1 ? 0 : selectedImageIndex + 1
+                                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full p-1"
+                                                    onClick={() => setSelectedMediaIndex(
+                                                        selectedMediaIndex === mediaItems.length - 1 ? 0 : selectedMediaIndex + 1
                                                     )}
                                                 >
-                                                    <ChevronRight className="h-4 w-4 text-white" />
+                                                    <ChevronRight className="h-6 w-6" />
                                                 </Button>
                                             </>
                                         )}
                                         <div className="absolute top-4 right-4 flex gap-2">
-                                            {/* <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="bg-white/80 hover:bg-white"
-                                                onClick={handleToggleWishlist}
-                                            >
-                                                <Heart className={`h-4 w-4 ${isInWishlist ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
-                                            </Button> */}
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -261,6 +304,36 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Media Thumbnails */}
+                            {mediaItems.length > 1 && (
+                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                    {mediaItems.map((item, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => setSelectedMediaIndex(index)}
+                                            className={`relative flex-shrink-0 w-20 h-20 rounded border-2 overflow-hidden ${selectedMediaIndex === index ? 'border-emerald-500' : 'border-transparent'
+                                                }`}
+                                        >
+                                            {item.type === 'video' ? (
+                                                <div className="w-full h-full bg-gray-900 flex items-center justify-center text-white">
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                                        <div className="bg-white/20 rounded-full p-1">
+                                                            <div className="border-[6px] border-transparent border-l-white ml-1"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={item.path}
+                                                    alt={item.alt}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Product Details */}
@@ -287,10 +360,20 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                 <div className="text-sm text-gray-600 mb-1">Price</div>
                                 <div className="text-4xl font-extrabold text-emerald-600 mb-2">
                                     {formatCurrency(currentPrice)}
+                                    {product.is_negotiable && (
+                                        <Badge variant="secondary" className="ml-3 text-sm font-normal">
+                                            Negotiable
+                                        </Badge>
+                                    )}
                                 </div>
-                                {product.min_order_quantity && (
+                                {product.minimum_order_quantity && (
                                     <p className="text-sm text-gray-600">
-                                        Minimum order: {product.min_order_quantity} units
+                                        Minimum order: {product.minimum_order_quantity} units
+                                    </p>
+                                )}
+                                {product.maximum_order_quantity && (
+                                    <p className="text-sm text-gray-600">
+                                        Maximum order: {product.maximum_order_quantity} units
                                     </p>
                                 )}
                             </div>
@@ -338,18 +421,18 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                            disabled={quantity <= 1}
+                                            onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))}
+                                            disabled={quantity <= minQuantity}
                                         >
                                             <Minus className="h-4 w-4" />
                                         </Button>
                                         <Input
                                             type="number"
                                             value={quantity}
-                                            onChange={(e) => setQuantity(Math.max(1, Math.min(maxQuantity, parseInt(e.target.value) || 1)))}
+                                            onChange={(e) => setQuantity(Math.max(minQuantity, Math.min(maxQuantity || Infinity, parseInt(e.target.value) || minQuantity)))}
                                             className="w-20 text-center border-0"
-                                            min="1"
-                                            max={maxQuantity}
+                                            min={minQuantity}
+                                            max={maxQuantity || undefined}
                                         />
                                         <Button
                                             variant="ghost"
@@ -376,16 +459,16 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
 
 
                                 >
-                                {isAddingToCart && 'Adding...'}
-                                {!isAddingToCart && (
-                                    <>
-                                        <ShoppingCart className="h-5 w-5 mr-2" />
-                                        {auth.user ? 'Add to Cart' : 'Login to Buy'}
-                                    </>
-                                )}
+                                    {isAddingToCart && 'Adding...'}
+                                    {!isAddingToCart && (
+                                        <>
+                                            <ShoppingCart className="h-5 w-5 mr-2" />
+                                            {auth.user ? 'Add to Cart' : 'Login to Buy'}
+                                        </>
+                                    )}
                                 </Button>
                                 <Button variant="outline" size="lg" className="w-full">
-                                    <Link href={`/store/?vendor=${product.vendor?.id}`} className="w-full">
+                                    <Link href={`/store/search/?vendor=${product.vendor?.id}`} className="w-full">
                                         View Store
                                     </Link>
                                 </Button>
@@ -434,7 +517,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
 
                         <TabsContent value="description" className="mt-6">
                             <Card className='shadow-none'>
-                                <CardContent className="p-6">
+                                <CardContent className="">
                                     {product.description ? (
                                         <div className="prose max-w-none">
                                             {product.description.split('\n').map((paragraph, index) => (
@@ -466,14 +549,14 @@ export default function ProductShow({ product, user_review, is_in_wishlist, rela
                                         <div>
                                             <span className="font-medium">Stock:</span> {product.stock_quantity} units
                                         </div>
-                                        {product.min_order_quantity && (
+                                        {product.minimum_order_quantity && (
                                             <div>
-                                                <span className="font-medium">Min Order:</span> {product.min_order_quantity} units
+                                                <span className="font-medium">Min Order:</span> {product.minimum_order_quantity} units
                                             </div>
                                         )}
-                                        {product.max_order_quantity && (
+                                        {product.maximum_order_quantity && (
                                             <div>
-                                                <span className="font-medium">Max Order:</span> {product.max_order_quantity} units
+                                                <span className="font-medium">Max Order:</span> {product.maximum_order_quantity} units
                                             </div>
                                         )}
                                     </div>

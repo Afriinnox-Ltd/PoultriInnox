@@ -31,6 +31,10 @@ class SubscriptionPlan extends Model
         'is_active' => 'boolean',
         'allow_cod' => 'boolean',
         'featured_badge' => 'boolean',
+        'duration_days' => 'integer',
+        'product_limit' => 'integer',
+        'order_limit' => 'integer',
+        'price' => 'float',
     ];
 
     /**

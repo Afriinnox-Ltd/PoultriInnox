@@ -155,7 +155,7 @@ export default function PaymentPage({ order, payment: initialPayment, phoneNumbe
                 }
             }
         } catch (err) {
-            console.error('Status check failed:', err);
+
         } finally {
             setCheckingStatus(false);
         }

@@ -66,6 +66,14 @@ Route::prefix('admin')->middleware(['auth', 'admin.access'])->name('admin.')->gr
         Route::get('/user/{user}/modules', [App\Http\Controllers\Admin\UserModuleController::class, 'getUserModules'])->name('user-modules');
     });
 
+    // Module Management (System-wide Admin Only)
+    Route::prefix('modules')->name('modules.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ModuleController::class, 'index'])->name('index');
+        Route::patch('/{module}/toggle-status', [App\Http\Controllers\Admin\ModuleController::class, 'toggleStatus'])->name('toggle-status');
+        Route::put('/{module}', [App\Http\Controllers\Admin\ModuleController::class, 'update'])->name('update');
+        Route::get('/statistics', [App\Http\Controllers\Admin\ModuleController::class, 'statistics'])->name('statistics');
+    });
+
     // Protocol Management (Smart Scheduling Admin)
     Route::prefix('smart-scheduling')->name('smart-scheduling.')->group(function () {
         Route::get('/', function () {
@@ -148,6 +156,8 @@ Route::prefix('admin')->middleware(['auth', 'admin.access'])->name('admin.')->gr
             Route::patch('/{vendor}/toggle-verification', [App\Modules\Marketplace\Controllers\Admin\VendorAdminController::class, 'toggleVerification'])->name('toggle-verification');
             Route::patch('/{vendor}/commission', [App\Modules\Marketplace\Controllers\Admin\VendorAdminController::class, 'updateCommission'])->name('update-commission');
             Route::patch('/{vendor}/notes', [App\Modules\Marketplace\Controllers\Admin\VendorAdminController::class, 'updateNotes'])->name('update-notes');
+            Route::post('/{vendor}/message', [App\Modules\Marketplace\Controllers\Admin\VendorAdminController::class, 'sendMessage'])->name('message');
+            Route::post('/{vendor}/request-changes', [App\Modules\Marketplace\Controllers\Admin\VendorAdminController::class, 'requestChanges'])->name('request-changes');
             Route::post('/bulk-action', [App\Modules\Marketplace\Controllers\Admin\VendorAdminController::class, 'bulkAction'])->name('bulk-action');
         });
 
@@ -205,12 +215,12 @@ Route::prefix('admin')->middleware(['auth', 'admin.access'])->name('admin.')->gr
             Route::put('/{subscriptionPlan}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'update'])->name('update');
             Route::delete('/{subscriptionPlan}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'destroy'])->name('destroy');
             Route::patch('/{subscriptionPlan}/toggle-status', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'toggleStatus'])->name('toggle-status');
-            
+
             // User subscription management
             Route::get('/user-subscriptions', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'userSubscriptions'])->name('user-subscriptions');
             Route::post('/assign-plan', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'assignPlan'])->name('assign-plan');
             Route::delete('/subscriptions/{subscription}', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'removeUserSubscription'])->name('remove-subscription');
-            
+
             // Analytics
             Route::get('/analytics', [App\Modules\Marketplace\Controllers\Admin\SubscriptionPlanAdminController::class, 'analytics'])->name('analytics');
         });

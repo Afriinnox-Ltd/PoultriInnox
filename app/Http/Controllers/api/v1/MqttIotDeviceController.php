@@ -273,17 +273,18 @@ class MqttIotDeviceController extends Controller
             $protocol = $config['websocket']['protocol'];
         }
 
-        // Use different ports for ws vs wss (Mosquitto: 8080 for ws, 8081 for wss)
-        $port = $config['websocket']['port'] ?? 8080;
-        if ($protocol === 'wss' && $port === 8080) {
-            $port = 8081; // Switch to secure WebSocket port
+        // Use different ports for ws vs wss (HiveMQ: 8000 for ws, 8884 for wss)
+        $port = $config['websocket']['port'] ?? 8000;
+        if ($protocol === 'wss' && $port === 8000) {
+            $port = 8884; // Switch to secure WebSocket port for HiveMQ
         }
 
-        // WebSocket path for Mosquitto test broker
+        // WebSocket path for MQTT brokers
         $path = $config['websocket']['path'] ?? '/mqtt';
 
         return response()->json([
             'status' => 'success',
+            'version' => '1.2', // Increment when config structure changes
             'broker' => [
                 'host' => $config['broker']['host'],
                 'port' => $port,

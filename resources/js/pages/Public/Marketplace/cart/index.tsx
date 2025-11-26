@@ -39,7 +39,8 @@ interface CartItem {
         slug: string;
         price: number;
         stock_quantity: number;
-        min_order_quantity?: number;
+        minimum_order_quantity?: number;
+        maximum_order_quantity?: number;
         images: Array<{
             id: number;
             image_path: string;
@@ -81,7 +82,25 @@ export default function CartIndex({ cartItems, cartByVendor, subtotal, totalItem
     const [calculatingShipping, setCalculatingShipping] = useState(false);
 
     const updateQuantity = async (itemId: number, newQuantity: number) => {
-        if (newQuantity < 1) return;
+        // Find the item to get min/max limits
+        const item = Object.values(cartByVendor).flat().find(i => i.id === itemId);
+        if (!item) return;
+
+        const maxQty = item.product.maximum_order_quantity
+            ? Math.min(item.product.stock_quantity, item.product.maximum_order_quantity)
+            : item.product.stock_quantity;
+
+        const minQty = item.product.minimum_order_quantity || 1;
+
+        if (newQuantity < minQty) {
+            toast.error(`Minimum order quantity is ${minQty}`);
+            return;
+        }
+
+        if (newQuantity > maxQty) {
+            toast.error(`Maximum order quantity is ${maxQty}`);
+            return;
+        }
 
         setUpdatingItems(prev => new Set(prev).add(itemId));
 
@@ -230,9 +249,14 @@ export default function CartIndex({ cartItems, cartByVendor, subtotal, totalItem
                                                     <Badge variant="outline" className="text-xs">
                                                         {item.product.stock_quantity} in stock
                                                     </Badge>
-                                                    {item.product.min_order_quantity && (
+                                                    {item.product.minimum_order_quantity && (
                                                         <Badge variant="secondary" className="text-xs">
-                                                            Min: {item.product.min_order_quantity}
+                                                            Min: {item.product.minimum_order_quantity}
+                                                        </Badge>
+                                                    )}
+                                                    {item.product.maximum_order_quantity && (
+                                                        <Badge variant="secondary" className="text-xs">
+                                                            Max: {item.product.maximum_order_quantity}
                                                         </Badge>
                                                     )}
                                                 </div>
@@ -282,7 +306,12 @@ export default function CartIndex({ cartItems, cartByVendor, subtotal, totalItem
                                                     size="icon"
                                                     className="h-8 w-8"
                                                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                    disabled={updatingItems.has(item.id) || item.quantity >= item.product.stock_quantity}
+                                                    disabled={
+                                                        updatingItems.has(item.id) ||
+                                                        item.quantity >= (item.product.maximum_order_quantity
+                                                            ? Math.min(item.product.stock_quantity, item.product.maximum_order_quantity)
+                                                            : item.product.stock_quantity)
+                                                    }
                                                 >
                                                     <Plus className="h-3 w-3" />
                                                 </Button>

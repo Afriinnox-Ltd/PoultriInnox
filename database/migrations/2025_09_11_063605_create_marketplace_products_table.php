@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -15,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('vendor_id')->constrained('marketplace_vendors')->onDelete('cascade');
             $table->foreignId('category_id')->constrained('marketplace_categories');
-            $table->string('name');
+            $table->string('name', 191);
             $table->string('slug')->unique();
             $table->text('description');
             $table->text('short_description')->nullable();
@@ -41,7 +40,7 @@ return new class extends Migration
             // Poultry-specific fields
             $table->json('suitable_for_breeds')->nullable(); // Array of breed types
             $table->json('suitable_for_ages')->nullable(); // Age ranges
-            $table->string('product_type')->nullable(); // feed, medication, equipment, etc.
+            $table->string('product_type', 50)->nullable(); // feed, medication, equipment, etc.
             $table->json('nutritional_info')->nullable(); // For feed products
             $table->json('active_ingredients')->nullable(); // For medications
 

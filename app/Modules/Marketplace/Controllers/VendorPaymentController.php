@@ -104,7 +104,7 @@ class VendorPaymentController extends Controller
             $q->where('vendor_id', $vendor->id);
         })
         ->selectRaw('
-            strftime("%Y-%m", created_at) as month,
+            DATE_FORMAT(created_at, "%Y-%m") as month,
             SUM(vendor_amount) as total_amount,
             COUNT(*) as total_payments
         ')

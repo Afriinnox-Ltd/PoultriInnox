@@ -49,10 +49,10 @@ export default function Index({ plans, stats }: Props) {
   });
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('rw-RW', { 
-      style: 'currency', 
+    return new Intl.NumberFormat('rw-RW', {
+      style: 'currency',
       currency: 'RWF',
-      minimumFractionDigits: 0 
+      minimumFractionDigits: 0
     }).format(price);
   };
 
@@ -79,9 +79,18 @@ export default function Index({ plans, stats }: Props) {
       router.delete(`/admin/marketplace/subscription-plans/${planId}`, {
         preserveState: true,
         onSuccess: () => {
-          // Refresh the page to show updated list
+          // Toast will be handled globally by flash messages if configured, 
+          // but we can enforce local success feedback or rely on backend redirect with flash
           router.reload({ only: ['plans', 'stats'] });
         },
+        onError: (errors) => {
+          // Log errors to console for debugging
+          console.error('Delete failed:', errors);
+          // If the backend returns a specific error bag or message, try to alert it
+          // Assuming no global toast hook is readily available inside this specific function scope 
+          // without importing a hook, but we can try alert for critical failures
+          alert('Failed to delete plan. Please check if there are active subscriptions usage.');
+        }
       });
     }
   };
@@ -97,7 +106,7 @@ export default function Index({ plans, stats }: Props) {
             <h1 className="text-2xl font-bold text-gray-900">Subscription Plans</h1>
             <p className="text-gray-600">Manage marketplace subscription plans and pricing</p>
           </div>
-          <Link 
+          <Link
             href="/admin/marketplace/subscription-plans/create"
             className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
           >
@@ -239,8 +248,8 @@ export default function Index({ plans, stats }: Props) {
                       </td>
                       <td className="py-4">
                         <div className="flex items-center space-x-1">
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="ghost"
                             onClick={() => togglePlanStatus(plan.id)}
                           >
@@ -250,15 +259,15 @@ export default function Index({ plans, stats }: Props) {
                               <ToggleLeft className="w-4 h-4 text-gray-400" />
                             )}
                           </Button>
-                          <Link 
+                          <Link
                             href={`/admin/marketplace/subscription-plans/${plan.id}/edit`}
                             className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8 p-0"
                           >
                             <Edit className="w-4 h-4" />
                           </Link>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             className="text-red-600 hover:text-red-700"
                             disabled={plan.subscriptions_count > 0}
                             onClick={() => deletePlan(plan.id, plan.name)}

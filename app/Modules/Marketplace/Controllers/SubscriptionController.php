@@ -4,17 +4,16 @@ namespace App\Modules\Marketplace\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPlan;
-use App\Modules\Marketplace\Models\Subscription;
 use App\Modules\Marketplace\Models\Payment;
-use App\Services\IshemaPaymentService;
+use App\Modules\Marketplace\Models\Subscription;
 use App\Notifications\SubscriptionActivatedNotification;
-use App\Notifications\SubscriptionPaymentSuccessfulNotification;
 use App\Notifications\SubscriptionCancelledNotification;
+use App\Notifications\SubscriptionPaymentSuccessfulNotification;
+use App\Services\IshemaPaymentService;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
+use Inertia\Inertia;
 
 class SubscriptionController extends Controller
 {
@@ -62,7 +61,7 @@ class SubscriptionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->vendor) {
+        if (! $user->vendor) {
             return redirect()->route('marketplace.vendor.register')
                 ->with('info', 'Please create a vendor profile first to access subscription plans.');
         }
@@ -74,7 +73,7 @@ class SubscriptionController extends Controller
         // Only show paid plans (price > 0) that are better than current plan
         $availablePlans = SubscriptionPlan::active()
             ->where('price', '>', 0) // Only show paid plans
-            ->when($currentSubscription, function($query) use ($currentSubscription) {
+            ->when($currentSubscription, function ($query) use ($currentSubscription) {
                 return $query->where('price', '>', $currentSubscription->price);
             })
             ->orderBy('price', 'asc')
@@ -93,11 +92,11 @@ class SubscriptionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->vendor) {
+        if (! $user->vendor) {
             return back()->with('error', 'Vendor profile required to subscribe to plans.');
         }
 
-        if (!$plan->is_active) {
+        if (! $plan->is_active) {
             return back()->with('error', 'This subscription plan is not available.');
         }
 
@@ -158,7 +157,7 @@ class SubscriptionController extends Controller
         $user = Auth::user();
         $plan = SubscriptionPlan::findOrFail($validated['plan_id']);
 
-        if (!$user->vendor) {
+        if (! $user->vendor) {
             return back()->with('error', 'Vendor profile required.');
         }
 
@@ -184,7 +183,7 @@ class SubscriptionController extends Controller
             'product_limit' => $plan->product_limit,
             'order_limit' => $plan->order_limit,
             'allow_cod' => $plan->allow_cod,
-            'payment_reference' => $isFree ? null : 'UPGRADE_' . uniqid(),
+            'payment_reference' => $isFree ? null : 'UPGRADE_'.uniqid(),
             'payment_status' => $isFree ? 'completed' : ($validated['payment_method'] === 'online' ? 'pending' : 'cod_pending'),
         ]);
 
@@ -199,7 +198,7 @@ class SubscriptionController extends Controller
 
         if ($validated['payment_method'] === 'online') {
             // Generate unique reference ID
-            $referenceId = 'SUB-' . $subscription->id . '-' . time();
+            $referenceId = 'SUB-'.$subscription->id.'-'.time();
 
             // Create payment record
             $payment = Payment::create([
@@ -220,11 +219,11 @@ class SubscriptionController extends Controller
                     'subscription_id' => $subscription->id,
                     'plan_name' => $subscription->plan_name,
                     'reference_id' => $referenceId,
-                ])
+                ]),
             ]);
 
             // If phone number provided, initiate payment immediately
-            if (!empty($validated['phone_number'])) {
+            if (! empty($validated['phone_number'])) {
                 $phoneNumber = $validated['phone_number'];
 
                 \Log::info('Initiating subscription payment', [
@@ -237,7 +236,7 @@ class SubscriptionController extends Controller
                 // Initiate payment with Ishema
                 $result = $this->ishemaService->createTransaction([
                     'phoneNumber' => $phoneNumber,
-                    'amount' => $subscription->price,
+                    'amount' => (int) $subscription->price,
                     'currency' => 'RWF',
                     'referenceId' => $referenceId,
                     'senderMessage' => "Subscription: {$subscription->plan_name}",
@@ -297,7 +296,7 @@ class SubscriptionController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$currentSubscription) {
+        if (! $currentSubscription) {
             return back()->with('error', 'No active subscription found.');
         }
 
@@ -329,7 +328,7 @@ class SubscriptionController extends Controller
             ->whereNotNull('cancelled_at')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return back()->with('error', 'No cancelled subscription found.');
         }
 
@@ -349,7 +348,7 @@ class SubscriptionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->vendor) {
+        if (! $user->vendor) {
             return redirect()->route('marketplace.vendor.register')
                 ->with('error', 'Vendor profile required to view usage statistics.');
         }
@@ -358,7 +357,7 @@ class SubscriptionController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return redirect()->route('marketplace.subscriptions.index')
                 ->with('error', 'No active subscription found.');
         }
@@ -393,7 +392,7 @@ class SubscriptionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->vendor) {
+        if (! $user->vendor) {
             return response()->json(['error' => 'No vendor profile found'], 404);
         }
 
@@ -401,7 +400,7 @@ class SubscriptionController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json(['error' => 'No active subscription found'], 404);
         }
 
@@ -458,7 +457,7 @@ class SubscriptionController extends Controller
     {
         $subscription = Subscription::with(['vendor', 'plan'])->findOrFail($subscriptionId);
 
-        if ($subscription->vendor->user_id !== Auth::id()) {
+        if ($subscription->vendor->user_id != Auth::id()) {
             abort(403, 'Unauthorized access to subscription payment.');
         }
 
@@ -473,7 +472,7 @@ class SubscriptionController extends Controller
             ->latest()
             ->first();
 
-        if (!$payment) {
+        if (! $payment) {
             $payment = Payment::create([
                 'subscription_id' => $subscription->id,
                 'amount' => $subscription->price,
@@ -482,7 +481,7 @@ class SubscriptionController extends Controller
                 'gateway' => 'ishema',
                 'type' => 'subscription',
                 'status' => 'pending',
-                'transaction_id' => 'SUB-' . $subscription->id . '-' . time(),
+                'transaction_id' => 'SUB-'.$subscription->id.'-'.time(),
                 'vendor_amount' => 0,
                 'commission_amount' => 0,
                 'fees' => 0,
@@ -490,7 +489,7 @@ class SubscriptionController extends Controller
                 'metadata' => json_encode([
                     'subscription_id' => $subscription->id,
                     'plan_name' => $subscription->plan_name,
-                ])
+                ]),
             ]);
         }
 
@@ -523,7 +522,7 @@ class SubscriptionController extends Controller
         try {
             $payment = Payment::where('subscription_id', $subscription->id)->latest()->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 $payment = Payment::create([
                     'subscription_id' => $subscription->id,
                     'amount' => $subscription->price,
@@ -532,7 +531,7 @@ class SubscriptionController extends Controller
                     'gateway' => 'ishema',
                     'type' => 'subscription',
                     'status' => 'pending',
-                    'transaction_id' => 'SUB-' . $subscription->id . '-' . time(),
+                    'transaction_id' => 'SUB-'.$subscription->id.'-'.time(),
                     'vendor_amount' => 0,
                     'commission_amount' => 0,
                     'fees' => 0,
@@ -541,24 +540,24 @@ class SubscriptionController extends Controller
                         'phone_number' => $validated['phone_number'],
                         'subscription_id' => $subscription->id,
                         'plan_name' => $subscription->plan_name,
-                    ])
+                    ]),
                 ]);
             } else {
                 $metadata = json_decode($payment->metadata, true) ?? [];
                 $metadata['phone_number'] = $validated['phone_number'];
                 $payment->update([
-                    'metadata' => json_encode($metadata)
+                    'metadata' => json_encode($metadata),
                 ]);
             }
 
             // Generate unique reference ID
-            $uniqueRef = 'SUB-' . $subscription->id . '-' . time();
+            $uniqueRef = 'SUB-'.$subscription->id.'-'.time();
 
             $transactionData = [
                 'amount' => (int) round($subscription->price),
                 'phoneNumber' => $validated['phone_number'],
                 'referenceId' => $uniqueRef,
-                'senderMessage' => 'Payment for ' . $subscription->plan_name . ' Subscription',
+                'senderMessage' => 'Payment for '.$subscription->plan_name.' Subscription',
                 'callbackUrl' => route('marketplace.subscriptions.payment.callback'),
             ];
 
@@ -593,7 +592,7 @@ class SubscriptionController extends Controller
 
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to initiate payment: ' . $e->getMessage(),
+                'error' => 'Failed to initiate payment: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -613,7 +612,7 @@ class SubscriptionController extends Controller
             ->latest()
             ->first();
 
-        if (!$payment) {
+        if (! $payment) {
             return response()->json([
                 'status' => 'pending',
                 'payment_status' => 'pending',
@@ -683,8 +682,9 @@ class SubscriptionController extends Controller
 
         $referenceId = $request->input('referenceId');
 
-        if (!$referenceId) {
+        if (! $referenceId) {
             Log::error('No reference ID in subscription callback');
+
             return response()->json(['error' => 'Invalid callback'], 400);
         }
 
@@ -695,8 +695,9 @@ class SubscriptionController extends Controller
                 ->latest()
                 ->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 Log::error('Payment not found for subscription callback', ['referenceId' => $referenceId]);
+
                 return response()->json(['error' => 'Payment not found'], 404);
             }
 
