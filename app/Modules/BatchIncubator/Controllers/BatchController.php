@@ -94,7 +94,7 @@ class BatchController extends Controller
 
                 // User access info
                 'can_edit' => $batch->userHasAccess($user) || $user->isAdmin(),
-                'is_owner' => $batch->manager_id === $user->id,
+                'is_owner' => $batch->manager_id== $user->id,
             ];
         });
 
@@ -175,7 +175,7 @@ class BatchController extends Controller
         ]);
 
         // Check if trying to create a brooding batch in an incubator that already has one
-        if ($validated['status'] === BatchStatus::BROODING->value && !empty($validated['incubator_id'])) {
+        if ($validated['status']== BatchStatus::BROODING->value && !empty($validated['incubator_id'])) {
             $existingBroodingBatch = Batch::where('incubator_id', $validated['incubator_id'])
                 ->where('status', BatchStatus::BROODING->value)
                 ->where('id', '!=', $request->route('batch')) // Exclude current batch if editing
@@ -197,7 +197,7 @@ class BatchController extends Controller
         $validated['current_weight'] = $validated['initial_weight'] ?? null;
         $validated['manager_id'] = Auth::id();
 
-        if ($validated['status'] === BatchStatus::INCUBATING->value && $validated['start_date']) {
+        if ($validated['status']== BatchStatus::INCUBATING->value && $validated['start_date']) {
             $validated['hatch_date'] = now()->parse($validated['start_date'])->addDays(21);
         }
 
@@ -458,8 +458,8 @@ class BatchController extends Controller
 
                 // User permissions
                 'can_edit' => $batch->userHasAccess($user) || $user->isAdmin(),
-                'is_owner' => $batch->manager_id === $user->id,
-                'can_delete' => ($batch->manager_id === $user->id) || $user->isAdmin(),
+                'is_owner' => $batch->manager_id== $user->id,
+                'can_delete' => ($batch->manager_id== $user->id) || $user->isAdmin(),
             ],
         ]);
     }
@@ -517,7 +517,7 @@ class BatchController extends Controller
         }
 
         // Verify this is an active/brooding batch
-        if ($batch->status->value !== 'brooding') {
+        if ($batch->status->value != 'brooding') {
             return back()->withErrors(['error' => 'Only brooding batches can have their start date updated.']);
         }
 
@@ -558,7 +558,7 @@ class BatchController extends Controller
                 ->where('status', 'brooding')
                 ->first();
 
-            if ($activeBatch && $activeBatch->id === $batch->id) {
+            if ($activeBatch && $activeBatch->id== $batch->id) {
                 try {
                     $deviceId = $batch->incubator->serial_number;
 
@@ -632,7 +632,7 @@ class BatchController extends Controller
         }
 
         // Verify this is an active/brooding batch
-        if ($batch->status->value !== 'brooding') {
+        if ($batch->status->value != 'brooding') {
             return back()->withErrors(['error' => 'Only brooding batches can have their total incubation days updated.']);
         }
 
@@ -670,7 +670,7 @@ class BatchController extends Controller
                 ->where('status', 'brooding')
                 ->first();
 
-            if ($activeBatch && $activeBatch->id === $batch->id) {
+            if ($activeBatch && $activeBatch->id== $batch->id) {
                 try {
                     $deviceId = $batch->incubator->serial_number;
 
@@ -752,7 +752,7 @@ class BatchController extends Controller
         ]);
 
         // Check if trying to change to brooding status in an incubator that already has a brooding batch
-        if ($validated['status'] === BatchStatus::BROODING->value && $batch->incubator_id) {
+        if ($validated['status']== BatchStatus::BROODING->value && $batch->incubator_id) {
             $existingBroodingBatch = Batch::where('incubator_id', $batch->incubator_id)
                 ->where('status', BatchStatus::BROODING->value)
                 ->where('id', '!=', $batch->id)
@@ -772,7 +772,7 @@ class BatchController extends Controller
         $batch->update($validated);
 
         // Log status change as an event
-        if ($oldStatus !== $batch->status) {
+        if ($oldStatus != $batch->status) {
             $batch->events()->create([
                 'event_type' => EventType::STATUS_CHANGE,
                 'title' => "Status changed from {$oldStatus->label()} to {$batch->status->label()}",
@@ -868,7 +868,7 @@ class BatchController extends Controller
         $user = Auth::user();
 
         // Check if user has access to delete this batch (only owner or admin)
-        if (!$user->isAdmin() && $batch->manager_id !== $user->id) {
+        if (!$user->isAdmin() && $batch->manager_id != $user->id) {
             abort(403, 'You do not have permission to delete this batch.');
         }
 
@@ -876,7 +876,7 @@ class BatchController extends Controller
         $hasEvents = $batch->events()->count() > 0;
         $hasCurrentCount = $batch->current_count > 0;
         $hasFinancialData = $batch->feed_cost > 0 || $batch->medication_cost > 0 || $batch->other_costs > 0 || $batch->revenue > 0;
-        $isNotPlanned = $batch->status->value !== 'planned';
+        $isNotPlanned = $batch->status->value != 'planned';
 
         if ($hasEvents || $hasCurrentCount || $hasFinancialData || $isNotPlanned) {
             $reasons = [];
@@ -906,7 +906,7 @@ class BatchController extends Controller
         $user = Auth::user();
 
         // Only owner or admin can modify access
-        if (!$user->isAdmin() && $batch->manager_id !== $user->id) {
+        if (!$user->isAdmin() && $batch->manager_id != $user->id) {
             abort(403, 'You do not have permission to modify access settings for this batch.');
         }
 
@@ -932,7 +932,7 @@ class BatchController extends Controller
         $user = Auth::user();
 
         // Only owner or admin can grant access
-        if (!$user->isAdmin() && $batch->manager_id !== $user->id) {
+        if (!$user->isAdmin() && $batch->manager_id != $user->id) {
             abort(403, 'You do not have permission to grant access to this batch.');
         }
 
@@ -967,12 +967,12 @@ class BatchController extends Controller
         $user = Auth::user();
 
         // Only owner or admin can revoke access
-        if (!$user->isAdmin() && $batch->manager_id !== $user->id) {
+        if (!$user->isAdmin() && $batch->manager_id != $user->id) {
             abort(403, 'You do not have permission to revoke access from this batch.');
         }
 
         // Cannot revoke access from owner
-        if ($targetUser->id === $batch->manager_id) {
+        if ($targetUser->id== $batch->manager_id) {
             return back()->withErrors(['error' => 'Cannot revoke access from the batch owner.']);
         }
 
@@ -982,7 +982,7 @@ class BatchController extends Controller
         }
 
         $newAuthorizedUsers = array_filter($currentAuthorizedUsers, function($userId) use ($targetUser) {
-            return $userId !== $targetUser->id;
+            return $userId != $targetUser->id;
         });
 
         $batch->update(['authorized_users' => array_values($newAuthorizedUsers)]);

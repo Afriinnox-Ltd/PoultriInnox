@@ -12,7 +12,7 @@ import AuthLayout from '@/layouts/auth-layout';
 
 export default function Register() {
     return (
-        <AuthLayout title="Create an account" description="Enter your details below to create your account">
+        <AuthLayout title="Create your account" description="Join the Agriinnox marketplace and start growing your Livestock business today.">
             <Head title="Register" />
             <Form
                 {...RegisteredUserController.store.form()}
@@ -80,8 +80,8 @@ export default function Register() {
                                 <InputError message={errors.password_confirmation} />
                             </div>
 
-                            <Button type="submit" className="mt-2 w-full" tabIndex={5}>
-                                {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                            <Button type="submit" className="w-full" tabIndex={5} disabled={processing}>
+                                {processing && <LoaderCircle className="h-4 w-4 animate-spin mr-2" />}
                                 Create account
                             </Button>
                         </div>

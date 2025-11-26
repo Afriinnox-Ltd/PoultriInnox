@@ -101,7 +101,7 @@ const SmartRecommendationsModal: React.FC<SmartRecommendationsModalProps> = ({
                 });
             }
         } catch (error) {
-            console.error('Failed to fetch recommendations:', error);
+            
         } finally {
             setLoading(false);
         }
@@ -139,8 +139,7 @@ const SmartRecommendationsModal: React.FC<SmartRecommendationsModalProps> = ({
                 // Refresh recommendations
                 fetchRecommendations();
             }
-        } catch (error) {
-            console.error(`Failed to accept ${type} recommendation:`, error);
+        } catch (error) { 
         }
     };
 

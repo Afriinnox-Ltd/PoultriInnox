@@ -175,7 +175,7 @@ class VaccinationProtocol extends Model
         }
 
         // Check purpose
-        if ($this->purpose && $this->purpose !== $batch->purpose) {
+        if ($this->purpose && $this->purpose != $batch->purpose) {
             return false;
         }
 

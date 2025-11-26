@@ -138,7 +138,7 @@ class UserModuleController extends Controller
         $users = User::whereIn('id', $request->user_ids)->get();
 
         foreach ($users as $user) {
-            if ($request->action === 'enable') {
+            if ($request->action== 'enable') {
                 $result = $this->userModuleService->enableModule($user, $request->module_slug);
             } else {
                 $result = $this->userModuleService->disableModule($user, $request->module_slug);

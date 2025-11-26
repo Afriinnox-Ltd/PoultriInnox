@@ -167,7 +167,7 @@ class Shipping extends Model
      */
     public function isInTransit(): bool
     {
-        return $this->status === 'dispatched' && !$this->delivered_at;
+        return $this->status== 'dispatched' && !$this->delivered_at;
     }
 
     /**
@@ -175,7 +175,7 @@ class Shipping extends Model
      */
     public function isDelivered(): bool
     {
-        return $this->status === 'delivered' && $this->delivered_at;
+        return $this->status== 'delivered' && $this->delivered_at;
     }
 
     /**

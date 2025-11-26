@@ -165,7 +165,7 @@ class FeedProgram extends Model
 
         // Check if there are time-specific instructions
         foreach ($instructions as $instruction) {
-            if (isset($instruction['time']) && $instruction['time'] === $time) {
+            if (isset($instruction['time']) && $instruction['time']== $time) {
                 return $instruction['notes'] ?? [];
             }
         }
@@ -251,7 +251,7 @@ class FeedProgram extends Model
             $errors[] = 'Feeding frequency must be between 1 and 24';
         }
 
-        if (!empty($this->feeding_times) && count($this->feeding_times) !== $this->feeding_frequency) {
+        if (!empty($this->feeding_times) && count($this->feeding_times) != $this->feeding_frequency) {
             $errors[] = 'Number of feeding times must match feeding frequency';
         }
 

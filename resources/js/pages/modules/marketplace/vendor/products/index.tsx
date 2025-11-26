@@ -134,14 +134,14 @@ export default function VendorProducts({ products, categories, stats, filters, v
     const formatCurrency = (amount: number) => {
         const currency = marketplaceSettings?.general?.currency || 'RWF';
         const symbol = marketplaceSettings?.general?.currency_symbol || 'RWF';
-        
+
         if (currency === 'RWF') {
             return new Intl.NumberFormat('rw-RW', {
                 style: 'currency',
                 currency: 'RWF'
             }).format(amount);
         }
-        
+
         return `${symbol}${amount.toLocaleString()}`;
     };
 
@@ -203,7 +203,7 @@ export default function VendorProducts({ products, categories, stats, filters, v
             page: 1
         }, { preserveState: true });
     };
- 
+
     const confirmDelete = (product: Product) => {
         setDeleteProduct(product);
         setShowDeleteDialog(true);
@@ -266,9 +266,9 @@ export default function VendorProducts({ products, categories, stats, filters, v
                 </div>
                 {
                     subscriptionUsage && subscriptionUsage.can_create_more && (
-                         <Link href="/marketplace/vendor/products/create" className="w-full sm:w-auto">
-                            <Button 
-                                className="w-full sm:w-auto" 
+                        <Link href="/marketplace/vendor/products/create" className="w-full sm:w-auto">
+                            <Button
+                                className="w-full sm:w-auto"
                                 disabled={subscriptionUsage && !subscriptionUsage.can_create_more}
                                 title={subscriptionUsage && !subscriptionUsage.can_create_more ? 'Product limit reached. Upgrade your plan.' : 'Add new product'}
                             >
@@ -278,7 +278,7 @@ export default function VendorProducts({ products, categories, stats, filters, v
                         </Link>
                     )
                 }
-               
+
             </div>
 
             <div className="py-6">
@@ -288,14 +288,14 @@ export default function VendorProducts({ products, categories, stats, filters, v
                         <Alert className="mx-4 sm:mx-6" variant="destructive">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertDescription>
-                                You don't have an active subscription plan. 
+                                You don't have an active subscription plan.
                                 <Link href="/marketplace/subscriptions" className="font-semibold underline ml-1">
                                     Subscribe to a plan
                                 </Link> to start adding products.
                             </AlertDescription>
                         </Alert>
                     )}
-                    
+
                     {/* Product Limit Alert - Only show if plan has a product limit */}
                     {subscriptionUsage && subscriptionUsage.products_limit !== null && subscriptionUsage.products_limit > 0 && (
                         subscriptionUsage.products_used >= subscriptionUsage.products_limit * 0.8 && (
@@ -304,12 +304,12 @@ export default function VendorProducts({ products, categories, stats, filters, v
                                 <AlertDescription>
                                     {subscriptionUsage.can_create_more ? (
                                         <>
-                                            You're using <strong>{subscriptionUsage.products_used}</strong> of <strong>{subscriptionUsage.products_limit}</strong> products. 
+                                            You're using <strong>{subscriptionUsage.products_used}</strong> of <strong>{subscriptionUsage.products_limit}</strong> products.
                                             Consider <Link href="/marketplace/subscriptions" className="font-semibold underline ml-1">upgrading your plan</Link> soon.
                                         </>
                                     ) : (
                                         <>
-                                            You've reached your product limit! 
+                                            You've reached your product limit!
                                             <Link href="/marketplace/subscriptions" className="font-semibold underline ml-1">
                                                 Upgrade your plan
                                             </Link> to add more products.
@@ -393,9 +393,9 @@ export default function VendorProducts({ products, categories, stats, filters, v
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                                        <div className="text-lg font-bold text-emerald-900">
-                                            {marketplaceSettings.commission.commission_type === 'percentage' 
+                                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div className="text-lg font-bold text-gray-900">
+                                            {marketplaceSettings.commission.commission_type === 'percentage'
                                                 ? `${marketplaceSettings.commission.default_commission_rate}%`
                                                 : formatCurrency(marketplaceSettings.commission.default_commission_rate)
                                             }
@@ -405,17 +405,17 @@ export default function VendorProducts({ products, categories, stats, filters, v
                                             Per sale commission
                                         </div>
                                     </div>
-                                    
-                                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                                        <div className="text-lg font-bold text-emerald-900">
+
+                                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div className="text-lg font-bold text-gray-900">
                                             {marketplaceSettings.general.currency}
                                         </div>
-                                        <div className="text-sm font-medium text-emerald-700">Currency</div>
-                                        <div className="text-xs text-emerald-600 mt-1">
+                                        <div className="text-sm font-medium text-gray-700">Currency</div>
+                                        <div className="text-xs text-gray-600 mt-1">
                                             Product pricing currency
                                         </div>
-                                    </div> 
-                                     
+                                    </div>
+
                                 </div>
                             </CardContent>
                         </Card>
@@ -543,7 +543,7 @@ export default function VendorProducts({ products, categories, stats, filters, v
                             ) : (
                                 <div className="space-y-4 pt-0">
                                     {products.data.map((product) => (
-                                        console.log(product.images),
+
                                         <div key={product.id} className="border rounded-lg p-4 sm:p-6 hover:shadow-sm transition-shadow">
                                             <div className="flex flex-col sm:flex-row items-start gap-4">
                                                 {/* Product Image */}

@@ -32,12 +32,12 @@ class FeedConsumptionController extends Controller
         }
 
         // Filter by batch
-        if ($request->batch_id && $request->batch_id !== 'all') {
+        if ($request->batch_id && $request->batch_id != 'all') {
             $query->where('batch_id', $request->batch_id);
         }
 
         // Filter by feed type
-        if ($request->feed_type && $request->feed_type !== 'all') {
+        if ($request->feed_type && $request->feed_type != 'all') {
             $query->where('feed_type_id', $request->feed_type);
         }
 

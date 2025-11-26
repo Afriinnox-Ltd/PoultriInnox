@@ -270,7 +270,7 @@ class FeedTemplateController extends Controller
 
                 $row = str_getcsv($line);
 
-                if (count($row) !== count($headers)) {
+                if (count($row) != count($headers)) {
                     $errors[] = "Line " . ($i + 1) . ": Column count mismatch";
                     continue;
                 }
@@ -323,7 +323,7 @@ class FeedTemplateController extends Controller
 
                 $row = str_getcsv($line);
 
-                if (count($row) !== count($headers)) {
+                if (count($row) != count($headers)) {
                     $errors[] = "Line " . ($i + 1) . ": Column count mismatch. Expected " . count($headers) . ", got " . count($row);
                     continue;
                 }
@@ -377,7 +377,7 @@ class FeedTemplateController extends Controller
 
                 $row = str_getcsv($line);
 
-                if (count($row) !== count($headers)) {
+                if (count($row) != count($headers)) {
                     $errors[] = "Line " . ($i + 1) . ": Column count mismatch. Expected " . count($headers) . ", got " . count($row);
                     continue;
                 }

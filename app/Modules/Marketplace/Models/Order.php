@@ -173,7 +173,7 @@ class Order extends Model
      */
     public function isPending(): bool
     {
-        return $this->status === 'pending';
+        return $this->status== 'pending';
     }
 
     /**
@@ -181,7 +181,7 @@ class Order extends Model
      */
     public function isConfirmed(): bool
     {
-        return $this->status === 'confirmed';
+        return $this->status== 'confirmed';
     }
 
     /**
@@ -189,7 +189,7 @@ class Order extends Model
      */
     public function isProcessing(): bool
     {
-        return $this->status === 'processing';
+        return $this->status== 'processing';
     }
 
     /**
@@ -197,7 +197,7 @@ class Order extends Model
      */
     public function isShipped(): bool
     {
-        return $this->status === 'shipped';
+        return $this->status== 'shipped';
     }
 
     /**
@@ -205,7 +205,7 @@ class Order extends Model
      */
     public function isDelivered(): bool
     {
-        return $this->status === 'delivered';
+        return $this->status== 'delivered';
     }
 
     /**
@@ -213,7 +213,7 @@ class Order extends Model
      */
     public function isCompleted(): bool
     {
-        return $this->status === 'completed';
+        return $this->status== 'completed';
     }
 
     /**
@@ -221,7 +221,7 @@ class Order extends Model
      */
     public function isCancelled(): bool
     {
-        return $this->status === 'cancelled';
+        return $this->status== 'cancelled';
     }
 
     /**
@@ -229,7 +229,7 @@ class Order extends Model
      */
     public function isRefunded(): bool
     {
-        return $this->status === 'refunded';
+        return $this->status== 'refunded';
     }
 
     /**
@@ -237,7 +237,7 @@ class Order extends Model
      */
     public function isPaymentPending(): bool
     {
-        return $this->payment_status === 'pending';
+        return $this->payment_status== 'pending';
     }
 
     /**
@@ -245,7 +245,7 @@ class Order extends Model
      */
     public function isPaymentCompleted(): bool
     {
-        return $this->payment_status === 'completed';
+        return $this->payment_status== 'completed';
     }
 
     /**
@@ -253,7 +253,7 @@ class Order extends Model
      */
     public function isPaymentFailed(): bool
     {
-        return $this->payment_status === 'failed';
+        return $this->payment_status== 'failed';
     }
 
     /**
@@ -540,8 +540,8 @@ class Order extends Model
      */
     public function isDeliveryConfirmationPending(): bool
     {
-        return $this->status === 'delivered' &&
-               $this->payment_status === 'pending_confirmation' &&
+        return $this->status== 'delivered' &&
+               $this->payment_status== 'pending_confirmation' &&
                !$this->isDeliveryConfirmed();
     }
 }

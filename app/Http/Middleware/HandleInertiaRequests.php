@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Modules\Marketplace\Models\CartItem;
+use App\Modules\Marketplace\Models\Category;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -52,7 +53,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user() ? $request->user()->load('vendor') : null,
             ],
             'cartCount' => $cartCount,
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'categories' => Category::whereNull('parent_id')->with('children')->get(),
+            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state')== 'true',
         ];
     }
 }

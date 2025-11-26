@@ -167,7 +167,7 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
                 alert('Failed to cancel order. Please try again.');
             }
         } catch (error) {
-            console.error('Error cancelling order:', error);
+
             alert('Failed to cancel order. Please try again.');
         }
     };
@@ -430,8 +430,8 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
         }, 250);
     };
 
-     const { auth } = usePage<SharedData>().props;
-        const user = auth?.user;
+    const { auth } = usePage<SharedData>().props;
+    const user = auth?.user;
     return (
         <>
             <WelcomeNav auth={auth} />
@@ -440,8 +440,8 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
             <WelcomeNav auth={auth} />
             <div className="container mx-auto pt-18  max-w-7xl  sm:px-6 lg:px-8 px-4 py-8">
 
-            <div className="py-6">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div className="py-6">
+                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                         <div className="flex items-center gap-4 mb-8">
                             <div>
                                 <h1 className="text-3xl font-bold"> My Orders</h1>
@@ -450,359 +450,359 @@ export default function CustomerOrdersPage({ orders, filters, stats, user_type }
                                 </p>
                             </div>
                         </div>
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center">
-                                    <Package className="h-8 w-8 text-blue-600" />
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                                        <p className="text-2xl font-bold text-gray-900">{stats.total_orders}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center">
-                                    <Clock className="h-8 w-8 text-yellow-600" />
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-                                        <p className="text-2xl font-bold text-gray-900">{stats.pending_orders}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center">
-                                    <CheckCircle className="h-8 w-8 text-emerald-600" />
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Completed</p>
-                                        <p className="text-2xl font-bold text-gray-900">{stats.completed_orders}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center">
-                                    <DollarSign className="h-8 w-8 text-emerald-600" />
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                                        <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.total_spent)}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Filters */}
-                    <Card className="mb-6">
-                        <CardHeader>
-                            <CardTitle className="flex items-center">
-                                <Filter className="h-5 w-5 mr-2" />
-                                Filters
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Search</label>
-                                    <Input
-                                        placeholder="Order number..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Status</label>
-                                    <select
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={statusFilter}
-                                        onChange={(e) => setStatusFilter(e.target.value)}
-                                    >
-                                        <option value="">All Statuses</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="confirmed">Confirmed</option>
-                                        <option value="processing">Processing</option>
-                                        <option value="shipped">Shipped</option>
-                                        <option value="delivered">Delivered</option>
-                                        <option value="cancelled">Cancelled</option>
-                                        <option value="refunded">Refunded</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Payment</label>
-                                    <select
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={paymentStatusFilter}
-                                        onChange={(e) => setPaymentStatusFilter(e.target.value)}
-                                    >
-                                        <option value="">All Payments</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="paid">Paid</option>
-                                        <option value="failed">Failed</option>
-                                        <option value="refunded">Refunded</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">From Date</label>
-                                    <Input
-                                        type="date"
-                                        value={dateFrom}
-                                        onChange={(e) => setDateFrom(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">To Date</label>
-                                    <Input
-                                        type="date"
-                                        value={dateTo}
-                                        onChange={(e) => setDateTo(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 mt-4">
-                                <Button onClick={handleSearch}>
-                                    <Search className="h-4 w-4 mr-2" />
-                                    Search
-                                </Button>
-                                <Button onClick={clearFilters} variant="outline">
-                                    Clear Filters
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Orders List */}
-                    <div className="space-y-4">
-                        {orders.data.length === 0 ? (
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                             <Card>
-                                <CardContent className="p-12 text-center">
-                                    <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                        No orders found
-                                    </h3>
-                                    <p className="text-gray-600 mb-6">
-                                        You haven't placed any orders yet. Start shopping!
-                                    </p>
-                                    <Button onClick={() => window.location.href = '/marketplace'}>
-                                        Start Shopping
-                                    </Button>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center">
+                                        <Package className="h-8 w-8 text-blue-600" />
+                                        <div className="ml-4">
+                                            <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                                            <p className="text-2xl font-bold text-gray-900">{stats.total_orders}</p>
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
-                        ) : (
-                            orders.data.map((order) => (
-                                <Card key={order.id}>
-                                    <CardContent className="p-6">
-                                        {/* Order Header */}
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <h3 className="text-lg font-semibold">
-                                                    Order #{order.order_number}
-                                                </h3>
-                                                <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                                                    <div className="flex items-center">
-                                                        <Calendar className="h-4 w-4 mr-1" />
-                                                        {formatDate(order.created_at)}
-                                                    </div>
-                                                    {order.payment_method && (
-                                                        <div className="flex items-center">
-                                                            <CreditCard className="h-4 w-4 mr-1" />
-                                                            {order.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' : 'Online Payment'}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="flex gap-2 mb-2">
-                                                    <Badge className={getStatusColor(order.status)}>
-                                                        {order.status}
-                                                    </Badge>
-                                                    <Badge className={getPaymentStatusColor(order.payment_status)}>
-                                                        {formatPaymentStatus(order.payment_status)}
-                                                    </Badge>
-                                                </div>
-                                                <p className="text-xl font-bold">
-                                                    {formatCurrency(order.total_amount)}
-                                                </p>
-                                            </div>
+
+                            <Card>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center">
+                                        <Clock className="h-8 w-8 text-yellow-600" />
+                                        <div className="ml-4">
+                                            <p className="text-sm font-medium text-gray-600">Pending Orders</p>
+                                            <p className="text-2xl font-bold text-gray-900">{stats.pending_orders}</p>
                                         </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                                        <Separator className="mb-4" />
-
-                                        {/* Order Items */}
-                                        <div className="space-y-3 mb-4">
-                                            {order.items.map((item) => (
-                                                <div key={item.id} className="flex gap-4">
-                                                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                                        {item.product?.images && item.product.images.length > 0 ? (
-                                                            <img
-                                                                src={item.product.images[0].image_path}
-                                                                alt={item.product.images[0].alt_text || item.product.name}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                                <Package className="h-6 w-6" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-grow">
-                                                        <h4 className="font-medium">{item.product_name}</h4>
-                                                        <p className="text-sm text-gray-600">
-                                                            Quantity: {item.quantity} × {formatCurrency(item.unit_price)}
-                                                        </p>
-                                                        {item.shipping_cost && item.shipping_cost > 0 && (
-                                                            <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
-                                                                <Truck className="h-3 w-3" />
-                                                                Shipping: {formatCurrency(item.shipping_cost)}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="font-semibold">
-                                                            {formatCurrency(item.total_price)}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            ))}
+                            <Card>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center">
+                                        <CheckCircle className="h-8 w-8 text-emerald-600" />
+                                        <div className="ml-4">
+                                            <p className="text-sm font-medium text-gray-600">Completed</p>
+                                            <p className="text-2xl font-bold text-gray-900">{stats.completed_orders}</p>
                                         </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                                        {/* Shipping Information */}
-                                        {order.shipping && (
-                                            <>
-                                                <Separator className="mb-4" />
-                                                <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <h4 className="font-medium flex items-center">
-                                                            <Truck className="h-4 w-4 mr-2" />
-                                                            Shipping Information
-                                                        </h4>
-                                                        <Badge className={getStatusColor(order.shipping.status)}>
-                                                            {order.shipping.status}
-                                                        </Badge>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                                        {order.shipping.tracking_number && (
-                                                            <div>
-                                                                <span className="font-medium">Tracking:</span> {order.shipping.tracking_number}
-                                                            </div>
-                                                        )}
-                                                        {order.shipping.carrier && (
-                                                            <div>
-                                                                <span className="font-medium">Carrier:</span> {order.shipping.carrier}
-                                                            </div>
-                                                        )}
-                                                        {order.shipping.estimated_delivery && (
-                                                            <div>
-                                                                <span className="font-medium">Estimated Delivery:</span> {formatDate(order.shipping.estimated_delivery)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </>
-                                        )}
-
-                                        {/* Order Actions */}
-                                        <div className="flex gap-2 flex-wrap">
-                                            {/* Customer Delivery Confirmation */}
-                                            {order.status === 'delivered' && order.payment_status === 'pending_confirmation' && !order.delivery_confirmation?.confirmed && (
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => window.location.href = `/orders/${order.id}/confirm-delivery`}
-                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                >
-                                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                                    Confirm Delivery
-                                                </Button>
-                                            )}
-
-                                            {/* Show delivery confirmation status */}
-                                            {order.delivery_confirmation?.confirmed && (
-                                                <div className="flex items-center gap-2 text-sm text-emerald-600 px-3 py-1 bg-emerald-50 rounded-md">
-                                                    <CheckCircle className="h-4 w-4" />
-                                                    <span>Delivery Confirmed {order.delivery_confirmation.confirmed_at && `on ${formatDate(order.delivery_confirmation.confirmed_at)}`}</span>
-                                                </div>
-                                            )}
-
-                                            {order.status === 'delivered' && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => window.location.href = `/marketplace/products/${order.items[0]?.product?.slug}#reviews`}
-                                                >
-                                                    <MessageSquare className="h-4 w-4 mr-1" />
-                                                    Write Review
-                                                </Button>
-                                            )}
-
-                                            {(order.status === 'pending' || order.status === 'confirmed') && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        if (confirm('Are you sure you want to cancel this order?')) {
-                                                            cancelOrder(order.id);
-                                                        }
-                                                    }}
-                                                >
-                                                    <XCircle className="h-4 w-4 mr-1" />
-                                                    Cancel Order
-                                                </Button>
-                                            )}
-
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => printOrder(order)}
-                                            >
-                                                <Download className="h-4 w-4 mr-1" />
-                                                Print Invoice
-                                            </Button>
+                            <Card>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center">
+                                        <DollarSign className="h-8 w-8 text-emerald-600" />
+                                        <div className="ml-4">
+                                            <p className="text-sm font-medium text-gray-600">Total Spent</p>
+                                            <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.total_spent)}</p>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        )}
-                    </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
 
-                    {/* Pagination */}
-                    {orders.last_page > 1 && (
-                        <Card className="mt-6">
-                            <CardContent className="p-4">
-                                <div className="flex justify-center space-x-2">
-                                    {Array.from({ length: orders.last_page }, (_, i) => i + 1).map((page) => (
-                                        <Button
-                                            key={page}
-                                            variant={page === orders.current_page ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => {
-                                                const params = new URLSearchParams(window.location.search);
-                                                params.set('page', page.toString());
-                                                window.location.href = `/orders?${params.toString()}`;
-                                            }}
+                        {/* Filters */}
+                        <Card className="mb-6">
+                            <CardHeader>
+                                <CardTitle className="flex items-center">
+                                    <Filter className="h-5 w-5 mr-2" />
+                                    Filters
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                    <div>
+                                        <label className="text-sm font-medium mb-2 block">Search</label>
+                                        <Input
+                                            placeholder="Order number..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium mb-2 block">Status</label>
+                                        <select
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value={statusFilter}
+                                            onChange={(e) => setStatusFilter(e.target.value)}
                                         >
-                                            {page}
-                                        </Button>
-                                    ))}
+                                            <option value="">All Statuses</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="confirmed">Confirmed</option>
+                                            <option value="processing">Processing</option>
+                                            <option value="shipped">Shipped</option>
+                                            <option value="delivered">Delivered</option>
+                                            <option value="cancelled">Cancelled</option>
+                                            <option value="refunded">Refunded</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium mb-2 block">Payment</label>
+                                        <select
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value={paymentStatusFilter}
+                                            onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                                        >
+                                            <option value="">All Payments</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="paid">Paid</option>
+                                            <option value="failed">Failed</option>
+                                            <option value="refunded">Refunded</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium mb-2 block">From Date</label>
+                                        <Input
+                                            type="date"
+                                            value={dateFrom}
+                                            onChange={(e) => setDateFrom(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium mb-2 block">To Date</label>
+                                        <Input
+                                            type="date"
+                                            value={dateTo}
+                                            onChange={(e) => setDateTo(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 mt-4">
+                                    <Button onClick={handleSearch}>
+                                        <Search className="h-4 w-4 mr-2" />
+                                        Search
+                                    </Button>
+                                    <Button onClick={clearFilters} variant="outline">
+                                        Clear Filters
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
-                    )}
-                </div>
+
+                        {/* Orders List */}
+                        <div className="space-y-4">
+                            {orders.data.length === 0 ? (
+                                <Card>
+                                    <CardContent className="p-12 text-center">
+                                        <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                            No orders found
+                                        </h3>
+                                        <p className="text-gray-600 mb-6">
+                                            You haven't placed any orders yet. Start shopping!
+                                        </p>
+                                        <Button onClick={() => window.location.href = '/marketplace'}>
+                                            Start Shopping
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                orders.data.map((order) => (
+                                    <Card key={order.id}>
+                                        <CardContent className="p-6">
+                                            {/* Order Header */}
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold">
+                                                        Order #{order.order_number}
+                                                    </h3>
+                                                    <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                                                        <div className="flex items-center">
+                                                            <Calendar className="h-4 w-4 mr-1" />
+                                                            {formatDate(order.created_at)}
+                                                        </div>
+                                                        {order.payment_method && (
+                                                            <div className="flex items-center">
+                                                                <CreditCard className="h-4 w-4 mr-1" />
+                                                                {order.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' : 'Online Payment'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="flex gap-2 mb-2">
+                                                        <Badge className={getStatusColor(order.status)}>
+                                                            {order.status}
+                                                        </Badge>
+                                                        <Badge className={getPaymentStatusColor(order.payment_status)}>
+                                                            {formatPaymentStatus(order.payment_status)}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-xl font-bold">
+                                                        {formatCurrency(order.total_amount)}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <Separator className="mb-4" />
+
+                                            {/* Order Items */}
+                                            <div className="space-y-3 mb-4">
+                                                {order.items.map((item) => (
+                                                    <div key={item.id} className="flex gap-4">
+                                                        <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                                            {item.product?.images && item.product.images.length > 0 ? (
+                                                                <img
+                                                                    src={item.product.images[0].image_path}
+                                                                    alt={item.product.images[0].alt_text || item.product.name}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                    <Package className="h-6 w-6" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-grow">
+                                                            <h4 className="font-medium">{item.product_name}</h4>
+                                                            <p className="text-sm text-gray-600">
+                                                                Quantity: {item.quantity} × {formatCurrency(item.unit_price)}
+                                                            </p>
+                                                            {item.shipping_cost && item.shipping_cost > 0 && (
+                                                                <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                                                                    <Truck className="h-3 w-3" />
+                                                                    Shipping: {formatCurrency(item.shipping_cost)}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="font-semibold">
+                                                                {formatCurrency(item.total_price)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Shipping Information */}
+                                            {order.shipping && (
+                                                <>
+                                                    <Separator className="mb-4" />
+                                                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <h4 className="font-medium flex items-center">
+                                                                <Truck className="h-4 w-4 mr-2" />
+                                                                Shipping Information
+                                                            </h4>
+                                                            <Badge className={getStatusColor(order.shipping.status)}>
+                                                                {order.shipping.status}
+                                                            </Badge>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                                            {order.shipping.tracking_number && (
+                                                                <div>
+                                                                    <span className="font-medium">Tracking:</span> {order.shipping.tracking_number}
+                                                                </div>
+                                                            )}
+                                                            {order.shipping.carrier && (
+                                                                <div>
+                                                                    <span className="font-medium">Carrier:</span> {order.shipping.carrier}
+                                                                </div>
+                                                            )}
+                                                            {order.shipping.estimated_delivery && (
+                                                                <div>
+                                                                    <span className="font-medium">Estimated Delivery:</span> {formatDate(order.shipping.estimated_delivery)}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Order Actions */}
+                                            <div className="flex gap-2 flex-wrap">
+                                                {/* Customer Delivery Confirmation */}
+                                                {order.status === 'delivered' && order.payment_status === 'pending_confirmation' && !order.delivery_confirmation?.confirmed && (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => window.location.href = `/orders/${order.id}/confirm-delivery`}
+                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                    >
+                                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                                        Confirm Delivery
+                                                    </Button>
+                                                )}
+
+                                                {/* Show delivery confirmation status */}
+                                                {order.delivery_confirmation?.confirmed && (
+                                                    <div className="flex items-center gap-2 text-sm text-emerald-600 px-3 py-1 bg-emerald-50 rounded-md">
+                                                        <CheckCircle className="h-4 w-4" />
+                                                        <span>Delivery Confirmed {order.delivery_confirmation.confirmed_at && `on ${formatDate(order.delivery_confirmation.confirmed_at)}`}</span>
+                                                    </div>
+                                                )}
+
+                                                {order.status === 'delivered' && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => window.location.href = `/marketplace/products/${order.items[0]?.product?.slug}#reviews`}
+                                                    >
+                                                        <MessageSquare className="h-4 w-4 mr-1" />
+                                                        Write Review
+                                                    </Button>
+                                                )}
+
+                                                {(order.status === 'pending' || order.status === 'confirmed') && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            if (confirm('Are you sure you want to cancel this order?')) {
+                                                                cancelOrder(order.id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <XCircle className="h-4 w-4 mr-1" />
+                                                        Cancel Order
+                                                    </Button>
+                                                )}
+
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => printOrder(order)}
+                                                >
+                                                    <Download className="h-4 w-4 mr-1" />
+                                                    Print Invoice
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Pagination */}
+                        {orders.last_page > 1 && (
+                            <Card className="mt-6">
+                                <CardContent className="p-4">
+                                    <div className="flex justify-center space-x-2">
+                                        {Array.from({ length: orders.last_page }, (_, i) => i + 1).map((page) => (
+                                            <Button
+                                                key={page}
+                                                variant={page === orders.current_page ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => {
+                                                    const params = new URLSearchParams(window.location.search);
+                                                    params.set('page', page.toString());
+                                                    window.location.href = `/orders?${params.toString()}`;
+                                                }}
+                                            >
+                                                {page}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
                 </div>
             </div>
         </>

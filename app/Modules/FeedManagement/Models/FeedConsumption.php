@@ -284,7 +284,7 @@ class FeedConsumption extends Model
         }
 
         $envData = $this->getEnvironmentalData();
-        if (isset($envData['appetite_level']) && $envData['appetite_level'] === 'poor') {
+        if (isset($envData['appetite_level']) && $envData['appetite_level']== 'poor') {
             $analysis['quality_indicators'][] = 'poor_appetite';
         }
 

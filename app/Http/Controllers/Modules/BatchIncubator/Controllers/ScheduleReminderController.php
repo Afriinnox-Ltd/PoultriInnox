@@ -59,7 +59,7 @@ class ScheduleReminderController extends Controller
 
         // Calculate reminder time
         $reminderTime = null;
-        if ($request->reminder_type === 'before_due') {
+        if ($request->reminder_type== 'before_due') {
             if (!$schedule->scheduled_date) {
                 return back()->with('error', 'Schedule must have a scheduled date for before_due reminders');
             }
@@ -77,7 +77,7 @@ class ScheduleReminderController extends Controller
             'schedule_id' => $scheduleId,
             'user_id' => $request->user_id,
             'reminder_type' => $request->reminder_type,
-            'minutes_before' => $request->reminder_type === 'before_due' ? $request->minutes_before : null,
+            'minutes_before' => $request->reminder_type== 'before_due' ? $request->minutes_before : null,
             'reminder_time' => $reminderTime,
             'notification_method' => $request->notification_method,
             'status' => 'pending',
@@ -104,7 +104,7 @@ class ScheduleReminderController extends Controller
             ->where('id', $reminderId)
             ->firstOrFail();
 
-        if ($reminder->status !== 'pending') {
+        if ($reminder->status != 'pending') {
             return back()->with('error', 'Only pending reminders can be cancelled');
         }
 
@@ -130,7 +130,7 @@ class ScheduleReminderController extends Controller
             ->where('id', $reminderId)
             ->firstOrFail();
 
-        if ($reminder->status === 'sent') {
+        if ($reminder->status== 'sent') {
             return back()->with('error', 'Cannot delete reminders that have already been sent');
         }
 

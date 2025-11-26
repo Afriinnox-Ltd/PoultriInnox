@@ -35,12 +35,12 @@ class OrderAdminController extends Controller
         }
 
         // Filter by status
-        if ($request->has('status') && $request->status !== '') {
+        if ($request->has('status') && $request->status != '') {
             $query->where('status', $request->status);
         }
 
         // Filter by vendor
-        if ($request->has('vendor') && $request->vendor !== '') {
+        if ($request->has('vendor') && $request->vendor != '') {
             $query->where('vendor_id', $request->vendor);
         }
 
@@ -53,10 +53,10 @@ class OrderAdminController extends Controller
         }
 
         // Filter by amount range
-        if ($request->has('amount_min') && $request->amount_min !== '') {
+        if ($request->has('amount_min') && $request->amount_min != '') {
             $query->where('total_amount', '>=', $request->amount_min);
         }
-        if ($request->has('amount_max') && $request->amount_max !== '') {
+        if ($request->has('amount_max') && $request->amount_max != '') {
             $query->where('total_amount', '<=', $request->amount_max);
         }
 
@@ -132,7 +132,7 @@ class OrderAdminController extends Controller
                 'status' => 'delivered',
                 'label' => 'Delivered',
                 'date' => $order->delivered_at,
-                'completed' => $order->status === 'delivered',
+                'completed' => $order->status== 'delivered',
             ],
         ];
 
@@ -281,7 +281,7 @@ class OrderAdminController extends Controller
         ]);
 
         // If full refund and not already cancelled, restore inventory
-        if ($request->refund_amount == $order->total_amount && $order->status !== 'cancelled') {
+        if ($request->refund_amount == $order->total_amount && $order->status != 'cancelled') {
             $this->restoreInventory($order);
         }
 
@@ -351,7 +351,7 @@ class OrderAdminController extends Controller
         $query = Order::with(['user', 'vendor']);
 
         // Apply same filters as index
-        if ($request->has('status') && $request->status !== '') {
+        if ($request->has('status') && $request->status != '') {
             $query->where('status', $request->status);
         }
 

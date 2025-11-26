@@ -1,7 +1,6 @@
-import AppLogoIcon from '@/components/app-logo-icon';
-import { home } from '@/routes';
-import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import WelcomeNav from '@/components/navigation/WelcomeNav';
+import { SharedData } from '@/types';
+import { usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
 interface AuthLayoutProps {
@@ -10,35 +9,58 @@ interface AuthLayoutProps {
 }
 
 export default function AuthSplitLayout({ children, title, description }: PropsWithChildren<AuthLayoutProps>) {
-    const { name, quote } = usePage<SharedData>().props;
+    const { auth } = usePage<SharedData>().props;
 
     return (
-        <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
-            <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-                <div className="absolute inset-0 bg-zinc-900" />
-                <Link href={home()} className="relative z-20 flex items-center text-lg font-medium">
-                    <AppLogoIcon className="mr-2 size-8 fill-current text-white" />
-                    {name}
-                </Link>
-                {quote && (
-                    <div className="relative z-20 mt-auto">
-                        <blockquote className="space-y-2">
-                            <p className="text-lg">&ldquo;{quote.message}&rdquo;</p>
-                            <footer className="text-sm text-neutral-300">{quote.author}</footer>
-                        </blockquote>
+        <div className="min-h-screen bg-white">
+            <WelcomeNav auth={auth} />
+
+            <div className="flex flex-col lg:flex-row min-h-screen  pt-36">
+                {/* Left Side: Form Area */}
+                <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-20 z-10 bg-white">
+                    <div className="w-full max-w-md space-y-8">
+                        <div className="text-center lg:text-left">
+                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl">
+                                {title}
+                            </h1>
+                            {description && (
+                                <p className="mt-3 text-lg text-gray-500">
+                                    {description}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="mt-10">
+                            {children}
+                        </div>
                     </div>
-                )}
-            </div>
-            <div className="w-full lg:p-8">
-                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-                    <Link href={home()} className="relative z-20 flex items-center justify-center lg:hidden">
-                        <AppLogoIcon className="h-10 fill-current text-black sm:h-12" />
-                    </Link>
-                    <div className="flex flex-col items-start gap-2 text-left sm:items-center sm:text-center">
-                        <h1 className="text-xl font-medium">{title}</h1>
-                        <p className="text-sm text-balance text-muted-foreground">{description}</p>
+                </div>
+
+                {/* Right Side: Immersive Visual */}
+                <div className="hidden lg:block relative flex-1">
+                    <div className="absolute inset-0">
+                        <img
+                            className="h-full w-full object-cover"
+                            src="https://images.unsplash.com/photo-1516383274235-5f42d6c6426d?auto=format&fit=crop&q=80&w=2000"
+                            alt="Agriinnox Modern Farming"
+                        />
+                        <div className="absolute inset-0 bg-emerald-900/40 mix-blend-multiply" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/80 via-transparent to-transparent" />
                     </div>
-                    {children}
+
+                    <div className="absolute bottom-12 left-12 right-12 text-white">
+                        <div className="space-y-4">
+                            <div className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/20 backdrop-blur-sm">
+                                Agriinnox Ecosystem
+                            </div>
+                            <h2 className="text-4xl font-bold tracking-tight">
+                                Empowering the next generation of farmers.
+                            </h2>
+                            <p className="max-w-xl text-lg text-emerald-100">
+                                Join a community of thousands of farmers across Rwanda using smart tools to grow their business and improve productivity.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

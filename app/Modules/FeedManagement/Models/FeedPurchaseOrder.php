@@ -166,7 +166,7 @@ class FeedPurchaseOrder extends Model
     {
         return $this->payment_due_date &&
                $this->payment_due_date->isPast() &&
-               $this->payment_status !== 'paid';
+               $this->payment_status != 'paid';
     }
 
     /**
@@ -229,14 +229,14 @@ class FeedPurchaseOrder extends Model
     {
         $oldStatus = $this->status;
 
-        if ($this->status === 'cancelled') {
+        if ($this->status== 'cancelled') {
             return $this->status; // Don't change cancelled orders
         }
 
         if ($this->delivered_at && $this->quantity_received > 0) {
             $this->status = 'delivered';
             $this->delivery_status = 'completed';
-        } elseif ($this->tracking_number && $this->status === 'confirmed') {
+        } elseif ($this->tracking_number && $this->status== 'confirmed') {
             $this->status = 'shipped';
             $this->delivery_status = 'in_transit';
         }
@@ -247,7 +247,7 @@ class FeedPurchaseOrder extends Model
             $this->payment_status = 'overdue';
         }
 
-        if ($oldStatus !== $this->status) {
+        if ($oldStatus != $this->status) {
             $this->save();
         }
 
@@ -259,7 +259,7 @@ class FeedPurchaseOrder extends Model
      */
     public function approve(int $approvedBy): bool
     {
-        if ($this->status !== 'pending') {
+        if ($this->status != 'pending') {
             return false;
         }
 
@@ -289,7 +289,7 @@ class FeedPurchaseOrder extends Model
      */
     public function markReceived(float $quantityReceived, int $receivedBy, array $qualityNotes = []): bool
     {
-        if ($this->status === 'cancelled') {
+        if ($this->status== 'cancelled') {
             return false;
         }
 

@@ -158,7 +158,7 @@ class Payment extends Model
         $monthlyData = static::where('status', 'completed')
             ->where('type', 'payment')
             ->whereYear('processed_at', now()->year)
-            ->selectRaw('strftime("%m", processed_at) as month, SUM(net_amount) as revenue, COUNT(*) as transactions')
+            ->selectRaw('DATE_FORMAT(processed_at, "%m") as month, SUM(net_amount) as revenue, COUNT(*) as transactions')
             ->groupBy('month')
             ->orderBy('month')
             ->get();
