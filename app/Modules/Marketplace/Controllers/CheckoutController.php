@@ -35,7 +35,7 @@ class CheckoutController extends Controller
             'product.vendor.user',
             'product.vendor.activeSubscription',
             'product' => function($query) {
-                $query->select('id', 'name', 'price', 'vendor_id', 'payment_methods', 'shipping_option', 'extra_fee', 'delivery_time', 'return_policy', 'stock_quantity', 'status');
+                $query->select('id', 'name', 'price', 'vendor_id', 'payment_methods', 'shipping_option', 'extra_fee', 'delivery_time', 'return_policy', 'stock_quantity', 'status', 'minimum_order_quantity', 'maximum_order_quantity', 'is_negotiable');
             }
         ])
             ->where('user_id', $user->id)
@@ -230,7 +230,7 @@ class CheckoutController extends Controller
             ]);
 
             return back()->withErrors([
-                'message' => 'An error occurred during checkout. Please try again.'
+                'message' => 'An error occurred during checkout: ' . $e->getMessage()
             ]);
         }
     }
@@ -275,7 +275,7 @@ class CheckoutController extends Controller
             // Get active subscription
             $subscription = $vendor->subscriptions()
                 ->where('is_active', true)
-                ->where('expires_at', '>', now())
+                ->where('end_date', '>', now())
                 ->first();
 
             if ($subscription && $subscription->order_limit !== null) {
@@ -306,6 +306,7 @@ class CheckoutController extends Controller
         $totalAmount = $subtotal + $taxAmount + $shippingCost;
 
         // Create order
+        // Create order
         $order = Order::create([
             'user_id' => $user->id,
             'vendor_id' => $vendorId,
@@ -317,8 +318,8 @@ class CheckoutController extends Controller
             'total_amount' => $totalAmount,
             'currency' => 'RWF', // Adjust as needed
             'payment_method' => $validated['payment_method'],
-            'shipping_address' => json_encode($validated['shipping_address']),
-            'billing_address' => json_encode($validated['billing_address']),
+            'shipping_address' => $validated['shipping_address'],
+            'billing_address' => $validated['billing_address'],
             'notes' => $validated['notes'] ?? null
         ]);
 
@@ -409,8 +410,13 @@ class CheckoutController extends Controller
             }
 
             // Check minimum order quantity
-            if ($product->min_order_quantity && $cartItem->quantity < $product->min_order_quantity) {
-                $errors[] = "Minimum order quantity for '{$product->name}' is {$product->min_order_quantity}.";
+            if ($product->minimum_order_quantity && $cartItem->quantity < $product->minimum_order_quantity) {
+                $errors[] = "Minimum order quantity for '{$product->name}' is {$product->minimum_order_quantity}.";
+            }
+
+            // Check maximum order quantity
+            if ($product->maximum_order_quantity && $cartItem->quantity > $product->maximum_order_quantity) {
+                $errors[] = "Maximum order quantity for '{$product->name}' is {$product->maximum_order_quantity}.";
             }
         }
 

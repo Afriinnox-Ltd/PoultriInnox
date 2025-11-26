@@ -60,8 +60,8 @@ export interface Product {
     short_description?: string;
     price: number;
     stock_quantity: number;
-    min_order_quantity?: number;
-    max_order_quantity?: number;
+    minimum_order_quantity?: number;
+    maximum_order_quantity?: number;
     weight?: number;
     dimensions?: string;
     sku?: string;
@@ -144,7 +144,7 @@ export interface CartItem {
     updated_at: string;
     product?: Product;
     variant?: ProductVariant;
-    
+
 }
 
 export interface Order {
@@ -324,8 +324,8 @@ export interface ProductFormData {
     short_description?: string;
     price: number;
     stock_quantity: number;
-    min_order_quantity?: number;
-    max_order_quantity?: number;
+    minimum_order_quantity?: number;
+    maximum_order_quantity?: number;
     weight?: number;
     dimensions?: string;
     sku?: string;

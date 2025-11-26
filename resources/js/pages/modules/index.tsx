@@ -4,30 +4,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Package,
-  ShoppingCart,
-  Heart,
-  DollarSign,
-  TrendingUp,
-  Settings,
-  CheckCircle,
-  Circle,
-  Calendar,
-  Info,
-  ArrowRight,
-  Users,
-  BarChart3,
-  Activity,
-  Eye,
-  Store
+    Package,
+    ShoppingCart,
+    Heart,
+    DollarSign,
+    TrendingUp,
+    Settings,
+    CheckCircle,
+    Circle,
+    Calendar,
+    Info,
+    ArrowRight,
+    Users,
+    BarChart3,
+    Activity,
+    Eye,
+    Store
 } from 'lucide-react';
 import { Link, Head, useForm } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
@@ -163,6 +163,21 @@ export default function ModulesIndex({ modules }: ModulesIndexProps) {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Warning when no modules are enabled */}
+                {enabledModules.length === 0 && (
+                    <Card className="border-orange-200 bg-orange-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-orange-800">
+                                <Info className="h-5 w-5" />
+                                No Active Modules
+                            </CardTitle>
+                            <CardDescription className="text-orange-700">
+                                You currently have no active modules. Activate at least one module below to start using the system features.
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+                )}
 
                 {/* Active Modules */}
                 {enabledModules.length > 0 && (

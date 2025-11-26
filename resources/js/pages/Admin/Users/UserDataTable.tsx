@@ -92,7 +92,7 @@ export default function UserDataTable({ users, onEdit, onDelete }: UserDataTable
             },
             onError: (errors) => {
                 toast.error('Failed to update user');
-                console.error(errors);
+                
             }
         });
     };

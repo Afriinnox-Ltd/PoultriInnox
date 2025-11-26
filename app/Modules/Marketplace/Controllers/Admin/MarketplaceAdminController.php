@@ -23,8 +23,8 @@ class MarketplaceAdminController extends Controller
             'active_products' => Product::where('status', 'active')->count(),
             'pending_products' => Product::where('status', 'pending')->count(),
             'total_vendors' => Vendor::count(),
-            'approved_vendors' => Vendor::where('verification_status', 'verified')->count(),
-            'pending_vendors' => Vendor::where('verification_status', 'pending')->count(),
+            'approved_vendors' => Vendor::where('status', 'approved')->count(),
+            'pending_vendors' => Vendor::where('status', 'pending')->count(),
             'total_orders' => Order::count(),
             'pending_orders' => Order::where('status', 'pending')->count(),
             'completed_orders' => Order::where('status', 'completed')->count(),
@@ -50,8 +50,8 @@ class MarketplaceAdminController extends Controller
         // Sales analytics - SQLite compatible
         $monthly_sales = Order::where('status', 'completed')
             ->where('created_at', '>=', now()->subMonths(12))
-            ->selectRaw("strftime('%Y', created_at) as year, strftime('%m', created_at) as month, SUM(total_amount) as total")
-            ->groupByRaw("strftime('%Y', created_at), strftime('%m', created_at)")
+            ->selectRaw("DATE_FORMAT(created_at, '%Y') as year, DATE_FORMAT(created_at, '%m') as month, SUM(total_amount) as total")
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y'), DATE_FORMAT(created_at, '%m')")
             ->orderByRaw("year, month")
             ->get();
 
@@ -86,9 +86,9 @@ class MarketplaceAdminController extends Controller
             ],
             'vendors' => [
                 'total' => Vendor::count(),
-                'approved' => Vendor::where('verification_status', 'verified')->count(),
-                'pending' => Vendor::where('verification_status', 'pending')->count(),
-                'rejected' => Vendor::where('verification_status', 'rejected')->count(),
+                'approved' => Vendor::where('status', 'approved')->count(),
+                'pending' => Vendor::where('status', 'pending')->count(),
+                'rejected' => Vendor::where('status', 'rejected')->count(),
                 'suspended' => Vendor::where('is_active', false)->count(),
             ],
             'orders' => [
@@ -116,11 +116,11 @@ class MarketplaceAdminController extends Controller
                 ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
                 ->sum('total_amount'),
             'this_month' => Order::where('status', 'completed')
-                ->whereRaw("strftime('%m', created_at) = ?", [now()->format('m')])
-                ->whereRaw("strftime('%Y', created_at) = ?", [now()->format('Y')])
+                ->whereRaw("DATE_FORMAT(created_at, '%m') = ?", [now()->format('m')])
+                ->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [now()->format('Y')])
                 ->sum('total_amount'),
             'this_year' => Order::where('status', 'completed')
-                ->whereRaw("strftime('%Y', created_at) = ?", [now()->format('Y')])
+                ->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [now()->format('Y')])
                 ->sum('total_amount'),
         ];
 
@@ -223,11 +223,11 @@ class MarketplaceAdminController extends Controller
                 ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
                 ->sum('total_amount'),
             'this_month' => Order::where('status', 'completed')
-                ->whereRaw("strftime('%m', created_at) = ?", [now()->format('m')])
-                ->whereRaw("strftime('%Y', created_at) = ?", [now()->format('Y')])
+                ->whereRaw("DATE_FORMAT(created_at, '%m') = ?", [now()->format('m')])
+                ->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [now()->format('Y')])
                 ->sum('total_amount'),
             'this_year' => Order::where('status', 'completed')
-                ->whereRaw("strftime('%Y', created_at) = ?", [now()->format('Y')])
+                ->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [now()->format('Y')])
                 ->sum('total_amount'),
         ];
 

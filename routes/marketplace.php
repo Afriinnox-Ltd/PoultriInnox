@@ -1,12 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Modules\Marketplace\Controllers\ProductController;
-use App\Modules\Marketplace\Controllers\CategoryController;
-use App\Modules\Marketplace\Controllers\VendorController;
 use App\Modules\Marketplace\Controllers\CartController;
-use App\Modules\Marketplace\Controllers\OrderController;
+use App\Modules\Marketplace\Controllers\CategoryController;
 use App\Modules\Marketplace\Controllers\CheckoutController;
+use App\Modules\Marketplace\Controllers\OrderController;
+use App\Modules\Marketplace\Controllers\ProductController;
+use App\Modules\Marketplace\Controllers\VendorController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,9 +18,16 @@ use App\Modules\Marketplace\Controllers\CheckoutController;
 |
 */
 
+// Public vendor registration routes (accessible without authentication)
+Route::group(['middleware' => ['web']], function () {
+    Route::get('/vendor/register', [VendorController::class, 'showPublicRegister'])->name('vendor.register');
+    Route::post('/vendor/register', [VendorController::class, 'publicRegister'])->name('vendor.register.submit');
+});
+
 // Public marketplace routes (accessible without authentication)
 Route::prefix('store')->name('store.')->group(function () {
     Route::get('/', [ProductController::class, 'publicIndex'])->name('index');
+    Route::get('/search', [ProductController::class, 'search'])->name('search');
     Route::get('/products/{product:slug}', [ProductController::class, 'publicShow'])->name('products.show');
     Route::get('/categories/{category:slug}', [CategoryController::class, 'publicShow'])->name('categories.show');
     Route::get('/vendors/{vendor:slug}', [VendorController::class, 'publicShow'])->name('vendors.show');
@@ -67,7 +74,7 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
 
     // Main marketplace dashboard/index - using ProductController for product browsing
     // Route::get('/', [ProductController::class, 'index'])->name('index');
-    route::get('/',function(){
+    route::get('/', function () {
         return redirect()->route('marketplace.vendor.dashboard');
     })->name('index');
 
@@ -90,8 +97,6 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
         Route::get('/', [CategoryController::class, 'index'])->name('index');
         Route::get('/{category:slug}', [CategoryController::class, 'show'])->name('show');
     });
-
-
 
     // Wishlist routes - commenting out until WishlistController is created
     // Route::prefix('wishlist')->name('wishlist.')->group(function () {

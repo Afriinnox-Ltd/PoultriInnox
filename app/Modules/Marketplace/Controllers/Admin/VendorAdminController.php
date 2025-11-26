@@ -263,6 +263,63 @@ class VendorAdminController extends Controller
     }
 
     /**
+     * Send a specific message/email to a vendor.
+     */
+    public function sendMessage(Request $request, Vendor $vendor)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        if ($vendor->user) {
+            // Send email
+            try {
+                // Using a generic notification for now, or raw mail if no notification class exists
+                // For better structure, we should creat a generic VendorMessageNotification
+                // But for now, let's assuming we can send a simple notification
+                $vendor->user->notify(new \App\Notifications\VendorMessageNotification($request->subject, $request->message));
+                
+                return back()->with('success', 'Message sent to vendor successfully.');
+            } catch (\Exception $e) {
+                // Fallback or error logging
+                return back()->with('error', 'Failed to send email: ' . $e->getMessage());
+            }
+        }
+
+        return back()->with('error', 'Vendor has no associated user account.');
+    }
+
+    /**
+     * Request changes from a vendor (updates status to changes_requested).
+     */
+    public function requestChanges(Request $request, Vendor $vendor)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        $vendor->update([
+            'status' => 'changes_requested',
+            'admin_notes' => $request->message // Optionally save the message as a note
+        ]);
+
+        if ($vendor->user) {
+            try {
+                // Send email notification
+                $vendor->user->notify(new \App\Notifications\VendorMessageNotification($request->subject, $request->message));
+                
+                return back()->with('success', 'Changes requested successfully. Vendor has been notified.');
+            } catch (\Exception $e) {
+                return back()->with('warning', 'Changes requested, but failed to send email: ' . $e->getMessage());
+            }
+        }
+
+        return back()->with('success', 'Changes requested successfully.');
+    }
+
+    /**
      * Bulk actions for vendors.
      */
     public function bulkAction(Request $request)

@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -20,10 +19,10 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
             $table->text('address');
-            $table->string('city');
-            $table->string('state')->nullable();
+            $table->string('city', 80);
+            $table->string('state', 80)->nullable();
             $table->string('postal_code')->nullable();
-            $table->string('country');
+            $table->string('country', 80);
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
 
@@ -42,9 +41,15 @@ return new class extends Migration
 
             // Status tracking
             $table->enum('status', [
-                'pending', 'preparing', 'dispatched', 'in_transit',
-                'out_for_delivery', 'delivered', 'failed_delivery',
-                'returned', 'cancelled'
+                'pending',
+                'preparing',
+                'dispatched',
+                'in_transit',
+                'out_for_delivery',
+                'delivered',
+                'failed_delivery',
+                'returned',
+                'cancelled'
             ])->default('pending');
 
             // Timestamps for tracking

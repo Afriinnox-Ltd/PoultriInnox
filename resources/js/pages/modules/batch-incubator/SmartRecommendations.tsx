@@ -78,8 +78,7 @@ const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({ batch, reco
 
             // Refresh recommendations
             router.reload({ only: ['recommendations'] });
-        } catch (error) {
-            console.error('Error accepting recommendation:', error);
+        } catch (error) { 
         } finally {
             setLoading(false);
         }
@@ -95,8 +94,7 @@ const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({ batch, reco
             });
 
             setDismissedRecommendations(prev => new Set([...prev, recommendationId]));
-        } catch (error) {
-            console.error('Error dismissing recommendation:', error);
+        } catch (error) { 
         } finally {
             setLoading(false);
         }

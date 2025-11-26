@@ -26,7 +26,8 @@ import AppLayout from '@/layouts/app-layout';
 
 interface ProductShowProps {
     product: Product & {
-        images: Array<{ id: number; image_url: string; alt_text?: string; is_primary: boolean }>;
+        is_negotiable?: boolean;
+        images: Array<{ id: number; image_path: string; alt_text?: string; is_primary: boolean }>;
         reviews: ProductReview[];
         variants: ProductVariant[];
         vendor: {
@@ -51,13 +52,13 @@ interface ProductShowProps {
 export default function ProductShow({ product, user_review, is_in_wishlist }: ProductShowProps) {
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(product.minimum_order_quantity || 1);
     const [isInWishlist, setIsInWishlist] = useState(is_in_wishlist);
     const [reviewRating, setReviewRating] = useState(user_review?.rating || 0);
-    const [reviewText, setReviewText] = useState(user_review?.review || '');
+    const [reviewText, setReviewText] = useState(user_review?.comment || '');
 
     const images = product.images?.length > 0 ? product.images : [
-        { id: 0, image_url: '/placeholder-product.jpg', alt_text: product.name, is_primary: true }
+        { id: 0, image_path: '/placeholder-product.jpg', alt_text: product.name, is_primary: true }
     ];
 
     const currentPrice = selectedVariant
@@ -73,7 +74,9 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
 
     const maxQuantity = selectedVariant
         ? product.variants?.find(v => v.id === selectedVariant)?.stock_quantity || 0
-        : product.stock_quantity;
+        : (product.maximum_order_quantity ? Math.min(product.stock_quantity, product.maximum_order_quantity) : product.stock_quantity);
+
+    const minQuantity = product.minimum_order_quantity || 1;
 
     const handleAddToCart = async () => {
         try {
@@ -99,7 +102,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                 alert('Failed to add product to cart. Please try again.');
             }
         } catch (error) {
-            console.error('Error adding to cart:', error);
+
             alert('Failed to add product to cart. Please try again.');
         }
     };
@@ -117,7 +120,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                 setIsInWishlist(!isInWishlist);
             }
         } catch (error) {
-            console.error('Error toggling wishlist:', error);
+
         }
     };
 
@@ -131,7 +134,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                 },
                 body: JSON.stringify({
                     rating: reviewRating,
-                    review: reviewText,
+                    comment: reviewText,
                 }),
             });
 
@@ -140,7 +143,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                 window.location.reload();
             }
         } catch (error) {
-            console.error('Error submitting review:', error);
+
         }
     };
 
@@ -148,9 +151,8 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
         return Array.from({ length: 5 }, (_, i) => (
             <Star
                 key={i}
-                className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'} ${
-                    interactive ? 'cursor-pointer hover:text-yellow-400' : ''
-                }`}
+                className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'} ${interactive ? 'cursor-pointer hover:text-yellow-400' : ''
+                    }`}
                 onClick={interactive ? () => setReviewRating(i + 1) : undefined}
             />
         ));
@@ -192,7 +194,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                                 <CardContent className="p-0">
                                     <div className="aspect-square relative bg-gray-100">
                                         <img
-                                            src={images[selectedImageIndex].image_url}
+                                            src={images[selectedImageIndex].image_path}
                                             alt={images[selectedImageIndex].alt_text || product.name}
                                             className="w-full h-full object-cover"
                                         />
@@ -248,13 +250,12 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                                     {images.map((image, index) => (
                                         <button
                                             key={image.id}
-                                            className={`flex-shrink-0 w-20 h-20 border-2 rounded-lg overflow-hidden ${
-                                                index === selectedImageIndex ? 'border-blue-500' : 'border-gray-200'
-                                            }`}
+                                            className={`flex-shrink-0 w-20 h-20 border-2 rounded-lg overflow-hidden ${index === selectedImageIndex ? 'border-blue-500' : 'border-gray-200'
+                                                }`}
                                             onClick={() => setSelectedImageIndex(index)}
                                         >
                                             <img
-                                                src={image.image_url}
+                                                src={image.image_path}
                                                 alt={image.alt_text || product.name}
                                                 className="w-full h-full object-cover"
                                             />
@@ -287,10 +288,20 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                             <div>
                                 <div className="text-3xl font-bold text-emerald-600 mb-2">
                                     {formatCurrency(currentPrice)}
+                                    {product.is_negotiable && (
+                                        <Badge variant="secondary" className="ml-3 text-sm font-normal">
+                                            Negotiable
+                                        </Badge>
+                                    )}
                                 </div>
-                                {product.min_order_quantity && (
+                                {product.minimum_order_quantity && (
                                     <p className="text-sm text-gray-600">
-                                        Minimum order: {product.min_order_quantity} units
+                                        Minimum order: {product.minimum_order_quantity} units
+                                    </p>
+                                )}
+                                {product.maximum_order_quantity && (
+                                    <p className="text-sm text-gray-600">
+                                        Maximum order: {product.maximum_order_quantity} units
                                     </p>
                                 )}
                             </div>
@@ -338,18 +349,18 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                            disabled={quantity <= 1}
+                                            onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))}
+                                            disabled={quantity <= minQuantity}
                                         >
                                             <Minus className="h-4 w-4" />
                                         </Button>
                                         <Input
                                             type="number"
                                             value={quantity}
-                                            onChange={(e) => setQuantity(Math.max(1, Math.min(maxQuantity, parseInt(e.target.value) || 1)))}
+                                            onChange={(e) => setQuantity(Math.max(minQuantity, Math.min(maxQuantity || Infinity, parseInt(e.target.value) || minQuantity)))}
                                             className="w-20 text-center border-0"
-                                            min="1"
-                                            max={maxQuantity}
+                                            min={minQuantity}
+                                            max={maxQuantity || undefined}
                                         />
                                         <Button
                                             variant="ghost"
@@ -475,14 +486,14 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                                         <div>
                                             <span className="font-medium">Stock:</span> {product.stock_quantity} units
                                         </div>
-                                        {product.min_order_quantity && (
+                                        {product.minimum_order_quantity && (
                                             <div>
-                                                <span className="font-medium">Min Order:</span> {product.min_order_quantity} units
+                                                <span className="font-medium">Min Order:</span> {product.minimum_order_quantity} units
                                             </div>
                                         )}
-                                        {product.max_order_quantity && (
+                                        {product.maximum_order_quantity && (
                                             <div>
-                                                <span className="font-medium">Max Order:</span> {product.max_order_quantity} units
+                                                <span className="font-medium">Max Order:</span> {product.maximum_order_quantity} units
                                             </div>
                                         )}
                                     </div>
@@ -542,8 +553,8 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                                                             )}
                                                         </div>
                                                     </div>
-                                                    {review.review && (
-                                                        <p className="text-gray-700">{review.review}</p>
+                                                    {review.comment && (
+                                                        <p className="text-gray-700">{review.comment}</p>
                                                     )}
                                                 </CardContent>
                                             </Card>
@@ -576,7 +587,7 @@ export default function ProductShow({ product, user_review, is_in_wishlist }: Pr
                                                 <div className="aspect-square bg-gray-100">
                                                     {relatedProduct.images && relatedProduct.images.length > 0 ? (
                                                         <img
-                                                            src={relatedProduct.images[0].image_url}
+                                                            src={relatedProduct.images[0].image_path}
                                                             alt={relatedProduct.name}
                                                             className="w-full h-full object-cover"
                                                         />

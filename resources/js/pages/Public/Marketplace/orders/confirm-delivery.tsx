@@ -7,10 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-    Package, 
-    Upload, 
-    CheckCircle, 
+import {
+    Package,
+    Upload,
+    CheckCircle,
     AlertTriangle,
     User,
     MapPin,
@@ -62,7 +62,7 @@ interface Props {
 export default function ConfirmDelivery({ order }: Props) {
     const [images, setImages] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
-    
+
     const { auth } = usePage<SharedData>().props;
 
     const { data, setData, post, processing, errors } = useForm({
@@ -72,25 +72,25 @@ export default function ConfirmDelivery({ order }: Props) {
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        
+
         if (files.length > 5) {
             toast.error('You can upload maximum 5 images');
             return;
         }
 
         setImages(files);
-        
+
         // Create previews
         const newPreviews = files.map(file => URL.createObjectURL(file));
         setPreviews(newPreviews);
-        
+
         setData('proof_images', files);
     };
 
     const removeImage = (index: number) => {
         const newImages = images.filter((_, i) => i !== index);
         const newPreviews = previews.filter((_, i) => i !== index);
-        
+
         setImages(newImages);
         setPreviews(newPreviews);
         setData('proof_images', newImages);
@@ -100,7 +100,7 @@ export default function ConfirmDelivery({ order }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (images.length === 0) {
             toast.error('Please upload at least one proof image');
             return;
@@ -116,7 +116,7 @@ export default function ConfirmDelivery({ order }: Props) {
                 toast.success('Delivery confirmed successfully! Payment has been released to the vendor.');
             },
             onError: (errors) => {
-                console.error('Submission errors:', errors);
+
                 if (errors.proof_images) {
                     toast.error(errors.proof_images);
                 } else if (errors.message) {
@@ -132,7 +132,7 @@ export default function ConfirmDelivery({ order }: Props) {
         <>
             <WelcomeNav auth={auth} />
             <Head title={`Confirm Delivery - Order #${order.order_number}`} />
-            
+
             <div className="min-h-screen bg-gray-50 py-8 pt-20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="mb-8">
@@ -177,7 +177,7 @@ export default function ConfirmDelivery({ order }: Props) {
                                             <span>{order.shipping_address.city}, {order.shipping_address.country}</span>
                                         </div>
                                     </div>
-                                    
+
                                     <Badge variant="outline" className="w-fit">
                                         Status: {order.status.replace('_', ' ').toUpperCase()}
                                     </Badge>
@@ -195,8 +195,8 @@ export default function ConfirmDelivery({ order }: Props) {
                                             <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
                                                 <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                                                     {item.product.images[0] ? (
-                                                        <img 
-                                                            src={item.product.images[0].image_url} 
+                                                        <img
+                                                            src={item.product.images[0].image_url}
                                                             alt={item.product.name}
                                                             className="w-full h-full object-cover"
                                                         />
@@ -239,14 +239,14 @@ export default function ConfirmDelivery({ order }: Props) {
                                         {/* Image Upload */}
                                         <div className="space-y-3">
                                             <Label>Proof of Delivery (Required)</Label>
-                                            
+
                                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                                                 <div className="space-y-4">
                                                     <Upload className="h-12 w-12 text-gray-400 mx-auto" />
-                                                    
+
                                                     <div className="space-y-3">
                                                         <p className="text-gray-700 font-medium">Upload Proof Images</p>
-                                                        
+
                                                         <div>
                                                             <Input
                                                                 type="file"
@@ -256,7 +256,7 @@ export default function ConfirmDelivery({ order }: Props) {
                                                                 className="hidden"
                                                                 id="proof-images"
                                                             />
-                                                            <Label 
+                                                            <Label
                                                                 htmlFor="proof-images"
                                                                 className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 border-2 border-emerald-300 border-dashed rounded-lg shadow-sm text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 transition-colors"
                                                             >
@@ -264,13 +264,13 @@ export default function ConfirmDelivery({ order }: Props) {
                                                                 Choose Images to Upload
                                                             </Label>
                                                         </div>
-                                                        
+
                                                         <p className="text-xs text-gray-500">
                                                             Select up to 5 images (JPG, PNG, GIF) from your device
                                                         </p>
                                                     </div>
-                                                    </div>
                                                 </div>
+                                            </div>
 
                                             {errors.proof_images && (
                                                 <Alert variant="destructive">
@@ -287,7 +287,7 @@ export default function ConfirmDelivery({ order }: Props) {
                                                             Photos ({previews.length}/5)
                                                         </span>
                                                         {previews.length < 5 && (
-                                                            <Label 
+                                                            <Label
                                                                 htmlFor="proof-images"
                                                                 className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                                                             >
@@ -296,13 +296,13 @@ export default function ConfirmDelivery({ order }: Props) {
                                                             </Label>
                                                         )}
                                                     </div>
-                                                    
+
                                                     {/* Image Previews */}
                                                     <div className="grid grid-cols-2 gap-2">
                                                         {previews.map((preview, index) => (
                                                             <div key={index} className="relative group">
-                                                                <img 
-                                                                    src={preview} 
+                                                                <img
+                                                                    src={preview}
                                                                     alt={`Proof ${index + 1}`}
                                                                     className="w-full h-24 object-cover rounded-md border"
                                                                 />
@@ -338,13 +338,13 @@ export default function ConfirmDelivery({ order }: Props) {
                                         </div>
 
                                         {/* Submit Button */}
-                                        <Button 
-                                            type="submit" 
-                                            className="w-full" 
+                                        <Button
+                                            type="submit"
+                                            className="w-full"
                                             disabled={processing || images.length === 0}
                                         >
-                                            {processing 
-                                                ? 'Processing...' 
+                                            {processing
+                                                ? 'Processing...'
                                                 : `Confirm Delivery & Release Payment (${images.length} photo${images.length !== 1 ? 's' : ''})`
                                             }
                                         </Button>

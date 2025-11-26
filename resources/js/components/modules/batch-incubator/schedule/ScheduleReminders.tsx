@@ -96,8 +96,7 @@ export default function ScheduleReminders({
                     setReminders(props.reminders || []);
                 },
                 onError: (errors) => {
-                    setError('Failed to fetch reminders');
-                    console.error('Failed to fetch reminders:', errors);
+                    setError('Failed to fetch reminders'); 
                 },
             }
         );
@@ -130,7 +129,6 @@ export default function ScheduleReminders({
                 },
                 onError: (errors) => {
                     toast.error('Failed to create reminder. Please check the form for errors.');
-                    console.log('Errors:', errors);
                     const errorMessage = typeof errors === 'object' && 'message' in errors
                         ? (errors as any).message
                         : 'Failed to create reminder';
@@ -155,7 +153,7 @@ export default function ScheduleReminders({
                     const props = page.props as InertiaPageProps;
                     setReminders(props.reminders || []);
                     if (props.message) {
-                        console.log('Success:', props.message);
+                        
                     }
                 },
                 onError: (errors) => {
@@ -179,7 +177,7 @@ export default function ScheduleReminders({
                     const props = page.props as InertiaPageProps;
                     setReminders(props.reminders || []);
                     if (props.message) {
-                        console.log('Success:', props.message);
+                        
                     }
                 },
                 onError: (errors) => {
@@ -225,7 +223,7 @@ export default function ScheduleReminders({
                 setShowEmailResults(false);
             }
     };
-    console.log(selectedUser);
+    
     const handleUserSelect = (user: User) => {
         setSelectedUser(user);
         setFormData({ ...formData, email: user.email, user_id: user.id.toString() });

@@ -33,6 +33,7 @@ interface CheckoutPageProps {
     cart?: Cart & {
         items?: Array<CartItem & {
             product: CartItem['product'] & {
+                is_negotiable?: boolean;
                 payment_methods?: string[] | string;
                 shipping_option?: string;
                 extra_fee?: number;
@@ -114,6 +115,7 @@ export default function CheckoutPage({
     // Safe access to cart items with proper null checks
     type ExtendedCartItem = CartItem & {
         product: CartItem['product'] & {
+            is_negotiable?: boolean;
             payment_methods?: string[] | string;
             shipping_option?: string;
             extra_fee?: number;
@@ -145,9 +147,14 @@ export default function CheckoutPage({
     // Calculate available payment methods across all products
     const availablePaymentMethods = new Set<string>();
     const vendorsWithoutCOD: string[] = [];
+    let hasNegotiableProducts = false;
 
     cartItems.forEach(item => {
-        console.log('Processing item for payment methods:', item);
+        // Check if any product is negotiable
+        if (item.product?.is_negotiable) {
+            hasNegotiableProducts = true;
+        }
+
         if (item.product?.payment_methods) {
             let methods: string[] = [];
 
@@ -179,15 +186,14 @@ export default function CheckoutPage({
         }
     });
 
+    // If cart has negotiable products, only allow Cash on Delivery
+    if (hasNegotiableProducts) {
+        availablePaymentMethods.clear();
+        availablePaymentMethods.add('cash_on_delivery');
+    }
+
     // Debug: Log available payment methods
-    console.log('Available payment methods:', Array.from(availablePaymentMethods));
-    console.log('Available payment methods size:', availablePaymentMethods.size);
-    console.log('Cart items with payment methods:', cartItems.map(item => ({
-        name: item.product?.name,
-        payment_methods: item.product?.payment_methods,
-        typeof_payment_methods: typeof item.product?.payment_methods
-    })));
-    console.log('Raw cart items:', cartItems);
+
 
     // Auto-select the first available payment method
     useEffect(() => {
@@ -309,7 +315,7 @@ export default function CheckoutPage({
         }
 
         if (Object.keys(validationErrors).length > 0) {
-            console.log('Validation errors found:', validationErrors);
+
             setErrors(validationErrors);
             setIsProcessing(false);
             return;
@@ -325,12 +331,12 @@ export default function CheckoutPage({
         }, {
             onSuccess: (page) => {
                 // Handle success - will be redirected automatically by Inertia
-                console.log('Order placed successfully');
+
                 setErrors({});
                 setServerError('');
             },
             onError: (errors) => {
-                console.error('Checkout errors:', errors);
+
                 setErrors(errors);
                 if (errors.message) {
                     setServerError(typeof errors.message === 'string' ? errors.message : 'An error occurred during checkout');
@@ -378,24 +384,13 @@ export default function CheckoutPage({
         const billingValid = billing?.name && billing?.phone && billing?.address_line_1 &&
             billing?.city && billing?.state && billing?.country;
 
-        console.log('Form validation debug:', {
-            hasCart: !!(cart && cartItems.length > 0),
-            availablePaymentMethods: Array.from(availablePaymentMethods),
-            selectedPaymentMethod: paymentMethod,
-            paymentMethodSupported: availablePaymentMethods.has(paymentMethod),
-            shipping: shipping,
-            billing: billing,
-            shippingValid,
-            billingValid,
-            useCustomShipping,
-            useCustomBilling,
-            sameBillingAddress,
-            userAddressesLength: user_addresses.length
-        });
+
 
         return shippingValid && billingValid;
     };
 
+
+    console.log(hasNegotiableProducts)
     return (
         <>
             <Head title="Checkout" />
@@ -457,7 +452,7 @@ export default function CheckoutPage({
                                                         key={address.id}
                                                         className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedShippingAddress === address.id && !useCustomShipping
                                                             ? 'border-emerald-500 bg-emerald-50'
-                                                                : 'border-gray-200 hover:border-gray-300'
+                                                            : 'border-gray-200 hover:border-gray-300'
                                                             }`}
                                                         onClick={() => handleAddressSelect(address.id, 'shipping')}
                                                     >
@@ -605,7 +600,7 @@ export default function CheckoutPage({
                                                                 key={address.id}
                                                                 className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedBillingAddress === address.id && !useCustomBilling
                                                                     ? 'border-emerald-500 bg-emerald-50'
-                                                                        : 'border-gray-200 hover:border-gray-300'
+                                                                    : 'border-gray-200 hover:border-gray-300'
                                                                     }`}
                                                                 onClick={() => handleAddressSelect(address.id, 'billing')}
                                                             >
@@ -723,6 +718,19 @@ export default function CheckoutPage({
                                         <CreditCard className="h-5 w-5 mr-2" />
                                         Payment Method
                                     </CardTitle>
+                                    {hasNegotiableProducts && (
+                                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                            <div className="flex items-start gap-2">
+                                                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                                <div className="text-sm text-amber-800">
+                                                    <p className="font-medium">Negotiable Product Payment</p>
+                                                    <p className="text-xs mt-1">
+                                                        Your cart contains negotiable items. Only Cash on Delivery is available to allow price negotiation with the vendor before payment.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     {availablePaymentMethods.size > 0 ? (
@@ -730,11 +738,10 @@ export default function CheckoutPage({
                                             {/* Online Payment - only show if supported */}
                                             {availablePaymentMethods.has('online') && (
                                                 <div
-                                                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                                                        paymentMethod === 'online'
+                                                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${paymentMethod === 'online'
                                                         ? 'border-emerald-500 bg-emerald-50 scale-[1.02]'
                                                         : 'border-gray-300 hover:border-emerald-400 hover:shadow-lg hover:scale-[1.02] hover:bg-emerald-50/30'
-                                                    }`}
+                                                        }`}
                                                     onClick={() => setPaymentMethod('online')}
                                                 >
                                                     <div className="flex items-center">
@@ -748,11 +755,10 @@ export default function CheckoutPage({
                                             {/* Cash on Delivery - only show if supported */}
                                             {availablePaymentMethods.has('cash_on_delivery') && (
                                                 <div
-                                                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                                                        paymentMethod === 'cash_on_delivery'
-                                                            ? 'border-emerald-500 bg-emerald-50 shadow-md scale-[1.02]'
-                                                            : 'border-gray-300 hover:border-emerald-400 hover:shadow-lg hover:scale-[1.02] hover:bg-emerald-50/30'
-                                                    }`}
+                                                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${paymentMethod === 'cash_on_delivery'
+                                                        ? 'border-emerald-500 bg-emerald-50 shadow-md scale-[1.02]'
+                                                        : 'border-gray-300 hover:border-emerald-400 hover:shadow-lg hover:scale-[1.02] hover:bg-emerald-50/30'
+                                                        }`}
                                                     onClick={() => setPaymentMethod('cash_on_delivery')}
                                                 >
                                                     <div className="flex items-center">
@@ -787,7 +793,7 @@ export default function CheckoutPage({
                                                 id="payment-phone"
                                                 type="tel"
                                                 placeholder="078XXXXXXX"
-                                                
+
                                                 value={paymentPhoneNumber}
                                                 onChange={(e) => setPaymentPhoneNumber(e.target.value)}
                                                 className={`text-lg ${errors['payment_phone'] ? 'border-red-500' : ''}`}
@@ -806,15 +812,30 @@ export default function CheckoutPage({
                             {/* Order Notes */}
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Order Notes (Optional)</CardTitle>
+                                    <CardTitle>
+                                        {hasNegotiableProducts ? 'Negotiation Details & Order Notes' : 'Order Notes (Optional)'}
+                                    </CardTitle>
+                                    {hasNegotiableProducts && (
+                                        <p className="text-sm text-amber-600 mt-2">
+                                            ⚠️ Your cart contains negotiable products. Please include your suggested price and any other details for negotiation.
+                                        </p>
+                                    )}
                                 </CardHeader>
                                 <CardContent>
                                     <Textarea
-                                        placeholder="Special instructions for your order..."
+                                        placeholder={hasNegotiableProducts
+                                            ? "Enter your suggested price and negotiation details (e.g., 'Suggested price: 50,000 RWF for 100 units')..."
+                                            : "Special instructions for your order..."}
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
-                                        rows={3}
+                                        rows={hasNegotiableProducts ? 5 : 3}
+                                        className={hasNegotiableProducts ? 'border-amber-300' : ''}
                                     />
+                                    {hasNegotiableProducts && (
+                                        <p className="text-xs text-gray-600 mt-2">
+                                            💡 The vendor will review your suggested price and contact you to finalize the deal.
+                                        </p>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>
@@ -861,7 +882,14 @@ export default function CheckoutPage({
                                                     {items.map((item) => (
                                                         <div key={item.id} className="flex justify-between text-sm pl-6">
                                                             <div className="flex-1">
-                                                                <div className="font-medium">{item.product?.name || 'Unknown Product'}</div>
+                                                                <div className="font-medium flex items-center gap-2">
+                                                                    {item.product?.name || 'Unknown Product'}
+                                                                    {item.product?.is_negotiable && (
+                                                                        <Badge variant="secondary" className="text-xs">
+                                                                            Negotiable
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
                                                                 {item.variant && (
                                                                     <div className="text-gray-600 text-xs">
                                                                         {item.variant.name}: {item.variant.value}
@@ -956,8 +984,8 @@ export default function CheckoutPage({
                                             {availablePaymentMethods.size === 0
                                                 ? 'No payment methods available for cart items'
                                                 : !availablePaymentMethods.has(paymentMethod)
-                                                ? 'Selected payment method not supported'
-                                                : 'Please complete all required fields'
+                                                    ? 'Selected payment method not supported'
+                                                    : 'Please complete all required fields'
                                             }
                                         </div>
                                     )}

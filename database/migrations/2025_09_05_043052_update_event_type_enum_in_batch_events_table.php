@@ -6,8 +6,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use App\Modules\BatchIncubator\Enums\EventType;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -18,9 +17,16 @@ return new class extends Migration
         $schedules = DB::table('batch_schedules')->get();
 
         // Temporarily drop the foreign key constraint from batch_schedules
-        Schema::table('batch_schedules', function (Blueprint $table) {
-            $table->dropForeign(['completed_event_id']);
-        });
+        try {
+            Schema::table('batch_schedules', function (Blueprint $table) {
+                $table->dropForeign(['completed_event_id']);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // If the foreign key doesn't exist, we can continue
+            if (!str_contains($e->getMessage(), "Can't DROP FOREIGN KEY")) {
+                throw $e;
+            }
+        }
 
         // Now we can safely drop the batch_events table
         Schema::dropIfExists('batch_events');
