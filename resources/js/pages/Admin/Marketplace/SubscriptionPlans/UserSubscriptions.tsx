@@ -78,6 +78,8 @@ interface Props {
     search?: string;
     plan?: string;
     status?: string;
+    date_from?: string;
+    date_to?: string;
   };
   stats: {
     total_subscriptions: number;
@@ -94,6 +96,8 @@ export default function UserSubscriptions({ subscriptions, plans, users, filters
     search: filters.search || '',
     plan: filters.plan || '',
     status: filters.status || '',
+    date_from: filters.date_from || '',
+    date_to: filters.date_to || '',
   });
 
   const { data: assignData, setData: setAssignData, post, processing, errors, reset } = useForm({
@@ -352,7 +356,7 @@ export default function UserSubscriptions({ subscriptions, plans, users, filters
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div>
                   <Label htmlFor="search">Search Users</Label>
                   <Input
@@ -394,6 +398,26 @@ export default function UserSubscriptions({ subscriptions, plans, users, filters
                       <SelectItem value="pending">Pending Payment</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="date_from">From Date</Label>
+                  <Input
+                    id="date_from"
+                    type="date"
+                    value={searchData.date_from}
+                    onChange={(e) => setSearchData('date_from', e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="date_to">To Date</Label>
+                  <Input
+                    id="date_to"
+                    type="date"
+                    value={searchData.date_to}
+                    onChange={(e) => setSearchData('date_to', e.target.value)}
+                  />
                 </div>
 
                 <div className="flex items-end">

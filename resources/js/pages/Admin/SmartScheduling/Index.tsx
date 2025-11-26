@@ -68,8 +68,7 @@ const ProtocolManagement: React.FC<ProtocolManagementProps> = ({
             const response = await fetch('/batch-incubator/admin/protocols/statistics');
             const data = await response.json();
             setStats(data);
-        } catch (error) {
-            console.error('Error loading statistics:', error);
+        } catch (error) { 
         }
     };
 
@@ -86,8 +85,7 @@ const ProtocolManagement: React.FC<ProtocolManagementProps> = ({
                 status: newStatus,
             });
             router.reload({ only: ['medications', 'vaccinations'] });
-        } catch (error) {
-            console.error('Error toggling protocol status:', error);
+        } catch (error) { 
         } finally {
             setLoading(false);
         }
@@ -101,8 +99,7 @@ const ProtocolManagement: React.FC<ProtocolManagementProps> = ({
         setLoading(true);
         try {
             await router.delete(`/batch-incubator/admin/protocols/${type}/${id}`);
-        } catch (error) {
-            console.error('Error deleting protocol:', error);
+        } catch (error) { 
         } finally {
             setLoading(false);
         }

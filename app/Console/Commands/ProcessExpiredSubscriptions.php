@@ -2,10 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\Marketplace\SubscriptionExpired;
 use App\Modules\Marketplace\Models\Subscription;
 use App\Notifications\SubscriptionExpiredNotification;
-use Illuminate\Console\Command;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Mail;
 
 class ProcessExpiredSubscriptions extends Command
 {
@@ -39,6 +41,7 @@ class ProcessExpiredSubscriptions extends Command
 
         $totalProcessed = 0;
 
+        /** @var Subscription $subscription */
         foreach ($expiredSubscriptions as $subscription) {
             try {
                 // Deactivate the subscription
@@ -49,6 +52,13 @@ class ProcessExpiredSubscriptions extends Command
                 // Send expiration notification
                 $user = $subscription->vendor->user;
                 $user->notify(new SubscriptionExpiredNotification($subscription));
+
+                // Send professional email
+                try {
+                    Mail::to($user->email)->send(new SubscriptionExpired($subscription));
+                } catch (\Exception $e) {
+                    $this->error("✗ Failed to send email to {$user->email}: {$e->getMessage()}");
+                }
 
                 $totalProcessed++;
                 $this->line("✓ Deactivated subscription #{$subscription->id} - {$subscription->plan_name} for {$user->email}");

@@ -112,10 +112,10 @@ export default function MarketplaceIndex({
                         <CardContent className="p-6">
                             <div className="text-center">
                                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                                    Poultry Equipment & Supplies Marketplace
+                                    Livestock Equipment & Supplies Marketplace
                                 </h1>
                                 <p className="text-lg text-gray-600 mb-4">
-                                    Find everything you need for your poultry farming operation
+                                    Find everything you need for your livestock farming operation
                                 </p>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                                     <div className="flex items-center justify-center">
@@ -284,7 +284,7 @@ export default function MarketplaceIndex({
                                             <div className="aspect-square bg-gray-100 relative">
                                                 {product.images && product.images.length > 0 ? (
                                                     <img
-                                                        src={product.images[0].image_url}
+                                                        src={product.images[0].image_path}
                                                         alt={product.images[0].alt_text || product.name}
                                                         className="w-full h-full object-cover"
                                                     />
@@ -328,9 +328,9 @@ export default function MarketplaceIndex({
                                                             <span className="text-2xl font-bold text-emerald-600">
                                                                 {formatCurrency(product.price)}
                                                             </span>
-                                                            {product.min_order_quantity && (
+                                                            {product.minimum_order_quantity && (
                                                                 <span className="text-xs text-gray-500 ml-1">
-                                                                    (min. {product.min_order_quantity})
+                                                                    (min. {product.minimum_order_quantity})
                                                                 </span>
                                                             )}
                                                         </div>
@@ -353,7 +353,6 @@ export default function MarketplaceIndex({
                                                 disabled={product.stock_quantity === 0}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    console.log('Add to cart:', product.id);
                                                 }}
                                             >
                                                 <ShoppingCart className="h-4 w-4 mr-2" />

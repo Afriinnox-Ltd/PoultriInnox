@@ -398,22 +398,7 @@ export function ModularAppSidebar({ enabledModules = [] }: ModularAppSidebarProp
                     </SidebarGroup>
                 )}
 
-                {/* No Modules Message */}
-                {moduleNavigation.length === 0 && (
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Get Started</SidebarGroupLabel>
-                        <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                    <Link href="/modules" prefetch>
-                                        <Plus />
-                                        <span>Activate Modules</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        </SidebarMenu>
-                    </SidebarGroup>
-                )}
+                
             </SidebarContent>
 
             <SidebarFooter>

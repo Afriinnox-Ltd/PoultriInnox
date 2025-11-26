@@ -2,23 +2,25 @@
 
 namespace App\Modules\Marketplace\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use App\Traits\LogsActivity;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $table = 'marketplace_orders';
 
     protected $fillable = [
         'user_id',
         'vendor_id',
+        'payment_group_id',
         'order_number',
         'status',
         'admin_confirmed',
@@ -145,6 +147,14 @@ class Order extends Model
     }
 
     /**
+     * Scope for specific payment group
+     */
+    public function scopeByGroup($query, $groupId)
+    {
+        return $query->where('payment_group_id', $groupId);
+    }
+
+    /**
      * Scope for pending orders
      */
     public function scopePending($query)
@@ -173,7 +183,7 @@ class Order extends Model
      */
     public function isPending(): bool
     {
-        return $this->status === 'pending';
+        return $this->status == 'pending';
     }
 
     /**
@@ -181,7 +191,7 @@ class Order extends Model
      */
     public function isConfirmed(): bool
     {
-        return $this->status === 'confirmed';
+        return $this->status == 'confirmed';
     }
 
     /**
@@ -189,7 +199,7 @@ class Order extends Model
      */
     public function isProcessing(): bool
     {
-        return $this->status === 'processing';
+        return $this->status == 'processing';
     }
 
     /**
@@ -197,7 +207,7 @@ class Order extends Model
      */
     public function isShipped(): bool
     {
-        return $this->status === 'shipped';
+        return $this->status == 'shipped';
     }
 
     /**
@@ -205,7 +215,7 @@ class Order extends Model
      */
     public function isDelivered(): bool
     {
-        return $this->status === 'delivered';
+        return $this->status == 'delivered';
     }
 
     /**
@@ -213,7 +223,7 @@ class Order extends Model
      */
     public function isCompleted(): bool
     {
-        return $this->status === 'completed';
+        return $this->status == 'completed';
     }
 
     /**
@@ -221,7 +231,7 @@ class Order extends Model
      */
     public function isCancelled(): bool
     {
-        return $this->status === 'cancelled';
+        return $this->status == 'cancelled';
     }
 
     /**
@@ -229,7 +239,7 @@ class Order extends Model
      */
     public function isRefunded(): bool
     {
-        return $this->status === 'refunded';
+        return $this->status == 'refunded';
     }
 
     /**
@@ -237,7 +247,7 @@ class Order extends Model
      */
     public function isPaymentPending(): bool
     {
-        return $this->payment_status === 'pending';
+        return $this->payment_status == 'pending';
     }
 
     /**
@@ -245,7 +255,7 @@ class Order extends Model
      */
     public function isPaymentCompleted(): bool
     {
-        return $this->payment_status === 'completed';
+        return $this->payment_status == 'completed';
     }
 
     /**
@@ -253,7 +263,7 @@ class Order extends Model
      */
     public function isPaymentFailed(): bool
     {
-        return $this->payment_status === 'failed';
+        return $this->payment_status == 'failed';
     }
 
     /**
@@ -261,20 +271,34 @@ class Order extends Model
      */
     public function getFormattedShippingAddressAttribute(): string
     {
-        if (!$this->shipping_address) {
+        if (! $this->shipping_address) {
             return '';
         }
 
         $address = $this->shipping_address;
         $formatted = [];
 
-        if (isset($address['name'])) $formatted[] = $address['name'];
-        if (isset($address['address_line_1'])) $formatted[] = $address['address_line_1'];
-        if (isset($address['address_line_2']) && $address['address_line_2']) $formatted[] = $address['address_line_2'];
-        if (isset($address['city'])) $formatted[] = $address['city'];
-        if (isset($address['state'])) $formatted[] = $address['state'];
-        if (isset($address['postal_code'])) $formatted[] = $address['postal_code'];
-        if (isset($address['country'])) $formatted[] = $address['country'];
+        if (isset($address['name'])) {
+            $formatted[] = $address['name'];
+        }
+        if (isset($address['address_line_1'])) {
+            $formatted[] = $address['address_line_1'];
+        }
+        if (isset($address['address_line_2']) && $address['address_line_2']) {
+            $formatted[] = $address['address_line_2'];
+        }
+        if (isset($address['city'])) {
+            $formatted[] = $address['city'];
+        }
+        if (isset($address['state'])) {
+            $formatted[] = $address['state'];
+        }
+        if (isset($address['postal_code'])) {
+            $formatted[] = $address['postal_code'];
+        }
+        if (isset($address['country'])) {
+            $formatted[] = $address['country'];
+        }
 
         return implode(', ', $formatted);
     }
@@ -284,20 +308,34 @@ class Order extends Model
      */
     public function getFormattedBillingAddressAttribute(): string
     {
-        if (!$this->billing_address) {
+        if (! $this->billing_address) {
             return '';
         }
 
         $address = $this->billing_address;
         $formatted = [];
 
-        if (isset($address['name'])) $formatted[] = $address['name'];
-        if (isset($address['address_line_1'])) $formatted[] = $address['address_line_1'];
-        if (isset($address['address_line_2']) && $address['address_line_2']) $formatted[] = $address['address_line_2'];
-        if (isset($address['city'])) $formatted[] = $address['city'];
-        if (isset($address['state'])) $formatted[] = $address['state'];
-        if (isset($address['postal_code'])) $formatted[] = $address['postal_code'];
-        if (isset($address['country'])) $formatted[] = $address['country'];
+        if (isset($address['name'])) {
+            $formatted[] = $address['name'];
+        }
+        if (isset($address['address_line_1'])) {
+            $formatted[] = $address['address_line_1'];
+        }
+        if (isset($address['address_line_2']) && $address['address_line_2']) {
+            $formatted[] = $address['address_line_2'];
+        }
+        if (isset($address['city'])) {
+            $formatted[] = $address['city'];
+        }
+        if (isset($address['state'])) {
+            $formatted[] = $address['state'];
+        }
+        if (isset($address['postal_code'])) {
+            $formatted[] = $address['postal_code'];
+        }
+        if (isset($address['country'])) {
+            $formatted[] = $address['country'];
+        }
 
         return implode(', ', $formatted);
     }
@@ -315,7 +353,7 @@ class Order extends Model
      */
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'yellow',
             'confirmed' => 'blue',
             'processing' => 'purple',
@@ -412,7 +450,7 @@ class Order extends Model
      */
     public function canVendorUpdate(): bool
     {
-        return $this->admin_confirmed && !in_array($this->status, ['cancelled', 'refunded', 'completed']);
+        return $this->admin_confirmed && ! in_array($this->status, ['cancelled', 'refunded', 'completed']);
     }
 
     /**
@@ -424,7 +462,7 @@ class Order extends Model
             'status' => 'delivered',
             'shipping_status' => 'delivered',
             'delivered_at' => now(),
-            'payment_status' => 'pending_confirmation', // Keep pending until buyer confirms
+            'payment_status' => 'pending_confirmation',
         ]);
 
         // Create delivery confirmation request
@@ -455,7 +493,7 @@ class Order extends Model
         } else {
             // Create new payment record for cash on delivery
             $this->payments()->create([
-                'transaction_id' => 'COD-' . $this->order_number . '-' . now()->timestamp,
+                'transaction_id' => 'COD-'.$this->order_number.'-'.now()->timestamp,
                 'payment_method' => 'cash_on_delivery',
                 'gateway' => 'manual',
                 'type' => 'payment',
@@ -481,6 +519,7 @@ class Order extends Model
     {
         // Use helper function that accounts for both commission and platform fees
         $payout = calculate_vendor_payout($this->total_amount);
+
         return $payout['vendor_amount'];
     }
 
@@ -491,6 +530,7 @@ class Order extends Model
     {
         // Use helper function that properly calculates commission
         $payout = calculate_vendor_payout($this->total_amount);
+
         return $payout['commission'] + $payout['platform_fee'];
     }
 
@@ -509,7 +549,7 @@ class Order extends Model
     /**
      * Confirm delivery by buyer and release payment
      */
-    public function confirmDeliveryByBuyer(array $proofImages = [], string $notes = null): void
+    public function confirmDeliveryByBuyer(array $proofImages = [], ?string $notes = null): void
     {
         // Mark delivery as confirmed
         $deliveryConfirmation = $this->deliveryConfirmation;
@@ -540,8 +580,8 @@ class Order extends Model
      */
     public function isDeliveryConfirmationPending(): bool
     {
-        return $this->status === 'delivered' &&
-               $this->payment_status === 'pending_confirmation' &&
-               !$this->isDeliveryConfirmed();
+        return $this->status == 'delivered' &&
+               $this->payment_status == 'pending_confirmation' &&
+               ! $this->isDeliveryConfirmed();
     }
 }

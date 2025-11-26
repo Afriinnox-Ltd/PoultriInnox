@@ -157,7 +157,7 @@ class FeedInventoryController extends Controller
         DB::transaction(function () use ($feedInventory, $validated) {
             $oldQuantity = $feedInventory->quantity;
 
-            if ($validated['adjustment_type'] === 'add') {
+            if ($validated['adjustment_type']== 'add') {
                 $newQuantity = $oldQuantity + $validated['quantity'];
             } else {
                 $newQuantity = max(0, $oldQuantity - $validated['quantity']);

@@ -38,7 +38,7 @@ export default function Dashboard() {
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">Welcome to Agriinnox</h1>
                         <p className="text-muted-foreground">
-                            Your comprehensive poultry management system
+                            Your comprehensive livestock management system
                         </p>
                     </div>
                 </div>
@@ -108,7 +108,7 @@ export default function Dashboard() {
                                 Batch Management
                             </CardTitle>
                             <CardDescription>
-                                Monitor and manage poultry batches throughout their lifecycle
+                                Monitor and manage livestock batches throughout their lifecycle
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">

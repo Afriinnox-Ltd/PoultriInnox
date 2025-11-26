@@ -210,7 +210,7 @@ export default function BatchesIndex({ batches, stats, filters, statuses }: Prop
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Batch Management</h1>
             <p className="text-muted-foreground">
-              Monitor and manage your accessible poultry batches with comprehensive tracking
+              Monitor and manage your accessible livestock batches with comprehensive tracking
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -343,7 +343,7 @@ export default function BatchesIndex({ batches, stats, filters, statuses }: Prop
               <div>
                 <CardTitle>Batch Overview</CardTitle>
                 <CardDescription>
-                  Manage and monitor your accessible poultry batch operations
+                  Manage and monitor your accessible livestock batch operations
                 </CardDescription>
               </div>
               <Link href="/batch-incubator/batches/create">

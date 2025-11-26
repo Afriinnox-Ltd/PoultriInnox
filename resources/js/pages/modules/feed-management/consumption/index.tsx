@@ -380,8 +380,7 @@ export default function FeedConsumptionIndex({
       } else {
         toast.info(`Selected batch: ${batchData.batch_code} (${batchData.breed})`);
       }
-    } catch (error) {
-      console.warn('Failed to fetch batch details:', error);
+    } catch (error) { 
       toast.warning('Could not auto-fill batch data. Please enter manually.');
     } finally {
       setIsLoadingBatchData(false);

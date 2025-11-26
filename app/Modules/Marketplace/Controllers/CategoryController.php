@@ -22,6 +22,7 @@ class CategoryController extends Controller
             ->orderBy('parent_id')
             ->orderBy('sort_order')
             ->orderBy('name')
+            ->where('is_active', true)
             ->get();
 
         return Inertia::render('Marketplace/Categories/Index', [
@@ -37,7 +38,7 @@ class CategoryController extends Controller
         $this->authorize('create', Category::class);
 
         return Inertia::render('Marketplace/Categories/Create', [
-            'parentCategories' => Category::whereNull('parent_id')->orderBy('name')->get()
+            'parentCategories' => Category::whereNull('parent_id')->where('is_active', true)->orderBy('name')->get()
         ]);
     }
 
@@ -53,6 +54,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:marketplace_categories,id',
             'icon' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
             'image_url' => 'nullable|url|max:255',
             'is_featured' => 'boolean',
             'sort_order' => 'nullable|integer|min:0'
@@ -89,7 +91,7 @@ class CategoryController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -142,6 +144,7 @@ class CategoryController extends Controller
         return Inertia::render('Marketplace/Categories/Edit', [
             'category' => $category,
             'parentCategories' => Category::whereNull('parent_id')
+                ->where('is_active', true)
                 ->where('id', '!=', $category->id)
                 ->orderBy('name')
                 ->get()
@@ -160,6 +163,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:marketplace_categories,id',
             'icon' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
             'image_url' => 'nullable|url|max:255',
             'is_featured' => 'boolean',
             'sort_order' => 'nullable|integer|min:0'
@@ -171,7 +175,7 @@ class CategoryController extends Controller
         }
 
         // Update slug if name changed
-        if ($validated['name'] !== $category->name) {
+        if ($validated['name'] != $category->name) {
             $validated['slug'] = Str::slug($validated['name']);
 
             // Ensure slug is unique
@@ -221,9 +225,42 @@ class CategoryController extends Controller
             ->whereNull('parent_id')
             ->orderBy('sort_order')
             ->orderBy('name')
+            ->where('is_active', true)
             ->get();
 
         return response()->json($categories);
+    }
+
+    /**
+     * Public all-categories listing page.
+     */
+    public function publicIndex()
+    {
+        $categories = Category::withCount('products')
+            ->with('children')
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($cat) {
+                $cat->children->each(function ($child) {
+                    $child->loadCount('products');
+                });
+                return $cat;
+            });
+
+        return \Inertia\Inertia::render('Public/Marketplace/Categories', [
+            'categories' => $categories,
+        ]);
+    }
+
+    /**
+     * Public category show page (store front).
+     */
+    public function publicShow(\App\Modules\Marketplace\Models\Category $category, \Illuminate\Http\Request $request)
+    {
+        return redirect('/store/search?category=' . $category->id);
     }
 
     /**

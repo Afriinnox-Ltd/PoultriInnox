@@ -12,7 +12,7 @@ class CheckAdminAccess
     /**
      * Handle an incoming request.
      *
-     * Ensures only admin users can access admin-protected routes
+     * Allows access for admin users or any user that has at least one permission assigned via their role.
      */
     public function handle(Request $request, Closure $next)
     {
@@ -26,8 +26,10 @@ class CheckAdminAccess
             return redirect()->route('login');
         }
 
-        // Check if user has admin role
-        if (!$user->hasRole('admin')) {
+        // Allow admin role or any user with assigned permissions
+        $hasAccess = $user->isAdmin() || count($user->getPermissions()) > 0;
+
+        if (!$hasAccess) {
             // Log security event
             Log::warning('Unauthorized admin access attempt', [
                 'user_id' => $user->id,
@@ -41,7 +43,7 @@ class CheckAdminAccess
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'Admin access required',
-                    'message' => 'This action requires administrator privileges.'
+                    'message' => 'You do not have permissions to access the admin panel.'
                 ], 403);
             }
 

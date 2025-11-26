@@ -20,7 +20,7 @@ class VendorPolicy
      */
     public function view(?User $user, Vendor $vendor): bool
     {
-        return $vendor->status === 'approved' ||
+        return $vendor->status== 'approved' ||
                ($user && ($user->isAdmin() || $this->owns($user, $vendor)));
     }
 
@@ -53,6 +53,6 @@ class VendorPolicy
      */
     private function owns(User $user, Vendor $vendor): bool
     {
-        return $user->id === $vendor->user_id;
+        return $user->id== $vendor->user_id;
     }
 }

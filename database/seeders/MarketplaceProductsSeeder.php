@@ -233,7 +233,7 @@ class MarketplaceProductsSeeder extends Seeder
                     'image_path' => 'https://placehold.co/600x400?text=' . urlencode($product->name . ' - Image ' . $i),
                     'alt_text' => $product->name . ' - Image ' . $i,
                     'sort_order' => $i,
-                    'is_primary' => $i === 1,
+                    'is_primary' => $i== 1,
                 ]);
             }
         }

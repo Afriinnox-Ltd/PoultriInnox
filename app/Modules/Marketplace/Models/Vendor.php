@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Traits\LogsActivity;
 
 class Vendor extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $table = 'marketplace_vendors';
 
@@ -144,7 +145,7 @@ class Vendor extends Model
      */
     public function isApproved(): bool
     {
-        return $this->status === 'approved';
+        return $this->status== 'approved';
     }
 
     /**
@@ -152,7 +153,7 @@ class Vendor extends Model
      */
     public function isPending(): bool
     {
-        return $this->status === 'pending';
+        return $this->status== 'pending';
     }
 
     /**
@@ -160,7 +161,7 @@ class Vendor extends Model
      */
     public function isRejected(): bool
     {
-        return $this->status === 'rejected';
+        return $this->status== 'rejected';
     }
 
     /**
@@ -168,7 +169,7 @@ class Vendor extends Model
      */
     public function isSuspended(): bool
     {
-        return $this->status === 'suspended';
+        return $this->status== 'suspended';
     }
 
     /**
@@ -253,7 +254,7 @@ class Vendor extends Model
      */
     public function hasPremiumSubscription(): bool
     {
-        return $this->subscription && $this->subscription->plan_name === 'Premium' && $this->subscription->isActive();
+        return $this->subscription && $this->subscription->plan_name== 'Premium' && $this->subscription->isActive();
     }
 
     public function activeSubscription()
@@ -263,7 +264,7 @@ class Vendor extends Model
 
 public function hasActivePlan($planName)
 {
-    return $this->activeSubscription && $this->activeSubscription->plan->name === $planName;
+    return $this->activeSubscription && $this->activeSubscription->plan->name== $planName;
 }
 
 }

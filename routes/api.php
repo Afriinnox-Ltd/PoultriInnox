@@ -9,9 +9,9 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// ============================================
+//===========================================
 // HTTP IoT device endpoints
-// ============================================
+//===========================================
 
 // POST sensor state from device
 Route::post('/send', [IotDeviceController::class, 'receive']);
@@ -31,9 +31,9 @@ Route::post('/incubator/configure', [IotDeviceController::class, 'configureDevic
 
 Route::get('/device/config', [IotDeviceController::class, 'getDeviceConfig']);
 
-// ============================================
+//===========================================
 // MQTT IoT device endpoints (Broodinnox style)
-// ============================================
+//===========================================
 
 Route::prefix('mqtt')->group(function () {
     // Get MQTT broker information

@@ -65,15 +65,15 @@ class DatabaseSeeder extends Seeder
             ModuleSeeder::class,
             MarketplaceSeeder::class,
 
-            // Feed Management Seeders
+                // Feed Management Seeders
             FeedTypesSeeder::class,
             FeedSuppliersSeeder::class,
             FeedProgramsSeeder::class,
 
-            // Health Management Seeders
+                // Health Management Seeders
             MedicationProtocolsSeeder::class,
             VaccinationProtocolsSeeder::class,
-
+            MarketplaceSettingsSeeder::class,
             IncubatorSeeder::class,
             BatchSeeder::class,
             BatchEventSeeder::class,

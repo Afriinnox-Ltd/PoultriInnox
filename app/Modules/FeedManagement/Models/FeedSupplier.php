@@ -162,7 +162,7 @@ class FeedSupplier extends Model
         }
 
         $onTimePayments = $orders->filter(function ($order) {
-            return $order->payment_status === 'paid' &&
+            return $order->payment_status== 'paid' &&
                    $order->paid_at &&
                    $order->payment_due_date &&
                    $order->paid_at->lte($order->payment_due_date);

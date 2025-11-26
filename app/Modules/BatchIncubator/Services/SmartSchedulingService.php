@@ -254,7 +254,7 @@ class SmartSchedulingService
         }
 
         // Production insights for layers
-        if ($batch->status->value === 'laying') {
+        if ($batch->status->value== 'laying') {
             $productionRate = $batch->getProductionRate();
             $expectedRate = $this->getExpectedProductionRate($batch->breed, $batch->age_days);
 
@@ -284,14 +284,14 @@ class SmartSchedulingService
     private function feedProgramAppliesTo(FeedProgram $program, Batch $batch): bool
     {
         // Check breed compatibility
-        if ($program->specific_breed && $program->specific_breed !== $batch->breed) {
+        if ($program->specific_breed && $program->specific_breed != $batch->breed) {
             return false;
         }
 
         // Check breed type compatibility
         if ($program->breed_type) {
             $batchBreedType = $this->getBirdTypeFromBreed($batch->breed);
-            if ($program->breed_type !== $batchBreedType && $program->breed_type !== 'universal') {
+            if ($program->breed_type != $batchBreedType && $program->breed_type != 'universal') {
                 return false;
             }
         }
@@ -324,9 +324,9 @@ class SmartSchedulingService
         $score += 40;
 
         // Specific breed match bonus
-        if ($program->specific_breed === $batch->breed) {
+        if ($program->specific_breed== $batch->breed) {
             $score += 30;
-        } elseif ($program->breed_type === 'chicken') {
+        } elseif ($program->breed_type== 'chicken') {
             $score += 15;
         }
 
@@ -434,7 +434,7 @@ class SmartSchedulingService
             return 'high';
         }
 
-        if ($protocol->medication_type === 'antibiotic' && $batch->age_days < 7) {
+        if ($protocol->medication_type== 'antibiotic' && $batch->age_days < 7) {
             return 'medium';
         }
 
@@ -521,9 +521,9 @@ class SmartSchedulingService
     {
         $reasons = [];
 
-        if ($program->specific_breed === $batch->breed) {
+        if ($program->specific_breed== $batch->breed) {
             $reasons[] = "Specifically formulated for {$batch->breed} breed";
-        } elseif ($program->breed_type === 'chicken') {
+        } elseif ($program->breed_type== 'chicken') {
             $reasons[] = "Designed for chicken production systems";
         }
 

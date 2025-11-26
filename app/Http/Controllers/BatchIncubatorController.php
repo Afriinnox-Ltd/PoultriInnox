@@ -49,7 +49,7 @@ class BatchIncubatorController extends Controller
             'total_incubators' => $incubators->count(),
             'active_incubators' => $activeIncubators->count(),
             'idle_incubators' => $incubators->filter(function ($incubator) {
-                return isset($incubator->status) && $incubator->status->value === 'idle';
+                return isset($incubator->status) && $incubator->status->value== 'idle';
             })->count(),
             'total_capacity' => $incubators->sum('capacity'),
             'current_utilization' => $incubators->sum('current_load'),
@@ -192,7 +192,7 @@ class BatchIncubatorController extends Controller
                    $incubator->capacity > 0 &&
                    (($incubator->current_load / $incubator->capacity) * 100) < 20 &&
                    isset($incubator->status) &&
-                   $incubator->status->value === 'running';
+                   $incubator->status->value== 'running';
         });
 
         if ($lowUtilizationIncubators->count() > 0) {

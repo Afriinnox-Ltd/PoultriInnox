@@ -104,25 +104,27 @@ export default function PaymentPage({ subscription, payment: initialPayment, pay
             const response = await fetch(`/marketplace/subscriptions/payment/${subscription.id}/status`);
             const data = await response.json();
 
-            console.log('Payment status check response:', data);
 
-            setPayment(data.payment);
+
+            if (data.payment) {
+                setPayment(data.payment);
+            }
 
             if (data.status === 'completed' || data.payment_status === 'completed') {
-                console.log('Payment completed! Redirecting to success page...');
+
                 if (pollingInterval) {
                     clearInterval(pollingInterval);
                 }
                 router.visit(`/marketplace/subscriptions/success/${subscription.id}`);
             } else if (data.status === 'failed' || data.payment?.status === 'failed') {
-                console.log('Payment failed!');
+
                 if (pollingInterval) {
                     clearInterval(pollingInterval);
                 }
                 setProcessing(false);
             }
         } catch (err) {
-            console.error('Failed to check payment status:', err);
+
         }
     };
 
@@ -209,7 +211,7 @@ export default function PaymentPage({ subscription, payment: initialPayment, pay
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
-                    <Link href={`/marketplace/subscriptions/plans/${subscription.id}`}>
+                    <Link href={`/marketplace/subscriptions`}>
                         <Button variant="ghost" size="icon">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>

@@ -48,6 +48,8 @@ interface Category {
     slug: string;
     description: string;
     image: string | null;
+    icon: string | null;
+    color: string | null;
     is_active: boolean;
     products_count: number;
     children_count: number;
@@ -77,6 +79,8 @@ interface CategoryAdminProps {
         search?: string;
         status?: string;
         type?: string;
+        date_from?: string;
+        date_to?: string;
     };
     parent_categories: Category[];
 }
@@ -88,10 +92,14 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [typeFilter, setTypeFilter] = useState(filters.type || 'all');
+    const [dateFrom, setDateFrom] = useState(filters.date_from || '');
+    const [dateTo, setDateTo] = useState(filters.date_to || '');
 
     const [formData, setFormData] = useState({
         name: '',
         description: '',
+        icon: '',
+        color: '#3a4a2d',
         parent_id: '',
         is_active: true,
     });
@@ -101,6 +109,8 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
             search: searchTerm,
             status: statusFilter !== 'all' ? statusFilter : undefined,
             type: typeFilter !== 'all' ? typeFilter : undefined,
+            date_from: dateFrom || undefined,
+            date_to: dateTo || undefined,
         }, {
             preserveState: true,
             replace: true,
@@ -112,11 +122,11 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
             ...formData,
             parent_id: formData.parent_id || null,
         };
-        
+
         router.post('/admin/marketplace/categories', dataToSubmit, {
             onSuccess: () => {
                 setShowCreateDialog(false);
-                setFormData({ name: '', description: '', parent_id: '', is_active: true });
+                setFormData({ name: '', description: '', icon: '', color: '#3a4a2d', parent_id: '', is_active: true });
             },
         });
     };
@@ -126,6 +136,8 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
         setFormData({
             name: category.name,
             description: category.description,
+            icon: category.icon || '',
+            color: category.color || '#3a4a2d',
             parent_id: category.parent_id?.toString() || '',
             is_active: category.is_active,
         });
@@ -144,7 +156,7 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
             onSuccess: () => {
                 setShowEditDialog(false);
                 setEditingCategory(null);
-                setFormData({ name: '', description: '', parent_id: '', is_active: true });
+                setFormData({ name: '', description: '', icon: '', color: '#3a4a2d', parent_id: '', is_active: true });
             },
         });
     };
@@ -156,7 +168,7 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
     };
 
     const toggleStatus = (category: Category) => {
-        router.put(`/admin/marketplace/categories/${category.id}/toggle-status`, {}, {
+        router.patch(`/admin/marketplace/categories/${category.id}/toggle-status`, {}, {
             preserveState: true,
         });
     };
@@ -231,6 +243,34 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
                                         rows={3}
                                     />
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="icon">Icon (Optional)</Label>
+                                        <Input
+                                            id="icon"
+                                            value={formData.icon}
+                                            onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                                            placeholder="e.g., Apple, Car"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="color">Color (Optional)</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="color"
+                                                type="color"
+                                                value={formData.color}
+                                                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                                className="w-12 h-10 p-1 cursor-pointer"
+                                            />
+                                            <Input
+                                                value={formData.color}
+                                                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                                placeholder="#3a4a2d"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="flex items-center space-x-2">
                                     <input
                                         type="checkbox"
@@ -298,6 +338,24 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
                                     <option value="subcategory">Subcategories</option>
                                 </select>
                             </div>
+                            <div>
+                                <Label htmlFor="date_from">From Date</Label>
+                                <Input
+                                    id="date_from"
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) => setDateFrom(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="date_to">To Date</Label>
+                                <Input
+                                    id="date_to"
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                />
+                            </div>
                             <Button onClick={handleSearch}>
                                 <Filter className="h-4 w-4 mr-2" />
                                 Apply Filters
@@ -344,8 +402,15 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
                                                             className="h-10 w-10 rounded-lg object-cover"
                                                         />
                                                     ) : (
-                                                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                                                            <FileImage className="h-5 w-5 text-muted-foreground" />
+                                                        <div
+                                                            className={`h-10 w-10 rounded-lg flex items-center justify-center ${!category.color ? 'bg-muted' : ''}`}
+                                                            style={{ backgroundColor: category.color || undefined }}
+                                                        >
+                                                            {category.icon ? (
+                                                                <span className="text-lg">{category.icon}</span>
+                                                            ) : (
+                                                                <FileImage className="h-5 w-5 text-muted-foreground" />
+                                                            )}
                                                         </div>
                                                     )}
                                                     <div>
@@ -514,6 +579,34 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
                                     placeholder="Enter category description"
                                     rows={3}
                                 />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="edit-icon">Icon (Optional)</Label>
+                                    <Input
+                                        id="edit-icon"
+                                        value={formData.icon}
+                                        onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                                        placeholder="e.g., Apple, Car"
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit-color">Color (Optional)</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="edit-color"
+                                            type="color"
+                                            value={formData.color}
+                                            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                            className="w-12 h-10 p-1 cursor-pointer"
+                                        />
+                                        <Input
+                                            value={formData.color}
+                                            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                            placeholder="#000000"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <input

@@ -24,7 +24,7 @@ class IotDeviceController extends Controller
         if (empty($content)) {
             $raw = $request->getContent();
             $decoded = json_decode($raw, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            if (json_last_error()== JSON_ERROR_NONE && is_array($decoded)) {
                 $content = $decoded;
             } else {
                 $content = $request->all();
@@ -54,7 +54,7 @@ class IotDeviceController extends Controller
                 'device' => $deviceId,
                 'received_at' => now()->toIso8601String(),
             ]),
-            'incubator_updated' => $incubator !== null,
+            'incubator_updated' => $incubator != null,
         ]);
     }
 
@@ -399,7 +399,7 @@ class IotDeviceController extends Controller
             $updateData = [];
             $sensorsDataUpdate = $incubator->sensors_data ?? [];
 
-            if ($temperature !== null) {
+            if ($temperature != null) {
                 $updateData['current_temperature'] = (float) $temperature;
                 $sensorsDataUpdate['temperature'] = [
                     'value' => (float) $temperature,
@@ -407,7 +407,7 @@ class IotDeviceController extends Controller
                 ];
             }
 
-            if ($humidity !== null) {
+            if ($humidity != null) {
                 $updateData['current_humidity'] = (float) $humidity;
                 $sensorsDataUpdate['humidity'] = [
                     'value' => (float) $humidity,
@@ -415,7 +415,7 @@ class IotDeviceController extends Controller
                 ];
             }
 
-            if ($ledState !== null) {
+            if ($ledState != null) {
                 $sensorsDataUpdate['led_state'] = [
                     'value' => (int) $ledState,
                     'timestamp' => now()->toIso8601String(),

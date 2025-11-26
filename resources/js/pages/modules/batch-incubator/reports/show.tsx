@@ -588,7 +588,7 @@ export default function ReportShow({ report, type, parameters }: ReportShowProps
                                         <p>
                                             This {getReportTitle(type).toLowerCase()} covers the period from{' '}
                                             <strong>{report?.period || 'N/A'}</strong> and provides comprehensive analysis
-                                            of your poultry operation's performance.
+                                            of your livestock operation's performance.
                                         </p>
 
                                         {type === 'production' && (

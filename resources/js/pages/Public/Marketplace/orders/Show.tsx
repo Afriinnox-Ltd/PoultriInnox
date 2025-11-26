@@ -152,7 +152,7 @@ export default function OrderShow({ order, timeline }: OrderShowProps) {
             <Head title={`Order #${order.order_number}`} />
             <WelcomeNav auth={auth} />
 
-            <div className="min-h-screen bg-gray-50 py-20">
+            <div className="min-h-screen bg-gray-50 py-20 pt-16">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
@@ -326,11 +326,10 @@ export default function OrderShow({ order, timeline }: OrderShowProps) {
                                     <div className="space-y-4">
                                         {timeline.map((item, index) => (
                                             <div key={index} className="flex items-start space-x-3">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                                    item.completed
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${item.completed
                                                         ? 'bg-emerald-100 text-emerald-600'
                                                         : 'bg-gray-100 text-gray-400'
-                                                }`}>
+                                                    }`}>
                                                     {item.completed ? (
                                                         <CheckCircle className="h-4 w-4" />
                                                     ) : (
@@ -338,9 +337,8 @@ export default function OrderShow({ order, timeline }: OrderShowProps) {
                                                     )}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className={`font-medium ${
-                                                        item.completed ? 'text-gray-900' : 'text-gray-500'
-                                                    }`}>
+                                                    <p className={`font-medium ${item.completed ? 'text-gray-900' : 'text-gray-500'
+                                                        }`}>
                                                         {item.label}
                                                     </p>
                                                     {item.date && (

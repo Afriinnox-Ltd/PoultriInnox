@@ -353,7 +353,7 @@ class BatchSchedule extends Model
      */
     public function markOverdue(): void
     {
-        if ($this->status === ScheduleStatus::PENDING && $this->scheduled_date->isPast()) {
+        if ($this->status== ScheduleStatus::PENDING && $this->scheduled_date->isPast()) {
             $this->update(['status' => ScheduleStatus::OVERDUE]);
         }
     }
@@ -397,7 +397,7 @@ class BatchSchedule extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->status === ScheduleStatus::PENDING &&
+        return $this->status== ScheduleStatus::PENDING &&
                $this->scheduled_date->isPast();
     }
 

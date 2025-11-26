@@ -361,7 +361,7 @@ class FeedInventory extends Model
 
         // Simplified compliance check
         foreach ($required as $key => $requirement) {
-            if (!isset($actual[$key]) || $actual[$key] !== $requirement) {
+            if (!isset($actual[$key]) || $actual[$key] != $requirement) {
                 return false;
             }
         }

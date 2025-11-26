@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class VendorPayoutRequestNotification extends Notification implements ShouldQueue
+class VendorPayoutRequestNotification extends Notification 
 {
     use Queueable;
 

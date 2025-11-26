@@ -304,8 +304,8 @@ class BatchEvent extends Model
             'incubator_id' => $batch->incubator_id,
             'user_id' => $user->id,
             'event_date' => now(),
-            'temperature' => $eventType === EventType::TEMPERATURE_CHANGE ? $newValue : null,
-            'humidity' => $eventType === EventType::HUMIDITY_CHANGE ? $newValue : null,
+            'temperature' => $eventType== EventType::TEMPERATURE_CHANGE ? $newValue : null,
+            'humidity' => $eventType== EventType::HUMIDITY_CHANGE ? $newValue : null,
             'before_measurements' => $oldValue ? [$eventType->value => $oldValue] : null,
             'after_measurements' => [$eventType->value => $newValue],
         ]);
@@ -327,7 +327,7 @@ class BatchEvent extends Model
      */
     public function isVerified(): bool
     {
-        return $this->verified_at !== null;
+        return $this->verified_at != null;
     }
 
     /**

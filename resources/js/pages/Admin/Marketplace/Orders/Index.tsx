@@ -91,12 +91,16 @@ export default function OrderAdmin({ orders, vendors, filters, status_options }:
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [vendorFilter, setVendorFilter] = useState(filters.vendor || 'all');
+    const [dateFrom, setDateFrom] = useState(filters.date_from || '');
+    const [dateTo, setDateTo] = useState(filters.date_to || '');
 
     const handleSearch = () => {
         router.get('/admin/marketplace/orders', {
             search: searchTerm,
             status: statusFilter !== 'all' ? statusFilter : undefined,
             vendor: vendorFilter !== 'all' ? vendorFilter : undefined,
+            date_from: dateFrom || undefined,
+            date_to: dateTo || undefined,
         }, {
             preserveState: true,
             replace: true,
@@ -150,7 +154,7 @@ export default function OrderAdmin({ orders, vendors, filters, status_options }:
                         <CardTitle className="text-lg">Filters</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
                             <div>
                                 <Label htmlFor="search">Search Orders</Label>
                                 <div className="relative">
@@ -192,6 +196,24 @@ export default function OrderAdmin({ orders, vendors, filters, status_options }:
                                         <option key={vendor.id} value={vendor.id}>{vendor.business_name}</option>
                                     ))}
                                 </select>
+                            </div>
+                            <div>
+                                <Label htmlFor="date_from">From Date</Label>
+                                <Input
+                                    id="date_from"
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) => setDateFrom(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="date_to">To Date</Label>
+                                <Input
+                                    id="date_to"
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                />
                             </div>
                             <Button onClick={handleSearch}>
                                 <Filter className="h-4 w-4 mr-2" />

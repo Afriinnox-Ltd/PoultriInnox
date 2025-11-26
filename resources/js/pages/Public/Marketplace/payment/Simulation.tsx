@@ -80,7 +80,7 @@ export default function PaymentSimulation({ order }: PaymentSimulationProps) {
                 // The redirect from CheckoutController will be processed by Inertia
             },
             onError: (errors) => {
-                console.error('Payment processing error:', errors);
+
                 setPaymentStep('failed');
                 setProcessing(false);
             }
@@ -123,11 +123,10 @@ export default function PaymentSimulation({ order }: PaymentSimulationProps) {
 
             {/* Card Payment */}
             <div
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    paymentMethod === 'card'
+                className={`p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'card'
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
-                }`}
+                    }`}
                 onClick={() => setPaymentMethod('card')}
             >
                 <div className="flex items-center">
@@ -141,11 +140,10 @@ export default function PaymentSimulation({ order }: PaymentSimulationProps) {
 
             {/* Mobile Money */}
             <div
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    paymentMethod === 'mobile_money'
+                className={`p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'mobile_money'
                         ? 'border-emerald-500 bg-emerald-50'
                         : 'border-gray-200 hover:border-gray-300'
-                }`}
+                    }`}
                 onClick={() => setPaymentMethod('mobile_money')}
             >
                 <div className="flex items-center">

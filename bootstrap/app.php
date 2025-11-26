@@ -18,11 +18,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        $middleware->validateCsrfTokens(except: [
+            'payment/callback',
+            'marketplace/subscriptions/payment/callback',
+        ]);
+
         $middleware->web(append: [
+            \App\Http\Middleware\TrustProxies::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             ShareEnabledModules::class,
             AddLinkHeadersForPreloadedAssets::class,
+            AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\TranslatePageProps::class,
         ]);
 
         // Register custom middleware aliases
@@ -32,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'vendor.access' => \App\Http\Middleware\CheckVendorAccess::class,
             'vendor.approved' => \App\Http\Middleware\EnsureVendorIsApproved::class,
             'ensure.vendor.approved' => \App\Http\Middleware\EnsureVendorIsApproved::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

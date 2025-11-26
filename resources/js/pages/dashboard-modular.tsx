@@ -149,7 +149,7 @@ export default function Dashboard({
           <div>
                       <h1 className="text-3xl font-bold tracking-tight">Agriinnox Dashboard</h1>
             <p className="text-muted-foreground">
-              Comprehensive poultry management system with modular functionality
+              Comprehensive Livestock  management system with modular functionality
             </p>
           </div>
           <Button asChild variant="outline">
@@ -169,14 +169,14 @@ export default function Dashboard({
                               Welcome to Agriinnox
               </CardTitle>
               <CardDescription>
-                Get started by activating modules for your poultry management needs
+                Get started by activating modules for your Livestock management needs
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Agriinnox is a modular system that lets you choose which features you need.
-                  Start by activating modules that match your poultry operation requirements.
+                  Start by activating modules that match your Livestock operation requirements.
                 </p>
 
                 <div className="flex gap-4">
@@ -323,7 +323,7 @@ export default function Dashboard({
                     Batch Management
                   </CardTitle>
                   <CardDescription>
-                    Manage your poultry batches from incubation to production
+                    Manage your livestock from incubation to production
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -543,7 +543,7 @@ export default function Dashboard({
             <CardHeader>
               <CardTitle>Expand Your System</CardTitle>
               <CardDescription>
-                Discover more modules to enhance your poultry management
+                Discover more modules to enhance your livestock management
               </CardDescription>
             </CardHeader>
             <CardContent>

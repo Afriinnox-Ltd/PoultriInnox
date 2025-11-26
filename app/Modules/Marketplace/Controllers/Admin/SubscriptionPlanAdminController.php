@@ -251,6 +251,14 @@ class SubscriptionPlanAdminController extends Controller
             }
         }
 
+        // Filter by subscription start date
+        if ($request->filled('date_from')) {
+            $query->whereDate('start_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('start_date', '<=', $request->date_to);
+        }
+
         $subscriptions = $query->orderBy('created_at', 'desc')->paginate(15);
 
         // Transform data for frontend
@@ -300,6 +308,8 @@ class SubscriptionPlanAdminController extends Controller
                 'search' => $request->input('search'),
                 'plan' => $request->input('plan'),
                 'status' => $request->input('status'),
+                'date_from' => $request->input('date_from'),
+                'date_to' => $request->input('date_to'),
             ],
             'stats' => $stats,
         ]);

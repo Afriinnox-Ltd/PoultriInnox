@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class SubscriptionExpiredNotification extends Notification implements ShouldQueue
+class SubscriptionExpiredNotification extends Notification 
 {
     use Queueable;
 
@@ -38,13 +38,13 @@ class SubscriptionExpiredNotification extends Notification implements ShouldQueu
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Subscription Expired - ' . $this->subscription->plan_name)
-            ->greeting('Hello ' . $notifiable->name . '!')
-            ->line('Your ' . $this->subscription->plan_name . ' subscription has expired.')
-            ->line('**Expired On:** ' . $this->subscription->end_date->format('F j, Y'))
+            ->subject('Subscription Expired - '.$this->subscription->plan_name)
+            ->greeting('Hello '.$notifiable->name.'!')
+            ->line('Your '.$this->subscription->plan_name.' subscription has expired.')
+            ->line('**Expired On:** '.$this->subscription->end_date->format('F j, Y'))
             ->line('Your store features may be limited until you renew your subscription.')
-            ->line('**Previous Plan:** ' . $this->subscription->plan_name)
-            ->line('**Price:** RWF ' . number_format($this->subscription->price, 0) . ' per ' . $this->subscription->billing_cycle)
+            ->line('**Previous Plan:** '.$this->subscription->plan_name)
+            ->line('**Price:** RWF '.number_format($this->subscription->price, 0).' per '.$this->subscription->billing_cycle)
             ->action('Renew Subscription', route('marketplace.subscriptions.upgrade'))
             ->line('Thank you for your continued support!');
     }
@@ -58,11 +58,11 @@ class SubscriptionExpiredNotification extends Notification implements ShouldQueu
     {
         return [
             'title' => 'Subscription Expired',
-            'message' => 'Your ' . $this->subscription->plan_name . ' subscription has expired.',
+            'message' => 'Your '.$this->subscription->plan_name.' subscription has expired.',
             'subscription_id' => $this->subscription->id,
             'plan_name' => $this->subscription->plan_name,
             'expired_date' => $this->subscription->end_date->format('Y-m-d'),
-            'type' => 'subscription_expired'
+            'type' => 'subscription_expired',
         ];
     }
 }

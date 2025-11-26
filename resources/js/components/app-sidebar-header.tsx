@@ -2,6 +2,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { type BreadcrumbItem as BreadcrumbItemType } from '@/types';
 import { Link } from 'lucide-react';
+import { Button } from './ui/button';
 
 export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: BreadcrumbItemType[] }) {
     return (
@@ -13,7 +14,13 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                         <Breadcrumbs breadcrumbs={breadcrumbs} />
                     </div>
                     <div className="flex items-center gap-1 text-sm">
-                        <a href='/orders' target='__blank' className='flex text-sm underline gap-1'> <Link className='size-5' /> My orders</a>
+                        <Button className='cursor-pointer'>
+                        <a href="/orders" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                            <Link className="size-4" />
+                            My orders
+                        </a>
+                        </Button>
+                   
                     </div>
                 </div>
             </div>

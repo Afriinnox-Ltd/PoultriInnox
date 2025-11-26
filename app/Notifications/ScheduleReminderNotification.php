@@ -9,7 +9,7 @@ use Illuminate\Notifications\Notification;
 use App\Modules\BatchIncubator\Models\ScheduleReminder;
 use App\Modules\BatchIncubator\Models\BatchSchedule;
 
-class ScheduleReminderNotification extends Notification implements ShouldQueue
+class ScheduleReminderNotification extends Notification 
 {
     use Queueable;
 

@@ -15,37 +15,59 @@ class CartController extends Controller
     use AuthorizesRequests;
 
     /**
-     * Display the shopping cart.
+     * Display the shopping cart (public - works for guests via local cart).
      */
     public function index()
     {
+        return Inertia::render('Public/Marketplace/cart/index', [
+            'isAuthenticated' => Auth::check(),
+        ]);
+    }
+
+    /**
+     * Sync local cart items to server cart (called before checkout).
+     */
+    public function sync(Request $request)
+    {
         $user = Auth::user();
-        if (!$user) {
-            return redirect()->route('login');
+
+        $validated = $request->validate([
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:marketplace_products,id',
+            'items.*.variant_id' => 'nullable|integer',
+            'items.*.quantity' => 'required|integer|min:1|max:100',
+        ]);
+
+        foreach ($validated['items'] as $item) {
+            $product = Product::findOrFail($item['product_id']);
+
+            if ($product->status !== 'active' || $product->stock_quantity < $item['quantity']) {
+                continue;
+            }
+
+            $existing = CartItem::where('user_id', $user->id)
+                ->where('product_id', $item['product_id'])
+                ->first();
+
+            if ($existing) {
+                $newQty = $item['quantity'];
+                if ($newQty <= $product->stock_quantity) {
+                    $existing->update([
+                        'quantity' => $newQty,
+                        'unit_price' => $product->price,
+                    ]);
+                }
+            } else {
+                CartItem::create([
+                    'user_id' => $user->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $product->price,
+                ]);
+            }
         }
 
-        $cartItems = CartItem::with(['product.images', 'product.vendor.user'])
-            ->where('user_id', $user->id)
-            ->get();
-
-        // Group cart items by vendor for better organization
-        $cartByVendor = $cartItems->groupBy('product.vendor_id');
-
-        // Calculate totals
-        $subtotal = $cartItems->sum(function ($item) {
-            return $item->quantity * $item->unit_price;
-        });
-
-        $totalItems = $cartItems->sum('quantity');
-
-        return Inertia::render('Public/Marketplace/cart/index', [
-            'cartItems' => $cartItems,
-            'cartByVendor' => $cartByVendor,
-            'subtotal' => $subtotal,
-            'totalItems' => $totalItems,
-            'tax' => 1,
-            'total' => $subtotal
-        ]);
+        return redirect('/checkout');
     }
 
     /**
@@ -68,7 +90,7 @@ class CartController extends Controller
             $product = Product::findOrFail($validated['product_id']);
 
             // Check if product is available
-            if ($product->status !== 'active') {
+            if ($product->status != 'active') {
                 return redirect()->back()->with('error', 'This product is not available for purchase.');
             }
 
@@ -123,7 +145,7 @@ class CartController extends Controller
     public function update(Request $request, CartItem $cartItem)
     {
         $user = Auth::user();
-        if (!$user || $cartItem->user_id !== $user->id) {
+        if (!$user || $cartItem->user_id != $user->id) {
             return redirect()->back()->with('error', 'Unauthorized');
         }
 
@@ -157,7 +179,7 @@ class CartController extends Controller
     public function destroy(CartItem $cartItem)
     {
         $user = Auth::user();
-        if (!$user || $cartItem->user_id !== $user->id) {
+        if (!$user || $cartItem->user_id != $user->id) {
             return redirect()->back()->with('error', 'Unauthorized');
         }
 

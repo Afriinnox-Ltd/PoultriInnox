@@ -1,6 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
+import GuestLayout from '@/layouts/guest-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,15 +11,17 @@ import {
     HelpCircle,
     BookOpen,
     FileText,
-    ExternalLink
+    ExternalLink,
+    Store,
+
 } from 'lucide-react';
 
 export default function Help() {
     return (
-        <AppLayout>
+        <GuestLayout>
             <Head title="Help & Support" />
 
-            <div className="space-y-6 p-6">
+            <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Help & Support</h2>
@@ -40,9 +42,9 @@ export default function Help() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            <p className="text-sm font-medium">info@afriinnox.com</p>
+                            <p className="text-sm font-medium">info@agriinnox.com</p>
                             <Button variant="outline" className="w-full" asChild>
-                                <a href="mailto:info@afriinnox.com">
+                                <a href="mailto:info@agriinnox.com">
                                     <Mail className="h-4 w-4 mr-2" />
                                     Send Email
                                 </a>
@@ -95,6 +97,34 @@ export default function Help() {
                         </CardContent>
                     </Card>
                 </div>
+                <div className="space-y-6">
+                    <div>
+                        <h3 className="text-xl font-bold">Documentation</h3>
+                        <p className="text-muted-foreground">Detailed guides to help you get the most out of Agriinox</p>
+                    </div>
+
+                    <div className="grid gap-6 md:grid-cols-2">
+                        {/* <Card className="hover:border-primary transition-colors cursor-pointer" onClick={() => window.location.href = '/docs/marketplace/buyer'}>
+                            <CardHeader>
+                                <BookOpen className="h-8 w-8 mb-2 text-primary" />
+                                <CardTitle>Buyer Guide</CardTitle>
+                                <CardDescription>
+                                    Everything you need to know about shopping, orders, and reviews.
+                                </CardDescription>
+                            </CardHeader>
+                        </Card> */}
+
+                        <Card className="hover:border-primary transition-colors cursor-pointer" onClick={() => window.location.href = '/docs/marketplace/vendor'}>
+                            <CardHeader>
+                                <Store className="h-8 w-8 mb-2 text-primary" />
+                                <CardTitle>Vendor Guide</CardTitle>
+                                <CardDescription>
+                                    Learn how to set up your shop, manage products, and track earnings.
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                    </div>
+                </div>
 
                 {/* Office Location */}
                 <Card>
@@ -111,8 +141,7 @@ export default function Help() {
                         <div className="space-y-2">
                             <p className="font-medium">Afriinnox Ltd</p>
                             <p className="text-sm text-muted-foreground">
-                                KK 15 Rd<br />
-                                Kigali, Rwanda
+                                Kimisagara, Kigali . Rwanda
                             </p>
                             <p className="text-sm text-muted-foreground mt-4">
                                 <strong>Business Hours:</strong><br />
@@ -134,6 +163,6 @@ export default function Help() {
                     </CardContent>
                 </Card>
             </div>
-        </AppLayout>
+        </GuestLayout>
     );
 }

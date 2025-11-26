@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class VendorSuspensionNotification extends Notification implements ShouldQueue
+class VendorSuspensionNotification extends Notification 
 {
     use Queueable;
 

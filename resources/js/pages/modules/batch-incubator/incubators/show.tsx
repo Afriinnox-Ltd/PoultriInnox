@@ -191,17 +191,14 @@ export default function IncubatorShow({ incubator, availableUsers, searchUser }:
         });
     };
 
-    const handleRevokeAccess = (userId: number) => {
-        console.log('Revoking access for user:', userId);
+    const handleRevokeAccess = (userId: number) => { 
 
         // Use DELETE request to the dedicated revoke route
         router.delete(`/batch-incubator/incubators/${incubator.id}/revoke-access/${userId}`, {
-            onSuccess: () => {
-                console.log('User access revoked successfully');
+            onSuccess: () => { 
                 toast.success('User access revoked successfully!');
             },
-            onError: (errors: any) => {
-                console.log('Error revoking access:', errors);
+            onError: (errors: any) => { 
                 toast.error('Failed to revoke user access.');
             },
             preserveState: true,
