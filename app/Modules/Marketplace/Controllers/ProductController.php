@@ -83,7 +83,7 @@ class ProductController extends Controller
     {
         $vendor = Auth::user()->vendor;
 
-        if (! $vendor) {
+        if (!$vendor) {
             return redirect()->route('marketplace.vendor.register')
                 ->with('error', 'You need to register as a vendor first.');
         }
@@ -128,29 +128,29 @@ class ProductController extends Controller
         $currentSubscription = null;
         $subscriptionUsage = null;
         $needsUpgrade = false;
-        
+
         try {
             $currentSubscription = $vendor->subscriptions()->where('is_active', true)->first();
-            
+
             if ($currentSubscription) {
                 $productCount = $vendor->products()->count();
-                
+
                 $subscriptionUsage = [
                     'products_used' => $productCount,
                     'products_limit' => $currentSubscription->product_limit,
-                    'can_create_more' => $currentSubscription->product_limit ? 
+                    'can_create_more' => $currentSubscription->product_limit ?
                         ($productCount < $currentSubscription->product_limit) : true,
                     'plan_name' => $currentSubscription->plan_name,
                     'allows_cod' => $currentSubscription->allow_cod,
                     'usage_percentage' => [
-                        'products' => $currentSubscription->product_limit ? 
+                        'products' => $currentSubscription->product_limit ?
                             min(100, ($productCount / $currentSubscription->product_limit) * 100) : 0,
                     ],
                 ];
-                
-                $needsUpgrade = ($currentSubscription->product_limit && 
-                               $productCount >= $currentSubscription->product_limit * 0.9) ||
-                               ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
+
+                $needsUpgrade = ($currentSubscription->product_limit &&
+                    $productCount >= $currentSubscription->product_limit * 0.9) ||
+                    ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
             } else {
                 // No subscription - disable all product creation
                 $subscriptionUsage = [
@@ -173,11 +173,12 @@ class ProductController extends Controller
         // Get marketplace settings for earnings calculations
         \App\Models\MarketplaceSetting::clearCache();
         $marketplaceSettings = \App\Models\MarketplaceSetting::getAllGrouped();
-        
+
         // Helper function to get setting value by key from a group
-        $getSetting = function($group, $key, $default = null) use ($marketplaceSettings) {
-            if (!isset($marketplaceSettings[$group])) return $default;
-            
+        $getSetting = function ($group, $key, $default = null) use ($marketplaceSettings) {
+            if (!isset($marketplaceSettings[$group]))
+                return $default;
+
             foreach ($marketplaceSettings[$group] as $setting) {
                 if (isset($setting['key']) && $setting['key'] === $key) {
                     return $setting['value'] ?? $default;
@@ -185,7 +186,7 @@ class ProductController extends Controller
             }
             return $default;
         };
-        
+
         // Format settings for frontend
         $formattedSettings = [
             'commission' => [
@@ -224,24 +225,24 @@ class ProductController extends Controller
         $this->authorize('create', Product::class);
 
         $vendor = Auth::user()->vendor;
-        
+
         if (!$vendor) {
             return redirect()->route('marketplace.vendor.register')
                 ->with('error', 'You need to register as a vendor first.');
         }
-        
+
         // Check subscription product limit BEFORE showing the form
         $currentSubscription = $vendor->subscriptions()
             ->where('is_active', true)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->whereNull('end_date')
-                      ->orWhere('end_date', '>', now());
+                    ->orWhere('end_date', '>', now());
             })
             ->first();
-        
+
         if ($currentSubscription && $currentSubscription->product_limit !== null) {
             $currentProductCount = $vendor->products()->count();
-            
+
             if ($currentProductCount >= $currentSubscription->product_limit) {
                 return redirect()->route('marketplace.vendor.products.index')
                     ->withErrors([
@@ -249,28 +250,28 @@ class ProductController extends Controller
                     ]);
             }
         }
-        
+
         $subscriptionUsage = null;
         $needsUpgrade = false;
-        
+
         // Safely load subscription data for the form
         try {
             if ($currentSubscription) {
                 $productCount = $vendor->products()->count();
-                
+
                 $subscriptionUsage = [
                     'products_used' => $productCount,
                     'products_limit' => $currentSubscription->product_limit,
-                    'can_create_more' => $currentSubscription->product_limit ? 
+                    'can_create_more' => $currentSubscription->product_limit ?
                         ($productCount < $currentSubscription->product_limit) : true,
                     'plan_name' => $currentSubscription->plan_name,
                     'allows_cod' => $currentSubscription->allow_cod,
                 ];
-                
+
                 // Check if upgrade is needed
-                $needsUpgrade = ($currentSubscription->product_limit && 
-                               $productCount >= $currentSubscription->product_limit * 0.9) ||
-                               ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
+                $needsUpgrade = ($currentSubscription->product_limit &&
+                    $productCount >= $currentSubscription->product_limit * 0.9) ||
+                    ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
             } else {
                 // No subscription - disable product creation
                 $subscriptionUsage = [
@@ -297,11 +298,12 @@ class ProductController extends Controller
 
         // Get marketplace settings for earnings calculations
         $marketplaceSettings = \App\Models\MarketplaceSetting::getAllGrouped();
-        
+
         // Helper function to get setting value by key from a group
-        $getSetting = function($group, $key, $default = null) use ($marketplaceSettings) {
-            if (!isset($marketplaceSettings[$group])) return $default;
-            
+        $getSetting = function ($group, $key, $default = null) use ($marketplaceSettings) {
+            if (!isset($marketplaceSettings[$group]))
+                return $default;
+
             foreach ($marketplaceSettings[$group] as $setting) {
                 if ($setting['key'] === $key) {
                     return $setting['value'];
@@ -309,7 +311,7 @@ class ProductController extends Controller
             }
             return $default;
         };
-        
+
         // Format settings for frontend
         $formattedSettings = [
             'commission' => [
@@ -345,7 +347,7 @@ class ProductController extends Controller
         $this->authorize('create', Product::class);
 
         $vendor = Auth::user()->vendor;
-        
+
         if (!$vendor) {
             return redirect()->back()->withErrors([
                 'message' => 'You must be a registered vendor to create products.'
@@ -356,21 +358,21 @@ class ProductController extends Controller
         $allSubscriptions = $vendor->subscriptions()
             ->where('is_active', true)
             ->get();
-            
+
         Log::info('All active subscriptions', [
             'vendor_id' => $vendor->id,
             'count' => $allSubscriptions->count(),
             'subscriptions' => $allSubscriptions->toArray()
         ]);
-        
+
         $currentSubscription = $vendor->subscriptions()
             ->where('is_active', true)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->whereNull('end_date')
-                      ->orWhere('end_date', '>', now());
+                    ->orWhere('end_date', '>', now());
             })
             ->first();
-        
+
         // Debug logging
         Log::info('Product creation attempt', [
             'vendor_id' => $vendor->id,
@@ -380,7 +382,7 @@ class ProductController extends Controller
             'is_active' => $currentSubscription->is_active ?? 'null',
             'end_date' => $currentSubscription->end_date ?? 'null',
         ]);
-        
+
         // Block if no subscription at all
         if (!$currentSubscription) {
             Log::warning('Product creation blocked - no active subscription');
@@ -389,13 +391,13 @@ class ProductController extends Controller
                     'message' => 'You need an active subscription to create products. Please subscribe to a plan.'
                 ]);
         }
-        
+
         // Block if product limit is set and reached
         $productLimit = (int) $currentSubscription->product_limit;
-        
+
         if ($productLimit > 0) {
             $currentProductCount = $vendor->products()->count();
-            
+
             Log::info('Checking product limit', [
                 'current_count' => $currentProductCount,
                 'limit' => $productLimit,
@@ -403,14 +405,14 @@ class ProductController extends Controller
                 'limit_type' => gettype($currentSubscription->product_limit),
                 'should_block' => $currentProductCount >= $productLimit
             ]);
-            
+
             if ($currentProductCount >= $productLimit) {
                 Log::warning('Product creation blocked - limit reached', [
                     'vendor_id' => $vendor->id,
                     'count' => $currentProductCount,
                     'limit' => $productLimit
                 ]);
-                
+
                 return redirect()->route('marketplace.vendor.products.index')
                     ->withErrors([
                         'message' => 'You have reached your product limit (' . $productLimit . ' products). Please upgrade your subscription to add more products.'
@@ -456,9 +458,11 @@ class ProductController extends Controller
                     'payment_methods' => 'Cash on Delivery requires an active subscription. Please subscribe to a plan.',
                 ]);
             }
-        } elseif (isset($validated['payment_methods']) 
-                  && in_array('cod', $validated['payment_methods']) 
-                  && !$currentSubscription->allow_cod) {
+        } elseif (
+            isset($validated['payment_methods'])
+            && in_array('cod', $validated['payment_methods'])
+            && !$currentSubscription->allow_cod
+        ) {
             return redirect()->back()->withErrors([
                 'payment_methods' => 'Cash on Delivery is not available in your current plan. Please upgrade your subscription.',
             ]);
@@ -479,7 +483,7 @@ class ProductController extends Controller
         $originalSlug = $validated['slug'];
         $counter = 1;
         while (Product::where('slug', $validated['slug'])->exists()) {
-            $validated['slug'] = $originalSlug.'-'.$counter;
+            $validated['slug'] = $originalSlug . '-' . $counter;
             $counter++;
         }
 
@@ -491,13 +495,13 @@ class ProductController extends Controller
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $index => $image) {
-                $path = $image->store('marketplace/products/'.$product->id, 'public');
+                $path = $image->store('marketplace/products/' . $product->id, 'public');
                 $fullUrl = asset(Storage::url($path));
 
                 ProductImage::create([
                     'product_id' => $product->id,
                     'image_path' => $fullUrl,
-                    'alt_text' => $product->name.' - Image '.($index + 1),
+                    'alt_text' => $product->name . ' - Image ' . ($index + 1),
                     'sort_order' => $index + 1,
                     'is_primary' => $index === 0,
                 ]);
@@ -556,27 +560,27 @@ class ProductController extends Controller
         $currentSubscription = null;
         $subscriptionUsage = null;
         $needsUpgrade = false;
-        
+
         // Safely load subscription if it exists
         try {
             $currentSubscription = $vendor->subscriptions()->where('is_active', true)->first();
-            
+
             if ($currentSubscription) {
                 $productCount = $vendor->products()->count();
-                
+
                 $subscriptionUsage = [
                     'products_used' => $productCount,
                     'products_limit' => $currentSubscription->product_limit,
-                    'can_create_more' => $currentSubscription->product_limit ? 
+                    'can_create_more' => $currentSubscription->product_limit ?
                         ($productCount < $currentSubscription->product_limit) : true,
                     'plan_name' => $currentSubscription->plan_name,
                     'allows_cod' => $currentSubscription->allow_cod,
                 ];
-                
+
                 // Check if upgrade is needed
-                $needsUpgrade = ($currentSubscription->product_limit && 
-                               $productCount >= $currentSubscription->product_limit * 0.9) ||
-                               ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
+                $needsUpgrade = ($currentSubscription->product_limit &&
+                    $productCount >= $currentSubscription->product_limit * 0.9) ||
+                    ($currentSubscription->daysRemaining() !== null && $currentSubscription->daysRemaining() <= 7);
             } else {
                 // No subscription - show subscription data
                 $subscriptionUsage = [
@@ -604,11 +608,12 @@ class ProductController extends Controller
         // Get marketplace settings for earnings calculations
         \App\Models\MarketplaceSetting::clearCache();
         $marketplaceSettings = \App\Models\MarketplaceSetting::getAllGrouped();
-        
+
         // Helper function to get setting value by key from a group
-        $getSetting = function($group, $key, $default = null) use ($marketplaceSettings) {
-            if (!isset($marketplaceSettings[$group])) return $default;
-            
+        $getSetting = function ($group, $key, $default = null) use ($marketplaceSettings) {
+            if (!isset($marketplaceSettings[$group]))
+                return $default;
+
             foreach ($marketplaceSettings[$group] as $setting) {
                 if (isset($setting['key']) && $setting['key'] === $key) {
                     return $setting['value'] ?? $default;
@@ -616,7 +621,7 @@ class ProductController extends Controller
             }
             return $default;
         };
-        
+
         // Format settings for frontend
         $formattedSettings = [
             'commission' => [
@@ -658,7 +663,7 @@ class ProductController extends Controller
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
             'category_id' => 'required|exists:marketplace_categories,id',
-            'sku' => 'required|string|unique:marketplace_products,sku,'.$product->id,
+            'sku' => 'required|string|unique:marketplace_products,sku,' . $product->id,
             'stock_quantity' => 'required|integer|min:0',
             'min_order_quantity' => 'nullable|integer|min:1',
             'weight' => 'nullable|numeric|min:0',
@@ -692,7 +697,7 @@ class ProductController extends Controller
             \Log::warning('Could not load vendor subscription for COD check: ' . $e->getMessage());
             $hasValidSubscription = false;
         }
-        
+
         if (
             isset($validated['payment_methods'])
             && in_array('cod', $validated['payment_methods'])
@@ -718,7 +723,7 @@ class ProductController extends Controller
             $originalSlug = $validated['slug'];
             $counter = 1;
             while (Product::where('slug', $validated['slug'])->where('id', '!=', $product->id)->exists()) {
-                $validated['slug'] = $originalSlug.'-'.$counter;
+                $validated['slug'] = $originalSlug . '-' . $counter;
                 $counter++;
             }
         }
@@ -750,13 +755,13 @@ class ProductController extends Controller
             $existingImagesCount = $product->images()->count();
 
             foreach ($request->file('images') as $index => $image) {
-                $path = $image->store('marketplace/products/'.$product->id, 'public');
+                $path = $image->store('marketplace/products/' . $product->id, 'public');
                 $fullUrl = Storage::url($path);
 
                 ProductImage::create([
                     'product_id' => $product->id,
                     'image_path' => $fullUrl,
-                    'alt_text' => $product->name.' - Image '.($existingImagesCount + $index + 1),
+                    'alt_text' => $product->name . ' - Image ' . ($existingImagesCount + $index + 1),
                     'sort_order' => $existingImagesCount + $index + 1,
                     'is_primary' => $product->images()->count() === 0 && $index === 0,
                 ]);
@@ -813,24 +818,24 @@ class ProductController extends Controller
 
         // Check subscription product limit
         $vendor = Auth::user()->vendor;
-        
+
         if (!$vendor) {
             return redirect()->back()->withErrors([
                 'message' => 'Vendor profile not found.'
             ]);
         }
-        
+
         $currentSubscription = $vendor->subscriptions()
             ->where('is_active', true)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->whereNull('end_date')
-                      ->orWhere('end_date', '>', now());
+                    ->orWhere('end_date', '>', now());
             })
             ->first();
 
         if ($currentSubscription && $currentSubscription->product_limit !== null) {
             $currentProductCount = $vendor->products()->count();
-            
+
             if ($currentProductCount >= $currentSubscription->product_limit) {
                 return redirect()->back()->withErrors([
                     'message' => 'You have reached your product limit. Please upgrade your subscription to add more products.'
@@ -839,9 +844,9 @@ class ProductController extends Controller
         }
 
         $newProduct = $product->replicate();
-        $newProduct->name = $product->name.' (Copy)';
+        $newProduct->name = $product->name . ' (Copy)';
         $newProduct->slug = Str::slug($newProduct->name);
-        $newProduct->sku = $product->sku.'-copy';
+        $newProduct->sku = $product->sku . '-copy';
         $newProduct->status = 'draft';
 
         // Ensure unique slug and SKU
@@ -850,13 +855,13 @@ class ProductController extends Controller
         $counter = 1;
 
         while (Product::where('slug', $newProduct->slug)->exists()) {
-            $newProduct->slug = $originalSlug.'-'.$counter;
+            $newProduct->slug = $originalSlug . '-' . $counter;
             $counter++;
         }
 
         $counter = 1;
         while (Product::where('sku', $newProduct->sku)->exists()) {
-            $newProduct->sku = $originalSku.'-'.$counter;
+            $newProduct->sku = $originalSku . '-' . $counter;
             $counter++;
         }
 
@@ -988,6 +993,143 @@ class ProductController extends Controller
                 'id' => Auth::id(),
                 'name' => Auth::user()->name,
             ] : null,
+        ]);
+    }
+
+    /**
+     * Display the search page with comprehensive filtering.
+     */
+    public function search(Request $request)
+    {
+        $query = Product::with(['category', 'vendor.user', 'images'])
+            ->where('status', 'active')
+            ->whereHas('vendor', function ($q) {
+                $q->where('status', 'approved')->whereHas('user', function ($q2) {
+                    $q2->where('is_verified', true);
+                });
+            });
+
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply category filter
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->category);
+        }
+
+        // Apply vendor filter
+        if ($request->filled('vendor')) {
+            $query->where('vendor_id', $request->vendor);
+        }
+
+        // Apply price range filter
+        if ($request->filled('price_min')) {
+            $query->where('price', '>=', $request->price_min);
+        }
+        if ($request->filled('price_max')) {
+            $query->where('price', '<=', $request->price_max);
+        }
+
+        // Apply stock filter
+        if ($request->boolean('in_stock')) {
+            $query->where('stock_quantity', '>', 0);
+        }
+
+        // Apply condition filter (if you have this field in your products table)
+        // Uncomment if you add a 'condition' column to your products table
+        // if ($request->filled('condition')) {
+        //     $query->where('condition', $request->condition);
+        // }
+
+        // Apply rating filter (if you have reviews)
+        // Uncomment if you want to filter by average rating
+        // if ($request->filled('rating')) {
+        //     $minRating = $request->rating;
+        //     $query->whereHas('reviews', function ($q) use ($minRating) {
+        //         $q->selectRaw('AVG(rating) as avg_rating')
+        //           ->groupBy('product_id')
+        //           ->havingRaw('AVG(rating) >= ?', [$minRating]);
+        //     });
+        // }
+
+        // Apply free shipping filter (if you have this field)
+        // Uncomment if you add a 'free_shipping' column or use shipping_option
+        // if ($request->boolean('free_shipping')) {
+        //     $query->where('shipping_option', 'free');
+        // }
+
+        // Apply sorting
+        $sort = $request->get('sort', 'best_match');
+        switch ($sort) {
+            case 'price_asc':
+                $query->orderBy('price', 'asc');
+                break;
+            case 'price_desc':
+                $query->orderBy('price', 'desc');
+                break;
+            case 'newest':
+                $query->orderBy('created_at', 'desc');
+                break;
+            case 'popular':
+                // You can implement view count or sales count here
+                $query->orderBy('created_at', 'desc');
+                break;
+            default: // best_match
+                // For best match, prioritize exact name matches, then partial matches
+                if ($request->filled('search')) {
+                    $search = $request->search;
+                    $query->orderByRaw("CASE 
+                        WHEN name LIKE ? THEN 1 
+                        WHEN name LIKE ? THEN 2 
+                        ELSE 3 
+                    END", [$search, "%{$search}%"]);
+                }
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+
+        // Paginate results
+        $perPage = $request->get('per_page', 24);
+        $products = $query->paginate($perPage);
+
+        // Get all categories and vendors for filters
+        $categories = Category::where('is_active', true)->orderBy('name')->get();
+        $vendors = Vendor::with('user')
+            ->where('status', 'approved')
+            ->whereHas('user', function ($q) {
+                $q->where('is_verified', true);
+            })
+            ->orderBy('business_name')
+            ->get();
+
+        return Inertia::render('Public/Marketplace/Search', [
+            'products' => $products->items(),
+            'categories' => $categories,
+            'vendors' => $vendors,
+            'filters' => [
+                'search' => $request->get('search'),
+                'category' => $request->get('category'),
+                'vendor' => $request->get('vendor'),
+                'price_min' => $request->get('price_min'),
+                'price_max' => $request->get('price_max'),
+                'in_stock' => $request->boolean('in_stock'),
+                'condition' => $request->get('condition'),
+                'rating' => $request->get('rating'),
+                'free_shipping' => $request->boolean('free_shipping'),
+            ],
+            'pagination' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+            ],
         ]);
     }
 }

@@ -48,6 +48,8 @@ interface Category {
     slug: string;
     description: string;
     image: string | null;
+    icon: string | null;
+    color: string | null;
     is_active: boolean;
     products_count: number;
     children_count: number;
@@ -92,6 +94,8 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
     const [formData, setFormData] = useState({
         name: '',
         description: '',
+        icon: '',
+        color: '#000000',
         parent_id: '',
         is_active: true,
     });
@@ -112,11 +116,11 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
             ...formData,
             parent_id: formData.parent_id || null,
         };
-        
+
         router.post('/admin/marketplace/categories', dataToSubmit, {
             onSuccess: () => {
                 setShowCreateDialog(false);
-                setFormData({ name: '', description: '', parent_id: '', is_active: true });
+                setFormData({ name: '', description: '', icon: '', color: '#000000', parent_id: '', is_active: true });
             },
         });
     };
@@ -126,6 +130,8 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
         setFormData({
             name: category.name,
             description: category.description,
+            icon: category.icon || '',
+            color: category.color || '#000000',
             parent_id: category.parent_id?.toString() || '',
             is_active: category.is_active,
         });
@@ -144,7 +150,7 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
             onSuccess: () => {
                 setShowEditDialog(false);
                 setEditingCategory(null);
-                setFormData({ name: '', description: '', parent_id: '', is_active: true });
+                setFormData({ name: '', description: '', icon: '', color: '#000000', parent_id: '', is_active: true });
             },
         });
     };
@@ -230,6 +236,34 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
                                         placeholder="Enter category description"
                                         rows={3}
                                     />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="icon">Icon (Optional)</Label>
+                                        <Input
+                                            id="icon"
+                                            value={formData.icon}
+                                            onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                                            placeholder="e.g., Apple, Car"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="color">Color (Optional)</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="color"
+                                                type="color"
+                                                value={formData.color}
+                                                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                                className="w-12 h-10 p-1 cursor-pointer"
+                                            />
+                                            <Input
+                                                value={formData.color}
+                                                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                                placeholder="#000000"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <input
@@ -344,8 +378,15 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
                                                             className="h-10 w-10 rounded-lg object-cover"
                                                         />
                                                     ) : (
-                                                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                                                            <FileImage className="h-5 w-5 text-muted-foreground" />
+                                                        <div
+                                                            className={`h-10 w-10 rounded-lg flex items-center justify-center ${!category.color ? 'bg-muted' : ''}`}
+                                                            style={{ backgroundColor: category.color || undefined }}
+                                                        >
+                                                            {category.icon ? (
+                                                                <span className="text-lg">{category.icon}</span>
+                                                            ) : (
+                                                                <FileImage className="h-5 w-5 text-muted-foreground" />
+                                                            )}
                                                         </div>
                                                     )}
                                                     <div>
@@ -514,6 +555,34 @@ export default function CategoryAdmin({ categories, filters, parent_categories }
                                     placeholder="Enter category description"
                                     rows={3}
                                 />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="edit-icon">Icon (Optional)</Label>
+                                    <Input
+                                        id="edit-icon"
+                                        value={formData.icon}
+                                        onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                                        placeholder="e.g., Apple, Car"
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit-color">Color (Optional)</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="edit-color"
+                                            type="color"
+                                            value={formData.color}
+                                            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                            className="w-12 h-10 p-1 cursor-pointer"
+                                        />
+                                        <Input
+                                            value={formData.color}
+                                            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                            placeholder="#000000"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <input

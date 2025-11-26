@@ -50,12 +50,7 @@ function ProductCard({ product, auth, handleAddToCart }: { product: any, auth: a
                                   {product.rating > 0 ? product.rating.toFixed(1) : '0.0'}
                               </span>
                           </div>
-                      </div>
-
-                      <p className="text-gray-600 text-sm line-clamp-2">
-                          {product.description}
-                      </p>
-
+                      </div> 
                       <div className="flex justify-between items-center">
                           <div>
                               <span className="text-2xl font-bold text-emerald-600">

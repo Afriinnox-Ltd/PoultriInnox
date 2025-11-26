@@ -9,9 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
     Store,
-    FileText, 
-    Phone, 
-    CreditCard,
+    FileText,
+    Phone,
+
     Shield,
     CheckCircle,
     AlertCircle,
@@ -40,11 +40,11 @@ interface VendorRegistrationProps {
         status: 'pending' | 'approved' | 'rejected' | 'suspended';
         is_verified: boolean;
         created_at: string;
-    }; 
+    };
 }
 
 export default function VendorRegistration({ user, existing_application }: VendorRegistrationProps) {
- 
+
     const [formData, setFormData] = useState({
         business_name: existing_application?.business_name || '',
         business_registration_number: '',
@@ -54,10 +54,6 @@ export default function VendorRegistration({ user, existing_application }: Vendo
         business_phone: existing_application?.business_phone || '',
         business_email: existing_application?.business_email || user?.email,
         business_website: existing_application?.business_website || '',
-        bank_name: '',
-        bank_account_number: '',
-        bank_account_name: '',
-        bank_branch: '',
         tax_number: existing_application?.tax_number || '',
         years_in_business: '',
         specializations: ''
@@ -137,17 +133,7 @@ export default function VendorRegistration({ user, existing_application }: Vendo
             newErrors.business_email = 'Please enter a valid email address';
         }
 
-        if (!formData.bank_name.trim()) {
-            newErrors.bank_name = 'Bank name is required';
-        }
 
-        if (!formData.bank_account_number.trim()) {
-            newErrors.bank_account_number = 'Bank account number is required';
-        }
-
-        if (!formData.bank_account_name.trim()) {
-            newErrors.bank_account_name = 'Bank account name is required';
-        }
 
         if (business_documents.length === 0) {
             newErrors.business_documents = 'At least one verification document is required';
@@ -183,11 +169,11 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                 formDataToSend.append(`business_documents[${index}]`, file);
             });
 
-            router.post('/marketplace/vendor/register', formDataToSend , {
+            router.post('/marketplace/vendor/register', formDataToSend, {
                 onSuccess: () => {
                     toast.success("Registration successful! Your application is under review.")
                 },
-                onError:(error) =>{ 
+                onError: (error) => {
                     toast.error(error.message || 'An error occurred. Please try again.');
                 }
             })
@@ -203,9 +189,9 @@ export default function VendorRegistration({ user, existing_application }: Vendo
         return (
             <AppLayout >
                 <Head title="Vendor Application - Pending" />
-             <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                        Vendor Application Status
-                    </h2>
+                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                    Vendor Application Status
+                </h2>
                 <div className="py-12">
                     <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
                         <Card>
@@ -492,76 +478,7 @@ export default function VendorRegistration({ user, existing_application }: Vendo
                             </CardContent>
                         </Card>
 
-                        {/* Banking Information */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center">
-                                    <CreditCard className="h-5 w-5 mr-2" />
-                                    Banking Information
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="bank_name">Bank Name *</Label>
-                                        <Input
-                                            id="bank_name"
-                                            value={formData.bank_name}
-                                            onChange={(e) => handleInputChange('bank_name', e.target.value)}
-                                            placeholder="Name of your bank"
-                                            className={errors.bank_name ? 'border-red-500' : ''}
-                                        />
-                                        {errors.bank_name && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.bank_name}</p>
-                                        )}
-                                    </div>
 
-                                    <div>
-                                        <Label htmlFor="bank_account_number">Account Number *</Label>
-                                        <Input
-                                            id="bank_account_number"
-                                            value={formData.bank_account_number}
-                                            onChange={(e) => handleInputChange('bank_account_number', e.target.value)}
-                                            placeholder="Your bank account number"
-                                            className={errors.bank_account_number ? 'border-red-500' : ''}
-                                        />
-                                        {errors.bank_account_number && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.bank_account_number}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="bank_account_name">Account Name *</Label>
-                                        <Input
-                                            id="bank_account_name"
-                                            value={formData.bank_account_name}
-                                            onChange={(e) => handleInputChange('bank_account_name', e.target.value)}
-                                            placeholder="Account holder name"
-                                            className={errors.bank_account_name ? 'border-red-500' : ''}
-                                        />
-                                        {errors.bank_account_name && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.bank_account_name}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="bank_branch">Bank Branch</Label>
-                                        <Input
-                                            id="bank_branch"
-                                            value={formData.bank_branch}
-                                            onChange={(e) => handleInputChange('bank_branch', e.target.value)}
-                                            placeholder="Branch name or code"
-                                        />
-                                    </div>
-                                </div>
-
-                                <p className="text-xs text-gray-500">
-                                    This information is required for payment processing and will be securely stored.
-                                </p>
-                            </CardContent>
-                        </Card>
 
                         {/* Document Upload */}
                         <Card>

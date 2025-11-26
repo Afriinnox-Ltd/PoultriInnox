@@ -18,9 +18,16 @@ use App\Modules\Marketplace\Controllers\CheckoutController;
 |
 */
 
+// Public vendor registration routes (accessible without authentication)
+Route::group(['middleware' => ['web']], function () {
+    Route::get('/vendor/register', [VendorController::class, 'showPublicRegister'])->name('vendor.register');
+    Route::post('/vendor/register', [VendorController::class, 'publicRegister'])->name('vendor.register.submit');
+});
+
 // Public marketplace routes (accessible without authentication)
 Route::prefix('store')->name('store.')->group(function () {
     Route::get('/', [ProductController::class, 'publicIndex'])->name('index');
+    Route::get('/search', [ProductController::class, 'search'])->name('search');
     Route::get('/products/{product:slug}', [ProductController::class, 'publicShow'])->name('products.show');
     Route::get('/categories/{category:slug}', [CategoryController::class, 'publicShow'])->name('categories.show');
     Route::get('/vendors/{vendor:slug}', [VendorController::class, 'publicShow'])->name('vendors.show');
@@ -67,7 +74,7 @@ Route::prefix('marketplace')->name('marketplace.')->middleware(['auth', 'module.
 
     // Main marketplace dashboard/index - using ProductController for product browsing
     // Route::get('/', [ProductController::class, 'index'])->name('index');
-    route::get('/',function(){
+    route::get('/', function () {
         return redirect()->route('marketplace.vendor.dashboard');
     })->name('index');
 

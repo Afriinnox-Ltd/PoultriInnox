@@ -14,7 +14,8 @@ use App\Modules\BatchIncubator\Controllers\Admin\ProtocolManagementController;
 use App\Http\Controllers\Modules\BatchIncubator\Controllers\ScheduleReminderController;
 
 Route::get('/', function () {
-    return Inertia::render('website/welcome');
+    // return Inertia::render('website/welcome');
+    return redirect()->route('store.index');
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -143,8 +144,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 });
 
-    // Marketplace Module Routes
-    require __DIR__ . '/marketplace.php';
+// Marketplace Module Routes
+require __DIR__ . '/marketplace.php';
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/admin.php';
